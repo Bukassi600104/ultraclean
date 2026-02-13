@@ -148,41 +148,73 @@ export const TESTIMONIALS: Testimonial[] = [
 ];
 
 export const GALLERY_ITEMS: GalleryItem[] = [
+  // Before & After pairs
   {
     id: "1",
-    title: "Kitchen Deep Clean",
-    category: "deep-cleaning",
-    image: "/images/gallery/placeholder-1.jpg",
+    title: "Bedroom Makeover",
+    category: "residential",
+    beforeImage: "/images/gallery/IMG_1264.jpg",
+    afterImage: "/images/gallery/IMG_1265.jpg",
   },
   {
     id: "2",
-    title: "Living Room Transformation",
-    category: "residential",
-    image: "/images/gallery/placeholder-2.jpg",
+    title: "Toilet Deep Clean",
+    category: "deep-cleaning",
+    beforeImage: "/images/gallery/0907d98c-c6ff-46a3-822d-e468b5505cb6.jpg",
+    afterImage: "/images/gallery/IMG_4099.jpg",
   },
   {
     id: "3",
-    title: "Office Space Cleaning",
-    category: "commercial",
-    image: "/images/gallery/placeholder-3.jpg",
+    title: "Bathroom Restoration",
+    category: "deep-cleaning",
+    beforeImage: "/images/gallery/a0a60e9d-d53d-49d7-b1d7-96db5fa4dc4a.jpg",
+    afterImage: "/images/gallery/IMG_4132.jpg",
   },
   {
     id: "4",
-    title: "Post-Reno Bathroom",
-    category: "post-construction",
-    image: "/images/gallery/placeholder-4.jpg",
+    title: "Commercial Kitchen Clean",
+    category: "commercial",
+    beforeImage: "/images/gallery/IMG_4022.jpg",
+    afterImage: "/images/gallery/IMG_4055.jpg",
   },
   {
     id: "5",
-    title: "Move-Out Deep Clean",
-    category: "move-in-out",
-    image: "/images/gallery/placeholder-5.jpg",
+    title: "Sink Drain Restoration",
+    category: "deep-cleaning",
+    beforeImage: "/images/gallery/IMG_4204.jpg",
+    afterImage: "/images/gallery/IMG_4221.jpg",
   },
+  // Standalone results
   {
     id: "6",
-    title: "Sparkling Kitchen",
+    title: "Bedroom Fresh & Tidy",
     category: "residential",
-    image: "/images/gallery/placeholder-6.jpg",
+    image: "/images/gallery/IMG_1266.jpg",
+  },
+  {
+    id: "7",
+    title: "Bathroom Vanity Refresh",
+    category: "residential",
+    image: "/images/gallery/IMG_4129.jpg",
+  },
+  {
+    id: "8",
+    title: "Toilet Sanitization",
+    category: "deep-cleaning",
+    image: "/images/gallery/IMG_3980.jpg",
+  },
+  {
+    id: "9",
+    title: "Kitchen & Dining Overhaul",
+    category: "residential",
+    beforeImage: "/images/gallery/514ac785-71d5-4977-88a8-d32ec4efbce1.jpg",
+    afterImage: "/images/gallery/0f7edb87-31f3-43b9-913e-5178cab84825.jpg",
+  },
+  {
+    id: "10",
+    title: "Pipe Decalcification",
+    category: "deep-cleaning",
+    image: "/images/gallery/IMG_4225.jpg",
   },
 ];
 

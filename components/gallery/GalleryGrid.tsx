@@ -15,14 +15,13 @@ const FILTER_OPTIONS = [
   { value: "post-construction", label: "Post-Construction" },
 ];
 
-const PLACEHOLDER_IMAGES = [
-  "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=70",
-  "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&q=70",
-  "https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=400&q=70",
-  "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&q=70",
-  "https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?w=400&q=70",
-  "https://images.unsplash.com/photo-1585421514284-efb74c2b69ba?w=400&q=70",
-];
+function isBeforeAfter(item: GalleryItem) {
+  return !!(item.beforeImage && item.afterImage);
+}
+
+function getDisplayImage(item: GalleryItem) {
+  return item.afterImage || item.image || item.beforeImage || "";
+}
 
 interface GalleryGridProps {
   items: GalleryItem[];
@@ -86,13 +85,21 @@ export function GalleryGrid({ items }: GalleryGridProps) {
               onClick={() => openLightbox(index)}
             >
               <Image
-                src={PLACEHOLDER_IMAGES[index % PLACEHOLDER_IMAGES.length]}
+                src={getDisplayImage(item)}
                 alt={item.title}
                 fill
                 className="object-cover transition-transform duration-700 group-hover:scale-110"
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+              {/* Before & After badge */}
+              {isBeforeAfter(item) && (
+                <div className="absolute top-3 left-3 bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-lg">
+                  Before & After
+                </div>
+              )}
+
               <div className="absolute bottom-0 left-0 right-0 p-5 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
                 <p className="text-white font-heading font-bold">
                   {item.title}

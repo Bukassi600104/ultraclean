@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Instagram, Facebook, Star, Sparkles, MapPin, Phone, Mail } from "lucide-react";
+import Image from "next/image";
+import { Instagram, Facebook, Star, MapPin, Phone, Mail } from "lucide-react";
 import { SERVICES, BUSINESS_HOURS, CONTACT_INFO, SOCIAL_LINKS, NAV_LINKS } from "@/lib/constants";
 
 export function Footer() {
@@ -17,9 +18,13 @@ export function Footer() {
             {/* Brand */}
             <div className="lg:col-span-1">
               <div className="flex items-center gap-2.5 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
+                <Image
+                  src="/logo-icon.png"
+                  alt="UltraTidy"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 brightness-0 invert"
+                />
                 <span className="text-xl font-heading font-extrabold tracking-tight text-white">
                   Ultra<span className="text-primary">Tidy</span>
                 </span>
