@@ -523,7 +523,7 @@ test.describe("Privacy Policy Page", () => {
 
   test("displays correct contact info", async ({ page }) => {
     await page.goto("/privacy");
-    await expect(page.getByText("hello@ultratidy.ca").first()).toBeVisible();
+    await expect(page.getByText("hello@ultratidycleaning.com").first()).toBeVisible();
     await expect(page.getByText(/647.*823.*8262/).first()).toBeVisible();
   });
 });
@@ -545,7 +545,7 @@ test.describe("Terms of Service Page", () => {
 
   test("displays correct contact info", async ({ page }) => {
     await page.goto("/terms");
-    await expect(page.getByText("hello@ultratidy.ca").first()).toBeVisible();
+    await expect(page.getByText("hello@ultratidycleaning.com").first()).toBeVisible();
     await expect(page.getByText(/647.*823.*8262/).first()).toBeVisible();
   });
 });

@@ -294,7 +294,7 @@ export const BUSINESS_HOURS = [
 
 export const CONTACT_INFO = {
   phone: "+1 (647) 823-8262",
-  email: "hello@ultratidy.ca",
+  email: "hello@ultratidycleaning.com",
   address: "Toronto, ON, Canada",
   serviceArea: "GTA (Greater Toronto Area), Brantford & 40km radius",
 };

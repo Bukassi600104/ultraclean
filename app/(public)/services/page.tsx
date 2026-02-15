@@ -28,7 +28,7 @@ const serviceSchema = {
     "Professional cleaning services in Toronto & the GTA.",
   url: "https://ultratidy.ca",
   telephone: "+16478238262",
-  email: "hello@ultratidy.ca",
+  email: "hello@ultratidycleaning.com",
   address: {
     "@type": "PostalAddress",
     addressLocality: "Toronto",

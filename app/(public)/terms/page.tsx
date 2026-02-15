@@ -349,7 +349,7 @@ export default function TermsOfServicePage() {
               </li>
               <li>
                 <strong>Email:</strong>{" "}
-                <a href="mailto:hello@ultratidy.ca">hello@ultratidy.ca</a>
+                <a href="mailto:hello@ultratidycleaning.com">hello@ultratidycleaning.com</a>
               </li>
               <li>
                 <strong>Phone:</strong>{" "}

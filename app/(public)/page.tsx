@@ -32,7 +32,7 @@ const organizationSchema = {
     "Professional cleaning services in Toronto and the Greater Toronto Area. Residential, commercial, deep cleaning, move-in/move-out, and post-construction cleaning.",
   url: "https://ultratidy.ca",
   telephone: "+16478238262",
-  email: "hello@ultratidy.ca",
+  email: "hello@ultratidycleaning.com",
   founder: {
     "@type": "Person",
     name: "Mrs. Bimbo Oyedotun",

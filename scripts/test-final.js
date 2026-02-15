@@ -53,7 +53,7 @@ async function main() {
   // ═══ 1. AUTH FLOW ═══
   console.log("\n═══ 1. AUTH FLOW ═══\n");
 
-  const adminCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const adminCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   ok("Admin login succeeds");
 
   const mgrCookies = await freshSession("manager@primefield.ng", "Primefield2025!");
@@ -61,7 +61,7 @@ async function main() {
 
   // Bad password
   const badClient = createClient(SUPABASE_URL, ANON_KEY);
-  const { error: badErr } = await badClient.auth.signInWithPassword({ email: "hello@ultratidy.ca", password: "wrong" });
+  const { error: badErr } = await badClient.auth.signInWithPassword({ email: "hello@ultratidycleaning.com", password: "wrong" });
   if (badErr) ok("Invalid password rejected"); else fail("Invalid password", "Should fail");
 
   // Route protection (use fresh cookies for EACH protected route test)
@@ -83,7 +83,7 @@ async function main() {
   res = await apiFetch("/manager/sales", {}, mgrCookies3);
   if (res.status === 200) ok("Manager portal manager → 200"); else fail("Manager portal", `${res.status}`);
 
-  const adminCookies2 = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const adminCookies2 = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   res = await apiFetch("/login", {}, adminCookies2);
   if (res.status === 307) ok("Login with auth → redirect"); else fail("Login redirect", `${res.status}`);
 
@@ -91,7 +91,7 @@ async function main() {
   console.log("\n═══ 2. MANAGER CRUD ═══\n");
   await delay(1000);
 
-  const crudCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const crudCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
 
   // GET managers
   res = await apiFetch("/api/managers", {}, crudCookies);
@@ -100,7 +100,7 @@ async function main() {
   else fail("GET managers", `${res.status}`);
 
   // POST create
-  const crudCookies2 = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const crudCookies2 = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   res = await apiFetch("/api/managers", {
     method: "POST",
     body: JSON.stringify({ name: "Test Mgr", email: "test-mgr@example.com", password: "TestPass123!" }),
@@ -113,7 +113,7 @@ async function main() {
 
   // PUT reset password
   if (testId) {
-    const crudCookies3 = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+    const crudCookies3 = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
     res = await apiFetch(`/api/managers/${testId}`, {
       method: "PUT",
       body: JSON.stringify({ password: "NewPass456!" }),
@@ -130,13 +130,13 @@ async function main() {
   }
 
   // Validation tests
-  const valCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const valCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   res = await apiFetch("/api/managers", {
     method: "POST", body: JSON.stringify({ name: "Bad", email: "bad@test.com", password: "weak" }),
   }, valCookies);
   if (res.status === 400) ok("Weak password → 400"); else fail("Weak pw", `${res.status}`);
 
-  const valCookies2 = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const valCookies2 = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   res = await apiFetch("/api/managers", {
     method: "POST", body: JSON.stringify({ name: "Bad", email: "not-email", password: "StrongPass1!" }),
   }, valCookies2);
@@ -162,9 +162,9 @@ async function main() {
   if (res.status === 401) ok("Manager can't create managers → 401"); else fail("Mgr create", `${res.status}`);
 
   // Can't delete admin
-  const secAdminCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const secAdminCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   const adminSupa = createClient(SUPABASE_URL, ANON_KEY);
-  const { data: adminAuth } = await adminSupa.auth.signInWithPassword({ email: "hello@ultratidy.ca", password: "UltraTidy2025!" });
+  const { data: adminAuth } = await adminSupa.auth.signInWithPassword({ email: "hello@ultratidycleaning.com", password: "UltraTidy2025!" });
   res = await apiFetch(`/api/managers/${adminAuth.user.id}`, { method: "DELETE" }, secAdminCookies);
   if (res.status === 403) ok("Can't delete admin → 403"); else fail("Admin delete guard", `${res.status}`);
 
@@ -178,7 +178,7 @@ async function main() {
   // ═══ 5. DASHBOARD PAGES ═══
   console.log("\n═══ 5. DASHBOARD PAGES ═══\n");
   await delay(1000);
-  const dashCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+  const dashCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
   const dashPages = ["/dashboard", "/dashboard/leads", "/dashboard/blog", "/dashboard/farm", "/dashboard/settings"];
   for (const path of dashPages) {
     res = await apiFetch(path, {}, dashCookies);
@@ -199,7 +199,7 @@ async function main() {
   console.log("\n═══ 7. CLEANUP ═══\n");
   if (testId) {
     await delay(500);
-    const cleanCookies = await freshSession("hello@ultratidy.ca", "UltraTidy2025!");
+    const cleanCookies = await freshSession("hello@ultratidycleaning.com", "UltraTidy2025!");
     res = await apiFetch(`/api/managers/${testId}`, { method: "DELETE" }, cleanCookies);
     if (res.status === 200) ok("Test manager deleted"); else fail("Cleanup", `${res.status}`);
 

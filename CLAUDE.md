@@ -191,7 +191,7 @@ Every email must include:
 - Unsubscribe honored within 10 days
 
 ### Email Config
-- Sender: `UltraTidy <hello@ultratidy.ca>`
+- Sender: `UltraTidy <hello@ultratidycleaning.com>`
 - Admin notification: env var `ADMIN_EMAIL`
 
 ---

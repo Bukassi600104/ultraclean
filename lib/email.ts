@@ -5,7 +5,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = "UltraTidy <hello@ultratidy.ca>";
+const FROM_EMAIL = "UltraTidy <hello@ultratidycleaning.com>";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ultratidy.ca";
 const GOOGLE_REVIEW_URL = "https://g.page/r/CbgkPYbL4D3JEBM/review";
 

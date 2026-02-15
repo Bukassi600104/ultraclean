@@ -64,7 +64,7 @@ async function main() {
   // Test admin login
   const { data: adminAuth, error: adminErr } =
     await adminClient.auth.signInWithPassword({
-      email: "hello@ultratidy.ca",
+      email: "hello@ultratidycleaning.com",
       password: "UltraTidy2025!",
     });
   if (adminErr) fail("Admin login", adminErr.message);
@@ -86,7 +86,7 @@ async function main() {
 
   // Test invalid login
   const { error: badErr } = await adminClient.auth.signInWithPassword({
-    email: "hello@ultratidy.ca",
+    email: "hello@ultratidycleaning.com",
     password: "wrongpassword",
   });
   if (badErr) ok("Invalid password rejected");

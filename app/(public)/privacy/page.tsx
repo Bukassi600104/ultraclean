@@ -206,7 +206,7 @@ export default function PrivacyPolicyPage() {
               If you wish to stop receiving communications from us at any time,
               click the unsubscribe link in any of our emails or contact us
               directly at{" "}
-              <a href="mailto:hello@ultratidy.ca">hello@ultratidy.ca</a> or{" "}
+              <a href="mailto:hello@ultratidycleaning.com">hello@ultratidycleaning.com</a> or{" "}
               <a href="tel:+16478238262">+1 (647) 823-8262</a>.
             </p>
 
@@ -334,7 +334,7 @@ export default function PrivacyPolicyPage() {
               </li>
               <li>
                 <strong>Email:</strong>{" "}
-                <a href="mailto:hello@ultratidy.ca">hello@ultratidy.ca</a>
+                <a href="mailto:hello@ultratidycleaning.com">hello@ultratidycleaning.com</a>
               </li>
               <li>
                 <strong>Phone:</strong>{" "}
