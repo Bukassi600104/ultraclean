@@ -57,9 +57,6 @@ export default async function BlogPage({
   const { posts, total } = await getBlogPosts(page);
   const totalPages = Math.ceil(total / POSTS_PER_PAGE);
 
-  const featuredPost = page === 1 ? posts[0] : null;
-  const gridPosts = page === 1 ? posts.slice(1) : posts;
-
   return (
     <>
       {/* Hero */}
@@ -88,7 +85,7 @@ export default async function BlogPage({
       </section>
 
       {/* Posts */}
-      <section className="py-14 md:py-18">
+      <section className="py-14 md:py-20">
         <div className="container mx-auto px-4 max-w-6xl">
           {posts.length === 0 ? (
             <div className="text-center py-20 max-w-md mx-auto">
@@ -104,25 +101,16 @@ export default async function BlogPage({
               </p>
             </div>
           ) : (
-            <div className="space-y-12">
-              {/* Featured post (first post on page 1) */}
-              {featuredPost && (
-                <BlogCard post={featuredPost} featured />
-              )}
-
-              {/* Grid of remaining posts */}
-              {gridPosts.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {gridPosts.map((post) => (
-                    <BlogCard key={post.id} post={post} />
-                  ))}
-                </div>
-              )}
-
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {posts.map((post) => (
+                  <BlogCard key={post.id} post={post} />
+                ))}
+              </div>
               <Suspense>
                 <BlogPagination currentPage={page} totalPages={totalPages} />
               </Suspense>
-            </div>
+            </>
           )}
         </div>
       </section>
