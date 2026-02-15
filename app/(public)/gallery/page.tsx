@@ -8,7 +8,7 @@ import { CTASection } from "@/components/home/CTASection";
 export const metadata: Metadata = {
   title: "Gallery",
   description:
-    "See the UltraTidy difference! Browse our portfolio of cleaning transformations across Toronto & the GTA.",
+    "See the UltraTidy difference! Browse our portfolio of cleaning transformations across Brantford & the GTA.",
   alternates: {
     canonical: "https://ultratidy.ca/gallery",
   },

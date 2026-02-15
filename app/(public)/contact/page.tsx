@@ -19,14 +19,14 @@ import { BUSINESS_HOURS, CONTACT_INFO, SOCIAL_LINKS } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Get a free cleaning quote from UltraTidy! Contact us for residential, commercial, and specialty cleaning services in Toronto & the GTA.",
+    "Get a free cleaning quote from UltraTidy! Contact us for residential, commercial, and specialty cleaning services in Brantford & the GTA.",
   alternates: {
     canonical: "https://ultratidy.ca/contact",
   },
   openGraph: {
     title: "Contact Us | UltraTidy Cleaning Services",
     description:
-      "Get a free cleaning quote from UltraTidy! Contact us for cleaning services in Toronto & the GTA.",
+      "Get a free cleaning quote from UltraTidy! Contact us for cleaning services in Brantford & the GTA.",
     url: "https://ultratidy.ca/contact",
   },
 };

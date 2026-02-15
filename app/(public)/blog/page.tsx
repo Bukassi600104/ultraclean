@@ -9,7 +9,7 @@ import type { BlogPost } from "@/types";
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Cleaning tips, home maintenance advice, and news from UltraTidy Cleaning Services in Toronto & the GTA.",
+    "Cleaning tips, home maintenance advice, and news from UltraTidy Cleaning Services in Brantford & the GTA.",
   alternates: {
     canonical: "https://ultratidy.ca/blog",
   },

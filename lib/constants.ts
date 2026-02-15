@@ -296,7 +296,7 @@ export const CONTACT_INFO = {
   phone: "+1 (647) 823-8262",
   email: "hello@ultratidycleaning.com",
   address: "Toronto, ON, Canada",
-  serviceArea: "GTA (Greater Toronto Area), Brantford & 40km radius",
+  serviceArea: "Brantford & the GTA (Greater Toronto Area)",
 };
 
 export const SOCIAL_LINKS = {

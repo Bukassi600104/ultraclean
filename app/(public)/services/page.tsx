@@ -8,7 +8,7 @@ import { CTASection } from "@/components/home/CTASection";
 export const metadata: Metadata = {
   title: "Our Services",
   description:
-    "Professional cleaning services: residential, commercial, deep cleaning, move-in/out, and post-construction. Serving Toronto, GTA & Brantford.",
+    "Professional cleaning services: residential, commercial, deep cleaning, move-in/out, and post-construction. Serving Brantford & the GTA.",
   alternates: {
     canonical: "https://ultratidy.ca/services",
   },
@@ -25,7 +25,7 @@ const serviceSchema = {
   "@type": "LocalBusiness",
   name: "UltraTidy Cleaning Services",
   description:
-    "Professional cleaning services in Toronto & the GTA.",
+    "Professional cleaning services in Brantford & the GTA.",
   url: "https://ultratidy.ca",
   telephone: "+16478238262",
   email: "hello@ultratidycleaning.com",

@@ -19,19 +19,22 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   metadataBase: new URL("https://ultratidy.ca"),
   title: {
-    default: "UltraTidy Cleaning Services | Toronto & GTA",
+    default: "UltraTidy Cleaning Services | Brantford & GTA",
     template: "%s | UltraTidy Cleaning Services",
   },
   description:
-    "Professional cleaning services in Toronto & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction cleaning. It's not clean until it's ULTRACLEAN!",
+    "Professional cleaning services in Brantford & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction cleaning. It's not clean until it's ULTRACLEAN!",
   keywords: [
+    "cleaning services Brantford",
     "cleaning services Toronto",
     "house cleaning GTA",
+    "commercial cleaning Brantford",
     "commercial cleaning Toronto",
     "deep cleaning Toronto",
     "move-in cleaning",
     "move-out cleaning",
     "post-construction cleaning",
+    "residential cleaning Brantford",
     "residential cleaning Toronto",
     "office cleaning GTA",
     "Airbnb cleaning Toronto",
@@ -55,15 +58,15 @@ export const metadata: Metadata = {
     locale: "en_CA",
     url: "https://ultratidy.ca",
     siteName: "UltraTidy Cleaning Services",
-    title: "UltraTidy Cleaning Services | Toronto & GTA",
+    title: "UltraTidy Cleaning Services | Brantford & GTA",
     description:
-      "Professional cleaning services in Toronto & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction. It's not clean until it's ULTRACLEAN!",
+      "Professional cleaning services in Brantford & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction. It's not clean until it's ULTRACLEAN!",
   },
   twitter: {
     card: "summary_large_image",
-    title: "UltraTidy Cleaning Services | Toronto & GTA",
+    title: "UltraTidy Cleaning Services | Brantford & GTA",
     description:
-      "Professional cleaning services in Toronto & the GTA. It's not clean until it's ULTRACLEAN!",
+      "Professional cleaning services in Brantford & the GTA. It's not clean until it's ULTRACLEAN!",
   },
   robots: {
     index: true,

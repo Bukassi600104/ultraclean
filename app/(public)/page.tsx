@@ -8,16 +8,16 @@ import { TestimonialsCarousel } from "@/components/home/TestimonialsCarousel";
 import { CTASection } from "@/components/home/CTASection";
 
 export const metadata: Metadata = {
-  title: "UltraTidy Cleaning Services | Toronto & GTA",
+  title: "UltraTidy Cleaning Services | Brantford & GTA",
   description:
-    "Professional cleaning services in Toronto & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction cleaning. It's not clean until it's ULTRACLEAN!",
+    "Professional cleaning services in Brantford & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction cleaning. It's not clean until it's ULTRACLEAN!",
   alternates: {
     canonical: "https://ultratidy.ca",
   },
   openGraph: {
-    title: "UltraTidy Cleaning Services | Toronto & GTA",
+    title: "UltraTidy Cleaning Services | Brantford & GTA",
     description:
-      "Professional cleaning services in Toronto & the GTA. It's not clean until it's ULTRACLEAN!",
+      "Professional cleaning services in Brantford & the GTA. It's not clean until it's ULTRACLEAN!",
     url: "https://ultratidy.ca",
   },
 };
@@ -29,7 +29,7 @@ const organizationSchema = {
   name: "UltraTidy Cleaning Services",
   alternateName: "UltraTidy",
   description:
-    "Professional cleaning services in Toronto and the Greater Toronto Area. Residential, commercial, deep cleaning, move-in/move-out, and post-construction cleaning.",
+    "Professional cleaning services in Brantford and the Greater Toronto Area. Residential, commercial, deep cleaning, move-in/move-out, and post-construction cleaning.",
   url: "https://ultratidy.ca",
   telephone: "+16478238262",
   email: "hello@ultratidycleaning.com",

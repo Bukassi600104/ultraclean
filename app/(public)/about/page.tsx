@@ -9,7 +9,7 @@ import { BUSINESS_HOURS } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about UltraTidy Cleaning Services, founded by Mrs. Bimbo Oyedotun. Professional cleaning in Toronto & the GTA with a passion for perfection.",
+    "Learn about UltraTidy Cleaning Services, founded by Mrs. Bimbo Oyedotun. Professional cleaning in Brantford & the GTA with a passion for perfection.",
   alternates: {
     canonical: "https://ultratidy.ca/about",
   },
@@ -71,7 +71,7 @@ export default function AboutPage() {
         <div className="container mx-auto px-4 relative">
           <SectionHeading
             title="About UltraTidy"
-            subtitle="Founded with a simple mission: to bring the highest standard of cleanliness to homes and businesses across the Greater Toronto Area."
+            subtitle="Founded with a simple mission: to bring the highest standard of cleanliness to homes and businesses across Brantford & the Greater Toronto Area."
             badge="Our Story"
             light
           />

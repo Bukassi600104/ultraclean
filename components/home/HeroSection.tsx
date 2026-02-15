@@ -55,7 +55,7 @@ export function HeroSection() {
 
           {/* Subtext */}
           <p className="mt-6 text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed animate-fade-in [animation-delay:200ms]">
-            Professional cleaning services in Toronto &amp; the GTA.
+            Professional cleaning services in Brantford &amp; the GTA.
             Residential, commercial, and specialty cleaning delivered with care
             and precision.
           </p>
