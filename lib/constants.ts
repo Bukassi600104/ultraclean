@@ -216,6 +216,74 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     category: "deep-cleaning",
     image: "/images/gallery/IMG_4225.jpg",
   },
+  // Commercial cleaning — new photos
+  {
+    id: "11",
+    title: "Commercial Sink Cleaning",
+    category: "commercial",
+    image: "/images/gallery/commercial-sink-cleaning.jpg",
+  },
+  {
+    id: "12",
+    title: "Break Room Transformation",
+    category: "commercial",
+    beforeImage: "/images/gallery/kitchenette-before.jpg",
+    afterImage: "/images/gallery/kitchenette-after.jpg",
+  },
+  {
+    id: "13",
+    title: "Window Cleaning",
+    category: "commercial",
+    image: "/images/gallery/window-cleaning-action.jpg",
+  },
+  {
+    id: "14",
+    title: "Team Coordination",
+    category: "commercial",
+    image: "/images/gallery/team-briefing.jpg",
+  },
+  {
+    id: "15",
+    title: "Commercial Kitchen Spotless",
+    category: "commercial",
+    image: "/images/gallery/commercial-kitchen-spotless.jpg",
+  },
+  {
+    id: "16",
+    title: "Sink Polished to Perfection",
+    category: "deep-cleaning",
+    image: "/images/gallery/sink-polished.jpg",
+  },
+  {
+    id: "17",
+    title: "Office Space Sanitized",
+    category: "commercial",
+    image: "/images/gallery/office-sanitized.jpg",
+  },
+  {
+    id: "18",
+    title: "Bathroom Vanity Gleaming",
+    category: "commercial",
+    image: "/images/gallery/bathroom-vanity-marble.jpg",
+  },
+  {
+    id: "19",
+    title: "Window Detail Clean",
+    category: "commercial",
+    image: "/images/gallery/window-cleaning-closeup.jpg",
+  },
+  {
+    id: "20",
+    title: "Sink Sanitization",
+    category: "deep-cleaning",
+    image: "/images/gallery/sink-sanitized.jpg",
+  },
+  {
+    id: "21",
+    title: "Team Ready for Action",
+    category: "commercial",
+    image: "/images/gallery/team-lobby-equipment.jpg",
+  },
 ];
 
 export const BUSINESS_HOURS = [
