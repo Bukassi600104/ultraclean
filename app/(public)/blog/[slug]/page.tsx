@@ -11,7 +11,7 @@ import {
   Sparkles,
   BookOpen,
 } from "lucide-react";
-import { createPublicServerClient } from "@/lib/supabase/server";
+import { createServerClient, createPublicServerClient } from "@/lib/supabase/server";
 import { ShareButtons } from "@/components/blog/ShareButtons";
 import type { BlogPost } from "@/types";
 
@@ -31,7 +31,7 @@ function formatDate(dateString: string): string {
 }
 
 async function getPost(slug: string): Promise<BlogPost | null> {
-  const supabase = createPublicServerClient();
+  const supabase = createServerClient() ?? createPublicServerClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -46,7 +46,7 @@ async function getPost(slug: string): Promise<BlogPost | null> {
 }
 
 async function getOtherPosts(currentId: string): Promise<BlogPost[]> {
-  const supabase = createPublicServerClient();
+  const supabase = createServerClient() ?? createPublicServerClient();
   if (!supabase) return [];
 
   const { data } = await supabase
@@ -155,7 +155,7 @@ export default async function BlogPostPage({
           <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-10">
             {/* Sidebar — shows below article on mobile, left on desktop */}
             <aside className="order-2 lg:order-1 lg:w-72 lg:shrink-0">
-              <div className="lg:sticky lg:top-24 space-y-6">
+              <div className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1 space-y-6">
                 {/* Other articles */}
                 {otherPosts.length > 0 && (
                   <div className="rounded-2xl border border-border/50 bg-white p-5 shadow-sm">
