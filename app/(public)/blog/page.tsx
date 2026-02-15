@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { createServerClient } from "@/lib/supabase/server";
+import { createPublicServerClient } from "@/lib/supabase/server";
 import { BlogCard } from "@/components/blog/BlogCard";
 import { BlogPagination } from "@/components/blog/BlogPagination";
 import { SectionHeading } from "@/components/shared/SectionHeading";
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 const POSTS_PER_PAGE = 10;
 
 async function getBlogPosts(page: number) {
-  const supabase = createServerClient();
+  const supabase = createPublicServerClient();
   if (!supabase) return { posts: [], total: 0 };
 
   const from = (page - 1) * POSTS_PER_PAGE;

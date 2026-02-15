@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, Clock, ArrowLeft } from "lucide-react";
-import { createServerClient } from "@/lib/supabase/server";
+import { createPublicServerClient } from "@/lib/supabase/server";
 import { ShareButtons } from "@/components/blog/ShareButtons";
 import { RelatedPosts } from "@/components/blog/RelatedPosts";
 import type { BlogPost } from "@/types";
@@ -23,7 +23,7 @@ function formatDate(dateString: string): string {
 }
 
 async function getPost(slug: string): Promise<BlogPost | null> {
-  const supabase = createServerClient();
+  const supabase = createPublicServerClient();
   if (!supabase) return null;
 
   const { data, error } = await supabase
@@ -40,7 +40,7 @@ async function getPost(slug: string): Promise<BlogPost | null> {
 async function getRelatedPosts(
   currentId: string
 ): Promise<BlogPost[]> {
-  const supabase = createServerClient();
+  const supabase = createPublicServerClient();
   if (!supabase) return [];
 
   const { data } = await supabase
