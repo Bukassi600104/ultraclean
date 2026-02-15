@@ -6,6 +6,8 @@ import { BlogPagination } from "@/components/blog/BlogPagination";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import type { BlogPost } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Blog",
   description:

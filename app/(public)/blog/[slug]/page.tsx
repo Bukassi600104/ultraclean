@@ -7,6 +7,8 @@ import { ShareButtons } from "@/components/blog/ShareButtons";
 import { RelatedPosts } from "@/components/blog/RelatedPosts";
 import type { BlogPost } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 function getReadingTime(content: string): number {
   const words = content.replace(/<[^>]*>/g, "").split(/\s+/).length;
   return Math.max(1, Math.ceil(words / 200));
