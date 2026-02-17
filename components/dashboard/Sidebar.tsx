@@ -20,6 +20,7 @@ import {
   FileText,
   ShoppingBag,
   Tractor,
+  GraduationCap,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -33,6 +34,7 @@ const navItems = [
   { href: "/dashboard/leads", label: "Leads", icon: Users },
   { href: "/dashboard/blog", label: "Blog", icon: FileText },
   { href: "/dashboard/dba", label: "DBA Products", icon: ShoppingBag },
+  { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
   { href: "/dashboard/farm", label: "Farm", icon: Tractor },
 ];
 
