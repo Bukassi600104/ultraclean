@@ -123,6 +123,37 @@ export const farmInventoryTransactionSchema = z.object({
   notes: z.string().optional(),
 });
 
+// ── Appointments ──
+export const appointmentSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z
+    .string()
+    .min(10, "Please enter a valid phone number")
+    .regex(/^[\d\s()+\-]+$/, "Please enter a valid phone number"),
+  service: z.string().optional(),
+  business: z.enum(["ultratidy", "dba", "primefield"]).optional(),
+  appointment_date: z.string().min(1, "Please select a date"),
+  appointment_time: z.string().min(1, "Please select a time slot"),
+  notes: z.string().optional(),
+});
+
+export type AppointmentFormValues = z.infer<typeof appointmentSchema>;
+
+// ── Primefield lead form ──
+export const primefieldLeadSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z
+    .string()
+    .min(10, "Please enter a valid phone number")
+    .regex(/^[\d\s()+\-]+$/, "Please enter a valid phone number"),
+  interest: z.string().min(1, "Please select your interest"),
+  message: z.string().optional(),
+});
+
+export type PrimefieldLeadFormValues = z.infer<typeof primefieldLeadSchema>;
+
 // ── Change Password (admin self-service) ──
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),

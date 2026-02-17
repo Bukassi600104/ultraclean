@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, FileText, Tractor, ShoppingBag, Plus } from "lucide-react";
+import { Users, FileText, Tractor, ShoppingBag, CalendarDays, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
 import {
@@ -52,6 +52,7 @@ interface DashboardData {
   publishedPosts: number;
   farmRevenue: number;
   dbaSales: number;
+  pendingAppointments: number;
   leadsByStatus: { name: string; count: number }[];
   leadsByBusiness: { name: string; value: number }[];
   recentLeads: {
@@ -80,7 +81,7 @@ export default function DashboardPage() {
       const now = new Date();
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      const [leadsRes, postsRes, farmRes, dbaRes, recentRes] =
+      const [leadsRes, postsRes, farmRes, dbaRes, recentRes, appointmentsRes] =
         await Promise.all([
           supabase
             .from("leads")
@@ -103,6 +104,10 @@ export default function DashboardPage() {
             .select("id, name, email, service, status, business, created_at")
             .order("created_at", { ascending: false })
             .limit(10),
+          supabase
+            .from("appointments")
+            .select("id", { count: "exact" })
+            .eq("status", "pending"),
         ]);
 
       // Calculate leads by status
@@ -127,6 +132,7 @@ export default function DashboardPage() {
         publishedPosts: postsRes.count || 0,
         farmRevenue,
         dbaSales: dbaTotal,
+        pendingAppointments: appointmentsRes.count || 0,
         leadsByStatus: Object.entries(statusCounts).map(([name, count]) => ({
           name,
           count,
@@ -147,9 +153,9 @@ export default function DashboardPage() {
       <DashboardHeader title="Dashboard" />
       <div className="p-4 lg:p-8 space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
+            Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-[110px] rounded-lg" />
             ))
           ) : (
@@ -173,6 +179,11 @@ export default function DashboardPage() {
                 title="DBA Sales"
                 value={`$${(data?.dbaSales ?? 0).toLocaleString()}`}
                 icon={ShoppingBag}
+              />
+              <SummaryCard
+                title="Pending Appointments"
+                value={data?.pendingAppointments ?? 0}
+                icon={CalendarDays}
               />
             </>
           )}
@@ -260,6 +271,12 @@ export default function DashboardPage() {
                 <Link href="/dashboard/blog/new">
                   <Plus className="mr-2 h-4 w-4" />
                   New Blog Post
+                </Link>
+              </Button>
+              <Button asChild className="w-full justify-start" variant="outline">
+                <Link href="/dashboard/appointments">
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  View Appointments
                 </Link>
               </Button>
               <Button asChild className="w-full justify-start" variant="outline">

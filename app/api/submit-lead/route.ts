@@ -26,6 +26,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Support both the full contact form and simpler lead forms (e.g. Primefield)
+  const business = body.business || "ultratidy";
+  const validBusinesses = ["ultratidy", "dba", "primefield"];
+  if (!validBusinesses.includes(business)) {
+    return NextResponse.json(
+      { error: "Invalid business value" },
+      { status: 400 }
+    );
+  }
+
   const result = contactFormSchema.safeParse(body);
   if (!result.success) {
     const errors = result.error.flatten().fieldErrors;
@@ -42,7 +52,7 @@ export async function POST(request: NextRequest) {
     const { data: lead, error } = await supabase
       .from("leads")
       .insert({
-        business: "ultratidy",
+        business: business as "ultratidy" | "dba" | "primefield",
         source: "website",
         name: data.name,
         email: data.email,

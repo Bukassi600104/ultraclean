@@ -134,6 +134,21 @@ export interface FarmInventoryTransaction {
   created_at: string;
 }
 
+export interface Appointment {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  service: string | null;
+  business: "ultratidy" | "dba" | "primefield";
+  appointment_date: string;
+  appointment_time: string;
+  notes: string | null;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DBAProduct {
   id: string;
   name: string;

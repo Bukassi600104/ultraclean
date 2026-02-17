@@ -5,6 +5,7 @@ import { ServicesPreview } from "@/components/home/ServicesPreview";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { GalleryPreview } from "@/components/home/GalleryPreview";
 import { TestimonialsCarousel } from "@/components/home/TestimonialsCarousel";
+import { BookingCTA } from "@/components/home/BookingCTA";
 import { CTASection } from "@/components/home/CTASection";
 
 export const metadata: Metadata = {
@@ -111,6 +112,7 @@ export default function HomePage() {
       <WhyChooseUs />
       <GalleryPreview />
       <TestimonialsCarousel />
+      <BookingCTA />
       <CTASection />
     </>
   );

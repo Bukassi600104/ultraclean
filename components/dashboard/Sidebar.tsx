@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
   Users,
+  CalendarDays,
   FileText,
   ShoppingBag,
   Tractor,
@@ -32,6 +33,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/leads", label: "Leads", icon: Users },
+  { href: "/dashboard/appointments", label: "Appointments", icon: CalendarDays },
   { href: "/dashboard/blog", label: "Blog", icon: FileText },
   { href: "/dashboard/dba", label: "DBA Products", icon: ShoppingBag },
   { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },

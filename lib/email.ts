@@ -105,6 +105,81 @@ export async function sendAdminNotification(data: {
   }
 }
 
+// Template: Appointment booking confirmation (to customer)
+export async function sendAppointmentConfirmation(data: {
+  name: string;
+  email: string;
+  phone: string;
+  service?: string;
+  appointment_date: string;
+  appointment_time: string;
+}) {
+  if (!resend) return null;
+  const dateStr = format(new Date(data.appointment_date), "EEEE, MMMM d, yyyy");
+  try {
+    return await resend.emails.send({
+      from: FROM_EMAIL,
+      to: data.email,
+      subject: "Your consultation is booked with UltraTidy!",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #0BBDB2;">Consultation Booked!</h1>
+          <p>Hi ${data.name},</p>
+          <p>Your free consultation is booked for <strong>${dateStr}</strong> at <strong>${data.appointment_time}</strong>.</p>
+          ${data.service ? `<p>Topic: <strong>${data.service}</strong></p>` : ""}
+          <p>We'll call you at <strong>${data.phone}</strong> at the scheduled time.</p>
+          <p>If you need to reschedule, please contact us at <a href="tel:+16478238262" style="color: #0BBDB2;">(647) 823-8262</a>.</p>
+          <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
+          <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
+          ${caslFooter(data.email)}
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send appointment confirmation:", error);
+    return null;
+  }
+}
+
+// Template: Appointment admin notification
+export async function sendAppointmentAdminNotification(data: {
+  name: string;
+  email: string;
+  phone: string;
+  service?: string;
+  appointment_date: string;
+  appointment_time: string;
+}) {
+  if (!resend) return null;
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return null;
+  const dateStr = format(new Date(data.appointment_date), "EEEE, MMMM d, yyyy");
+  try {
+    return await resend.emails.send({
+      from: FROM_EMAIL,
+      to: adminEmail,
+      subject: `New Consultation: ${data.name} on ${dateStr} at ${data.appointment_time}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #0BBDB2;">New Consultation Booking</h1>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${data.name}</td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Phone:</td><td style="padding: 8px;"><a href="tel:${data.phone}">${data.phone}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${dateStr}</td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${data.appointment_time}</td></tr>
+            ${data.service ? `<tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${data.service}</td></tr>` : ""}
+          </table>
+          <p style="margin-top: 16px;"><a href="${SITE_URL}/dashboard/appointments" style="color: #0BBDB2;">View in Dashboard →</a></p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("Failed to send appointment admin notification:", error);
+    return null;
+  }
+}
+
 // Template 3: Follow-up (3 days, no response)
 export async function sendFollowUp(data: {
   name: string;
