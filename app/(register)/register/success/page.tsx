@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 
 export default function RegistrationSuccessPage() {
   return (
-    <section className="min-h-[80vh] flex items-center justify-center py-16 px-4">
+    <section className="min-h-screen flex items-center justify-center py-16 px-4">
       <div className="w-full max-w-md text-center">
         <div className="rounded-2xl border bg-card shadow-lg p-10">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">

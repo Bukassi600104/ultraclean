@@ -27,7 +27,7 @@ export default async function RegisterPage() {
   const priceId = await getStripePriceId();
 
   return (
-    <section className="min-h-[80vh] flex items-center justify-center py-16 px-4">
+    <section className="min-h-screen flex items-center justify-center py-16 px-4">
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-8">
