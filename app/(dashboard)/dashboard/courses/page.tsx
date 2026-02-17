@@ -8,64 +8,85 @@ import {
   Check,
   ExternalLink,
   AlertCircle,
+  Loader2,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const STORAGE_KEY = "dba_course_config";
-
-interface CourseConfig {
-  registrationUrl: string;
-  priceId: string;
-}
-
-function getConfig(): CourseConfig {
-  if (typeof window === "undefined") return { registrationUrl: "", priceId: "" };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { registrationUrl: "", priceId: "" };
-}
-
-function saveConfig(config: CourseConfig) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-}
-
 export default function CoursesPage() {
-  const [config, setConfig] = useState<CourseConfig>({
-    registrationUrl: "",
-    priceId: "",
-  });
+  const [priceId, setPriceId] = useState("");
+  const [savedPriceId, setSavedPriceId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const siteUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://ultratidy.vercel.app";
+
+  const registrationLink = `${siteUrl}/register`;
+
   useEffect(() => {
-    setConfig(getConfig());
+    fetch("/api/courses/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        const id = data.stripe_price_id || "";
+        setPriceId(id);
+        setSavedPriceId(id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const fullLink =
-    config.registrationUrl && config.priceId
-      ? `${config.registrationUrl.replace(/\/+$/, "")}/?price=${config.priceId}`
-      : "";
+  const isValidPrice = /^price_[a-zA-Z0-9]{8,}$/.test(priceId);
+  const hasChanges = priceId !== savedPriceId;
 
-  const isValidPrice = /^price_[a-zA-Z0-9]{8,}$/.test(config.priceId);
-  const isValidUrl =
-    config.registrationUrl.startsWith("http://") ||
-    config.registrationUrl.startsWith("https://");
+  async function handleSave() {
+    if (!isValidPrice && priceId.trim() !== "") {
+      toast.error("Invalid Price ID format. It should start with 'price_'");
+      return;
+    }
 
-  function handleSave() {
-    saveConfig(config);
-    toast.success("Course registration settings saved.");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/courses/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stripe_price_id: priceId.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || "Failed to save settings");
+        return;
+      }
+
+      setSavedPriceId(priceId.trim());
+      toast.success("Course registration settings saved.");
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleCopy() {
-    if (!fullLink) return;
-    await navigator.clipboard.writeText(fullLink);
+    await navigator.clipboard.writeText(registrationLink);
     setCopied(true);
     toast.success("Registration link copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -77,8 +98,8 @@ export default function CoursesPage() {
           Course Registration
         </h1>
         <p className="text-muted-foreground mt-1">
-          Set your Stripe Price ID and registration app URL. Share the generated
-          link with students to register and pay.
+          Manage your Digital Boss Academy course registration. Set a Stripe
+          Price ID and share the registration link with students.
         </p>
       </div>
 
@@ -88,31 +109,13 @@ export default function CoursesPage() {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="registrationUrl">Registration App URL</Label>
-            <Input
-              id="registrationUrl"
-              type="url"
-              placeholder="https://register.yourdomain.com"
-              value={config.registrationUrl}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, registrationUrl: e.target.value }))
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              The base URL where the Billing registration app is deployed.
-            </p>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="priceId">Stripe Price ID</Label>
             <Input
               id="priceId"
               type="text"
               placeholder="price_1Abc2Def3Ghi4Jkl"
-              value={config.priceId}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, priceId: e.target.value }))
-              }
+              value={priceId}
+              onChange={(e) => setPriceId(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
               Find this in your{" "}
@@ -124,28 +127,56 @@ export default function CoursesPage() {
               >
                 Stripe Dashboard
               </a>{" "}
-              under the product&apos;s price section.
+              under the product&apos;s price section. When set, the registration
+              page will accept payments for this price.
             </p>
           </div>
 
-          <Button onClick={handleSave} className="mt-2">
-            Save Settings
+          {priceId && !isValidPrice && (
+            <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>
+                Price ID should start with{" "}
+                <code className="text-xs bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">
+                  price_
+                </code>{" "}
+                followed by at least 8 characters.
+              </span>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSave}
+            disabled={saving || (!hasChanges && savedPriceId === priceId)}
+            className="mt-2"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Settings
+              </>
+            )}
           </Button>
         </div>
       </div>
 
-      {/* Generated Link Card */}
+      {/* Registration Link Card */}
       <div className="rounded-xl border bg-card p-6 max-w-2xl space-y-4">
         <h2 className="font-heading font-semibold text-lg flex items-center gap-2">
           <Link2 className="h-5 w-5 text-primary" />
           Registration Link
         </h2>
 
-        {fullLink && isValidUrl && isValidPrice ? (
+        {savedPriceId && isValidPrice ? (
           <>
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0 rounded-lg bg-muted/50 border px-4 py-3 font-mono text-sm break-all">
-                {fullLink}
+                {registrationLink}
               </div>
               <Button
                 variant="outline"
@@ -161,19 +192,15 @@ export default function CoursesPage() {
               </Button>
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                asChild
-              >
+              <Button variant="outline" size="sm" asChild>
                 <a
-                  href={fullLink}
+                  href={registrationLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  Preview Link
+                  Preview Page
                 </a>
               </Button>
               <Button size="sm" onClick={handleCopy}>
@@ -183,7 +210,7 @@ export default function CoursesPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Share this link on social media, email, or your website. Students
-              will fill in their info and be redirected to Stripe to pay.
+              will fill in their details and be redirected to Stripe to pay.
             </p>
           </>
         ) : (
@@ -191,11 +218,11 @@ export default function CoursesPage() {
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-sm">
               <p className="font-medium text-amber-800 dark:text-amber-200">
-                Complete the settings above
+                Set a Stripe Price ID first
               </p>
               <p className="text-amber-700 dark:text-amber-300 mt-0.5">
-                Enter a valid Registration App URL and Stripe Price ID to
-                generate your registration link.
+                Enter and save a valid Stripe Price ID above to enable the
+                registration page.
               </p>
             </div>
           </div>
@@ -230,7 +257,11 @@ export default function CoursesPage() {
               2
             </span>
             <span>
-              Copy the Price ID (starts with <code className="text-xs bg-muted px-1 py-0.5 rounded">price_</code>) and paste it above.
+              Copy the Price ID (starts with{" "}
+              <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                price_
+              </code>
+              ) and paste it above, then save.
             </span>
           </li>
           <li className="flex gap-3">
@@ -238,7 +269,8 @@ export default function CoursesPage() {
               3
             </span>
             <span>
-              Share the generated registration link with your students.
+              Share the registration link with your students — they&apos;ll fill
+              in their details and pay via Stripe.
             </span>
           </li>
           <li className="flex gap-3">
@@ -246,7 +278,8 @@ export default function CoursesPage() {
               4
             </span>
             <span>
-              When a student pays, you&apos;ll get an email notification with their details.
+              When a student pays, both you and the student receive an email
+              confirmation automatically.
             </span>
           </li>
           <li className="flex gap-3">
@@ -254,8 +287,9 @@ export default function CoursesPage() {
               5
             </span>
             <span>
-              For a new course, just create a new Stripe product/price and
-              update the Price ID here. Same link format, new course!
+              For a new course, create a new Stripe product/price and update the
+              Price ID here. The same registration link will work for the new
+              course!
             </span>
           </li>
         </ol>
