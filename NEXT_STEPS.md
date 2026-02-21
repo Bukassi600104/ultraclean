@@ -1,7 +1,7 @@
 # UltraTidy — Next Steps (Quick Reference)
 
 > **Purpose:** Start here at the beginning of every session. No codebase scanning needed.
-> **Last updated:** 2026-02-21
+> **Last updated:** 2026-02-21 (session 2)
 
 ---
 
@@ -120,15 +120,26 @@ New pages that need smoke tests:
 ## What Does NOT Need Code Changes
 
 Everything below is already fully built:
-- All 7 public website pages + legal pages
-- Admin dashboard: leads, appointments, blog CMS, DBA products, DBA sales, farm overview, courses, settings
-- Farm manager portal: sales, expenses, inventory, cash (offline-capable)
+- All 7 public website pages + legal pages (incl. Meet the Team on About page)
+- Admin dashboard: leads, appointments, blog CMS, DBA products, DBA sales, farm overview (with mortality card), farm inventory (tabbed Stock/Mortality view), courses, settings
+- Farm manager portal: sales, expenses, inventory (with mortality date tracking), cash (offline-capable)
 - Primefield landing page + contact form
 - DBA course registration + Stripe checkout
-- All API routes (12 endpoints)
+- All API routes (13 endpoints incl. farm inventory transaction GET)
 - Email automation cron (6 templates, CASL compliant)
 - Supabase Auth + role-based middleware
 - Rate limiting (Upstash Redis)
+
+### Pending DB migration (run in Supabase SQL editor):
+```sql
+-- Migration 009: Add date column to farm_inventory_transactions
+ALTER TABLE public.farm_inventory_transactions
+  ADD COLUMN IF NOT EXISTS date date NOT NULL DEFAULT current_date;
+CREATE INDEX IF NOT EXISTS idx_farm_inv_tx_date
+  ON public.farm_inventory_transactions(date DESC);
+CREATE INDEX IF NOT EXISTS idx_farm_inv_tx_action
+  ON public.farm_inventory_transactions(action);
+```
 
 ---
 
