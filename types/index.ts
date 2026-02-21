@@ -128,6 +128,7 @@ export interface FarmInventoryTransaction {
   product: string;
   action: "add" | "remove" | "sale" | "mortality";
   quantity: number;
+  date: string;
   reason: string | null;
   notes: string | null;
   created_by: string | null;

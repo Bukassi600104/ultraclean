@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, TrendingDown, TrendingUp, Package } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, Package, Skull } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -28,7 +28,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type { FarmInventory } from "@/types";
+import type { FarmInventory, FarmInventoryTransaction } from "@/types";
+
 
 const EXPENSE_COLORS = [
   "#0BBDB2",
@@ -44,6 +45,7 @@ export default function FarmOverviewPage() {
   const [revenue, setRevenue] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [inventory, setInventory] = useState<FarmInventory[]>([]);
+  const [totalDeaths, setTotalDeaths] = useState(0);
   const [salesByProduct, setSalesByProduct] = useState<
     { name: string; value: number }[]
   >([]);
@@ -54,15 +56,17 @@ export default function FarmOverviewPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [salesRes, expensesRes, inventoryRes] = await Promise.all([
+        const [salesRes, expensesRes, inventoryRes, mortRes] = await Promise.all([
           fetch("/api/farm/sales?limit=100"),
           fetch("/api/farm/expenses?limit=100"),
           fetch("/api/farm/inventory"),
+          fetch("/api/farm/inventory/transaction?action=mortality"),
         ]);
 
         const salesData = await salesRes.json();
         const expensesData = await expensesRes.json();
         const inv = await inventoryRes.json();
+        const mortData = await mortRes.json();
 
         const sales = salesData.data || [];
         const exps = expensesData.data || [];
@@ -93,9 +97,13 @@ export default function FarmOverviewPage() {
           }
         );
 
+        const mortTransactions: FarmInventoryTransaction[] = mortData.data || [];
+        const deaths = mortTransactions.reduce((sum, m) => sum + m.quantity, 0);
+
         setRevenue(totalRev);
         setExpenses(totalExp);
         setInventory(Array.isArray(inv) ? inv : []);
+        setTotalDeaths(deaths);
         setSalesByProduct(
           Object.entries(productMap).map(([name, value]) => ({ name, value }))
         );
@@ -116,9 +124,9 @@ export default function FarmOverviewPage() {
       <DashboardHeader title="Farm Overview" />
       <div className="p-4 lg:p-8 space-y-6">
         {/* Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
+            Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-[110px]" />
             ))
           ) : (
@@ -142,6 +150,12 @@ export default function FarmOverviewPage() {
                 title="Products Tracked"
                 value={inventory.length}
                 icon={Package}
+              />
+              <SummaryCard
+                title="Total Mortality"
+                value={totalDeaths}
+                icon={Skull}
+                iconClassName="text-red-500"
               />
             </>
           )}

@@ -119,6 +119,7 @@ export const farmInventoryTransactionSchema = z.object({
   product: z.string().min(1, "Product is required"),
   action: z.enum(["add", "remove", "sale", "mortality"]),
   quantity: z.preprocess((v) => Number(v), z.number().positive("Quantity must be positive")),
+  date: z.string().min(1, "Date is required"),
   reason: z.string().optional(),
   notes: z.string().optional(),
 });

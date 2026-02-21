@@ -8,6 +8,7 @@ interface SummaryCardProps {
   icon: LucideIcon;
   trend?: { value: number; label: string };
   className?: string;
+  iconClassName?: string;
 }
 
 export function SummaryCard({
@@ -16,6 +17,7 @@ export function SummaryCard({
   icon: Icon,
   trend,
   className,
+  iconClassName,
 }: SummaryCardProps) {
   return (
     <Card className={cn("", className)}>
@@ -37,7 +39,7 @@ export function SummaryCard({
             )}
           </div>
           <div className="rounded-lg bg-primary/10 p-3">
-            <Icon className="h-6 w-6 text-primary" />
+            <Icon className={cn("h-6 w-6 text-primary", iconClassName)} />
           </div>
         </div>
       </CardContent>

@@ -52,6 +52,33 @@ const VALUES = [
   },
 ];
 
+const TEAM = [
+  {
+    name: "Bimbo Oyedotun",
+    role: "Founder & CEO",
+    bio: "BossBimbz built UltraTidy from the ground up with a passion for spotless spaces and exceptional service.",
+    photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&q=80",
+  },
+  {
+    name: "Amara Osei",
+    role: "Head of Operations",
+    bio: "Keeps every job on schedule and ensures every client receives our five-star standard.",
+    photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
+  },
+  {
+    name: "Sarah Mitchell",
+    role: "Senior Cleaning Specialist",
+    bio: "A deep-clean expert with an eye for detail that no dust bunny can escape.",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
+  },
+  {
+    name: "Daniel Park",
+    role: "Commercial Lead",
+    bio: "Specialises in commercial and post-construction cleans across the GTA.",
+    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80",
+  },
+];
+
 export default function AboutPage() {
   return (
     <>
@@ -167,6 +194,35 @@ export default function AboutPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Meet the Team */}
+      <section className="py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <SectionHeading
+            title="Meet the Team"
+            subtitle="The dedicated professionals behind every sparkling clean space."
+            badge="Our People"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {TEAM.map((member) => (
+              <div key={member.name} className="text-center group">
+                <div className="relative w-36 h-36 mx-auto mb-4 rounded-full overflow-hidden ring-4 ring-primary/10 group-hover:ring-primary/30 transition-all duration-300 shadow-lg">
+                  <Image
+                    src={member.photo}
+                    alt={member.name}
+                    fill
+                    className="object-cover"
+                    sizes="144px"
+                  />
+                </div>
+                <h3 className="font-heading font-bold text-base">{member.name}</h3>
+                <p className="text-sm text-primary font-semibold mt-0.5">{member.role}</p>
+                <p className="text-xs text-muted-foreground mt-2 leading-relaxed px-2">{member.bio}</p>
               </div>
             ))}
           </div>

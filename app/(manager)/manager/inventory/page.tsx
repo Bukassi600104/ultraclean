@@ -22,6 +22,7 @@ interface FormValues {
   product: string;
   action: "add" | "remove" | "sale" | "mortality";
   quantity: number;
+  date: string;
   reason?: string;
   notes?: string;
 }
@@ -29,7 +30,10 @@ interface FormValues {
 export default function ManagerInventoryPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<string>("");
   const { submitOrQueue } = useOfflineSync();
+
+  const today = new Date().toISOString().split("T")[0];
 
   const {
     register,
@@ -40,6 +44,7 @@ export default function ManagerInventoryPage() {
   } = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(farmInventoryTransactionSchema) as any,
+    defaultValues: { date: today },
   });
 
   async function onSubmit(data: FormValues) {
@@ -56,7 +61,8 @@ export default function ManagerInventoryPage() {
       toast.success(result.offline ? "Saved offline" : "Stock updated");
       setTimeout(() => {
         setIsSuccess(false);
-        reset();
+        setSelectedAction("");
+        reset({ date: today });
       }, 1500);
     } else {
       toast.error("Failed to save");
@@ -64,6 +70,8 @@ export default function ManagerInventoryPage() {
 
     setIsLoading(false);
   }
+
+  const isMortality = selectedAction === "mortality";
 
   return (
     <div className="mx-auto max-w-lg">
@@ -95,7 +103,12 @@ export default function ManagerInventoryPage() {
 
         <div className="space-y-2">
           <Label>Action</Label>
-          <Select onValueChange={(v) => setValue("action", v as FormValues["action"])}>
+          <Select
+            onValueChange={(v) => {
+              setValue("action", v as FormValues["action"]);
+              setSelectedAction(v);
+            }}
+          >
             <SelectTrigger className="h-12 text-lg">
               <SelectValue placeholder="What happened?" />
             </SelectTrigger>
@@ -103,7 +116,7 @@ export default function ManagerInventoryPage() {
               <SelectItem value="add">Add (new stock)</SelectItem>
               <SelectItem value="remove">Remove</SelectItem>
               <SelectItem value="sale">Sale</SelectItem>
-              <SelectItem value="mortality">Mortality</SelectItem>
+              <SelectItem value="mortality">Mortality (death)</SelectItem>
             </SelectContent>
           </Select>
           {errors.action && (
@@ -111,26 +124,52 @@ export default function ManagerInventoryPage() {
           )}
         </div>
 
+        {/* Date — labelled "Date of Mortality" when action is mortality */}
         <div className="space-y-2">
-          <Label htmlFor="quantity">Quantity</Label>
+          <Label htmlFor="date">
+            {isMortality ? "Date of Mortality" : "Date"}
+          </Label>
+          <Input
+            id="date"
+            type="date"
+            className="h-12 text-lg"
+            max={today}
+            {...register("date")}
+          />
+          {errors.date && (
+            <p className="text-xs text-destructive">{errors.date.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="quantity">
+            {isMortality ? "Number of Deaths" : "Quantity"}
+          </Label>
           <Input
             id="quantity"
             type="number"
             inputMode="numeric"
             className="h-12 text-lg"
+            placeholder={isMortality ? "How many died?" : ""}
             {...register("quantity")}
           />
           {errors.quantity && (
-            <p className="text-xs text-destructive">{errors.quantity.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.quantity.message}
+            </p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="reason">Reason</Label>
+          <Label htmlFor="reason">
+            {isMortality ? "Cause of Death" : "Reason"}
+          </Label>
           <Input
             id="reason"
             className="h-12 text-lg"
-            placeholder="e.g., New batch arrived"
+            placeholder={
+              isMortality ? "e.g., Disease, Injury" : "e.g., New batch arrived"
+            }
             {...register("reason")}
           />
         </div>
@@ -141,7 +180,7 @@ export default function ManagerInventoryPage() {
             id="notes"
             className="text-base"
             rows={2}
-            placeholder="Optional notes..."
+            placeholder="Optional additional notes..."
             {...register("notes")}
           />
         </div>
