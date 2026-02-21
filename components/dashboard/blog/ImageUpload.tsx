@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, X } from "lucide-react";
 import Image from "next/image";
+import { toast } from "sonner";
 
 interface ImageUploadProps {
   value: string | null;
@@ -23,34 +24,30 @@ export function ImageUpload({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-    if (!cloudName || !uploadPreset) {
-      // Fallback: use data URL for local dev
-      const reader = new FileReader();
-      reader.onload = () => onChange(reader.result as string);
-      reader.readAsDataURL(file);
-      return;
-    }
-
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
 
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        { method: "POST", body: formData }
-      );
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        body: formData,
+      });
 
       const data = await res.json();
-      onChange(data.secure_url);
+
+      if (!res.ok) {
+        toast.error(data.error || "Upload failed");
+        return;
+      }
+
+      onChange(data.url);
     } catch {
-      console.error("Upload failed");
+      toast.error("Upload failed. Please try again.");
     } finally {
       setIsUploading(false);
+      // Reset input so the same file can be re-selected if needed
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
@@ -59,7 +56,7 @@ export function ImageUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         className="hidden"
         onChange={handleUpload}
       />
@@ -68,7 +65,7 @@ export function ImageUpload({
         <div className="relative inline-block">
           <Image
             src={value}
-            alt="Uploaded"
+            alt="Featured image"
             width={300}
             height={200}
             className="rounded-lg object-cover"
@@ -95,7 +92,7 @@ export function ImageUpload({
           ) : (
             <Upload className="mr-2 h-4 w-4" />
           )}
-          {label}
+          {isUploading ? "Uploading..." : label}
         </Button>
       )}
     </div>

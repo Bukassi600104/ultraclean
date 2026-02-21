@@ -136,6 +136,7 @@ export function BlogForm({ post }: BlogFormProps) {
             <Label>Content</Label>
             <TipTapEditor content={content} onChange={setContent} />
           </div>
+
         </div>
 
         <div className="space-y-4">
