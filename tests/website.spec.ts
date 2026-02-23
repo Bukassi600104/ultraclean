@@ -224,7 +224,7 @@ test.describe("About Page", () => {
     await page.goto("/about");
 
     await expect(page.getByText("About UltraTidy").first()).toBeVisible();
-    await expect(page.getByText("Mrs. Bimbo Oyedotun").first()).toBeVisible();
+    await expect(page.getByText("Bimbo Oyedotun").first()).toBeVisible();
     await expect(page.getByText("Our Values").first()).toBeVisible();
     await expect(page.getByText("Service Area").first()).toBeVisible();
     await expect(page.getByText("Business Hours").first()).toBeVisible();
@@ -524,7 +524,7 @@ test.describe("Privacy Policy Page", () => {
   test("displays correct contact info", async ({ page }) => {
     await page.goto("/privacy");
     await expect(page.getByText("hello@ultratidycleaning.com").first()).toBeVisible();
-    await expect(page.getByText(/647.*823.*8262/).first()).toBeVisible();
+    await expect(page.getByText(/548.*328.*6260/).first()).toBeVisible();
   });
 });
 
@@ -546,7 +546,7 @@ test.describe("Terms of Service Page", () => {
   test("displays correct contact info", async ({ page }) => {
     await page.goto("/terms");
     await expect(page.getByText("hello@ultratidycleaning.com").first()).toBeVisible();
-    await expect(page.getByText(/647.*823.*8262/).first()).toBeVisible();
+    await expect(page.getByText(/548.*328.*6260/).first()).toBeVisible();
   });
 });
 

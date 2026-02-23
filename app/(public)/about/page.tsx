@@ -9,14 +9,14 @@ import { BUSINESS_HOURS } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about UltraTidy Cleaning Services, founded by Mrs. Bimbo Oyedotun. Professional cleaning in Brantford & the GTA with a passion for perfection.",
+    "Learn about UltraTidy Cleaning Services, founded by Bimbo Oyedotun. Professional cleaning in Brantford & the GTA with a passion for perfection.",
   alternates: {
     canonical: "https://ultratidy.ca/about",
   },
   openGraph: {
     title: "About Us | UltraTidy Cleaning Services",
     description:
-      "Learn about UltraTidy Cleaning Services, founded by Mrs. Bimbo Oyedotun.",
+      "Learn about UltraTidy Cleaning Services, founded by Bimbo Oyedotun.",
     url: "https://ultratidy.ca/about",
   },
 };
@@ -56,7 +56,7 @@ const TEAM = [
   {
     name: "Bimbo Oyedotun",
     role: "Founder & CEO",
-    bio: "BossBimbz built UltraTidy from the ground up with a passion for spotless spaces and exceptional service.",
+    bio: "Bimbo built UltraTidy from the ground up with a passion for spotless spaces and exceptional service.",
     photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&q=80",
   },
   {
@@ -142,9 +142,8 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-4 text-foreground/70 leading-relaxed">
                 <p>
-                  UltraTidy Cleaning Services was founded by Mrs. Bimbo Oyedotun
-                  — known to her clients and team as BossBimbz — with a vision to
-                  redefine what &ldquo;clean&rdquo; means.
+                  UltraTidy Cleaning Services was founded by Bimbo Oyedotun with
+                  a vision to redefine what &ldquo;clean&rdquo; means.
                 </p>
                 <p>
                   What started as a passion for creating spotless, welcoming spaces

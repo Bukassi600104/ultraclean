@@ -128,7 +128,7 @@ export async function sendAppointmentConfirmation(data: {
           <p>Your free consultation is booked for <strong>${dateStr}</strong> at <strong>${data.appointment_time}</strong>.</p>
           ${data.service ? `<p>Topic: <strong>${data.service}</strong></p>` : ""}
           <p>We'll call you at <strong>${data.phone}</strong> at the scheduled time.</p>
-          <p>If you need to reschedule, please contact us at <a href="tel:+16478238262" style="color: #0BBDB2;">(647) 823-8262</a>.</p>
+          <p>If you need to reschedule, please contact us at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
           ${caslFooter(data.email)}
@@ -196,7 +196,7 @@ export async function sendFollowUp(data: {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">Hi ${data.name},</h1>
           <p>We reached out a few days ago about your interest in <strong>${data.service}</strong>, and we wanted to follow up.</p>
-          <p>If you still need help, we'd love to chat! You can reply to this email or give us a call at <a href="tel:+16478238262" style="color: #0BBDB2;">(647) 823-8262</a>.</p>
+          <p>If you still need help, we'd love to chat! You can reply to this email or give us a call at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>If the timing isn't right, no worries — we're here whenever you're ready.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
@@ -237,7 +237,7 @@ export async function sendBookingConfirmation(data: {
             <li>We'll do a quick walkthrough before we start</li>
             <li>You'll receive a reminder the day before your appointment</li>
           </ul>
-          <p>If you need to reschedule, please contact us at least 24 hours in advance at <a href="tel:+16478238262" style="color: #0BBDB2;">(647) 823-8262</a>.</p>
+          <p>If you need to reschedule, please contact us at least 24 hours in advance at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
           ${caslFooter(data.email)}
@@ -269,7 +269,7 @@ export async function sendReminder(data: {
           <h1 style="color: #0BBDB2;">See You Tomorrow!</h1>
           <p>Hi ${data.name},</p>
           <p>Just a friendly reminder that your <strong>${data.service}</strong> is scheduled for tomorrow, <strong>${dateStr}</strong>.</p>
-          <p>Please ensure the areas to be cleaned are accessible. If you have any last-minute requests or need to reschedule, call us at <a href="tel:+16478238262" style="color: #0BBDB2;">(647) 823-8262</a>.</p>
+          <p>Please ensure the areas to be cleaned are accessible. If you have any last-minute requests or need to reschedule, call us at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>We can't wait to make your space sparkle!</p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
           ${caslFooter(data.email)}

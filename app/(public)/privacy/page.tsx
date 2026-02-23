@@ -207,7 +207,7 @@ export default function PrivacyPolicyPage() {
               click the unsubscribe link in any of our emails or contact us
               directly at{" "}
               <a href="mailto:hello@ultratidycleaning.com">hello@ultratidycleaning.com</a> or{" "}
-              <a href="tel:+16478238262">+1 (647) 823-8262</a>.
+              <a href="tel:+15483286260">+1 (548) 328-6260</a>.
             </p>
 
             <h2>5. Data Retention</h2>
@@ -338,7 +338,7 @@ export default function PrivacyPolicyPage() {
               </li>
               <li>
                 <strong>Phone:</strong>{" "}
-                <a href="tel:+16478238262">+1 (647) 823-8262</a>
+                <a href="tel:+15483286260">+1 (548) 328-6260</a>
               </li>
               <li>
                 <strong>Location:</strong> Toronto, Ontario, Canada

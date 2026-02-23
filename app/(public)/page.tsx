@@ -32,11 +32,11 @@ const organizationSchema = {
   description:
     "Professional cleaning services in Brantford and the Greater Toronto Area. Residential, commercial, deep cleaning, move-in/move-out, and post-construction cleaning.",
   url: "https://ultratidy.ca",
-  telephone: "+16478238262",
+  telephone: "+15483286260",
   email: "hello@ultratidycleaning.com",
   founder: {
     "@type": "Person",
-    name: "Mrs. Bimbo Oyedotun",
+    name: "Bimbo Oyedotun",
   },
   address: {
     "@type": "PostalAddress",
