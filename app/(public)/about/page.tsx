@@ -113,10 +113,10 @@ export default function AboutPage() {
             <div className="relative">
               <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
                 <Image
-                  src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&q=70"
-                  alt="Professional cleaning service"
+                  src="/images/gallery/commercial-cleaner-action.jpg"
+                  alt="Bimbo Oyedotun, founder of UltraTidy, cleaning a medical office"
                   fill
-                  className="object-cover"
+                  className="object-cover object-center"
                   sizes="(max-width: 1024px) 100vw, 50vw"
                 />
               </div>

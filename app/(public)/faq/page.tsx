@@ -163,7 +163,8 @@ export default function FAQPage() {
       />
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative py-24 md:py-36 overflow-hidden">
+      <section className="relative py-20 md:py-28 overflow-hidden">
+        {/* Background image */}
         <div className="absolute inset-0">
           <Image
             src="/images/gallery/residential-kitchen-island-clean.jpg"
@@ -173,15 +174,17 @@ export default function FAQPage() {
             sizes="100vw"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a2a28]/92 via-[#0a2a28]/80 to-background" />
+          {/* Same two-layer gradient as every other inner-page hero */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a2a28]/90 via-[#0a2a28]/80 to-background" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(11,189,178,0.12)_0%,_transparent_55%)]" />
         </div>
 
-        {/* Decorative circles */}
-        <div className="absolute top-10 right-10 w-72 h-72 rounded-full border border-white/5" />
-        <div className="absolute -bottom-20 -left-10 w-56 h-56 rounded-full border border-primary/10" />
+        {/* Floating blur blobs */}
+        <div className="absolute top-1/4 right-[15%] w-56 h-56 bg-primary/10 rounded-full blur-[90px]" />
+        <div className="absolute bottom-1/4 left-[8%] w-40 h-40 bg-primary/5 rounded-full blur-[70px]" />
 
         <div className="container mx-auto px-4 relative text-center">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-white/90 text-xs font-bold uppercase tracking-widest mb-6">
             Got Questions?
           </span>
           <h1 className="text-4xl md:text-6xl font-heading font-extrabold tracking-tight text-white mb-5 max-w-3xl mx-auto leading-tight">
@@ -193,6 +196,9 @@ export default function FAQPage() {
             expect from UltraTidy Cleaning Services.
           </p>
         </div>
+
+        {/* Bottom fade — matches homepage & services page */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent" />
       </section>
 
       {/* ── Quick Stats ──────────────────────────────────── */}
@@ -328,27 +334,20 @@ export default function FAQPage() {
               <Button
                 asChild
                 size="lg"
-                className="rounded-full px-10 h-13 font-semibold shadow-lg shadow-primary/30"
+                className="rounded-full px-10 h-12 font-semibold shadow-lg shadow-primary/30"
               >
                 <Link href="/contact" className="flex items-center gap-2">
                   Send Us a Message
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="rounded-full px-10 h-13 font-semibold border-white/20 text-white hover:bg-white/10 hover:text-white"
+              <a
+                href={`tel:${CONTACT_INFO.phone.replace(/\D/g, "")}`}
+                className="inline-flex items-center justify-center gap-2 rounded-full px-10 h-12 font-semibold bg-white/10 border border-white/25 text-white hover:bg-white/20 transition-colors duration-200 text-base"
               >
-                <a
-                  href={`tel:${CONTACT_INFO.phone.replace(/\D/g, "")}`}
-                  className="flex items-center gap-2"
-                >
-                  <Phone className="h-4 w-4" />
-                  {CONTACT_INFO.phone}
-                </a>
-              </Button>
+                <Phone className="h-4 w-4 shrink-0" />
+                <span>{CONTACT_INFO.phone}</span>
+              </a>
             </div>
           </div>
         </div>
