@@ -25,11 +25,83 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 interface ServiceCardProps {
   service: Service;
-  variant?: "compact" | "full";
+  variant?: "compact" | "full" | "pricing";
+  featured?: boolean;
 }
 
-export function ServiceCard({ service, variant = "compact" }: ServiceCardProps) {
+export function ServiceCard({ service, variant = "compact", featured = false }: ServiceCardProps) {
   const Icon = ICON_MAP[service.icon] || Sparkles;
+
+  if (variant === "pricing") {
+    return (
+      <div className={`relative flex flex-col rounded-3xl overflow-hidden border transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${featured ? "bg-[#0a2a28] border-primary/30 shadow-xl shadow-primary/10" : "bg-white border-border/60 shadow-md"}`}>
+        {featured && (
+          <div className="absolute top-5 right-5 px-3 py-1 rounded-full bg-primary text-white text-[10px] font-bold uppercase tracking-widest z-10">
+            Most Popular
+          </div>
+        )}
+        {/* Top colour band */}
+        <div className={`h-1.5 w-full ${featured ? "bg-primary" : "bg-gradient-to-r from-primary/60 to-primary/20"}`} />
+
+        <div className="p-7 flex flex-col flex-1">
+          {/* Icon + name */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className={`w-13 h-13 rounded-2xl flex items-center justify-center shrink-0 ${featured ? "bg-primary/20" : "bg-primary/10"}`}>
+              <Icon className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className={`text-lg font-heading font-bold leading-tight ${featured ? "text-white" : "text-foreground"}`}>
+              {service.name}
+            </h3>
+          </div>
+
+          {/* Price */}
+          <div className="mb-1 flex items-end gap-1.5">
+            <span className={`text-4xl font-heading font-extrabold ${featured ? "text-white" : "text-foreground"}`}>
+              ${service.startingPrice}
+            </span>
+            <span className={`text-sm mb-1.5 ${featured ? "text-white/40" : "text-muted-foreground"}`}>
+              starting at
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 mb-5">
+            <Clock className={`h-3.5 w-3.5 ${featured ? "text-primary" : "text-muted-foreground"}`} />
+            <span className={`text-xs font-semibold ${featured ? "text-white/50" : "text-muted-foreground"}`}>
+              Min {service.minDuration}
+            </span>
+          </div>
+
+          <p className={`text-sm leading-relaxed mb-6 ${featured ? "text-white/60" : "text-muted-foreground"}`}>
+            {service.shortDescription}
+          </p>
+
+          {/* Divider */}
+          <div className={`border-t mb-6 ${featured ? "border-white/10" : "border-border/50"}`} />
+
+          {/* Features */}
+          <ul className="space-y-2.5 mb-8 flex-1">
+            {service.features.map((feature) => (
+              <li key={feature} className="flex items-start gap-2.5 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <span className={featured ? "text-white/70" : "text-foreground/70"}>{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          {/* CTA */}
+          <Button
+            asChild
+            className={`w-full rounded-full h-11 font-semibold mt-auto ${featured ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30" : ""}`}
+            variant={featured ? "default" : "outline"}
+          >
+            <Link href={`/contact?service=${service.id}`} className="flex items-center justify-center gap-2">
+              Get a Free Quote
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (variant === "compact") {
     return (

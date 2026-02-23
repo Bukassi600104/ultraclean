@@ -23,7 +23,11 @@ export function ServicesPreview() {
               className="animate-slide-up"
               style={{ animationDelay: `${index * 150}ms` }}
             >
-              <ServiceCard service={service} variant="compact" />
+              <ServiceCard
+                service={service}
+                variant="pricing"
+                featured={index === 1}
+              />
             </div>
           ))}
         </div>
@@ -32,7 +36,7 @@ export function ServicesPreview() {
             href="/services"
             className="inline-flex items-center gap-2 text-primary font-semibold hover:gap-3 transition-all duration-300"
           >
-            View All Services
+            View All Services & Pricing
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

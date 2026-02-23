@@ -170,13 +170,6 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     image: "/images/gallery/IMG_4129.jpg",
   },
   {
-    id: "9",
-    title: "Kitchen & Dining Overhaul",
-    category: "residential",
-    beforeImage: "/images/gallery/514ac785-71d5-4977-88a8-d32ec4efbce1.jpg",
-    afterImage: "/images/gallery/0f7edb87-31f3-43b9-913e-5178cab84825.jpg",
-  },
-  {
     id: "22",
     title: "Dining Room — Spotless & Styled",
     category: "residential",
