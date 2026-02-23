@@ -57,7 +57,7 @@ const TEAM = [
     name: "Bimbo Oyedotun",
     role: "Founder & CEO",
     bio: "Bimbo built UltraTidy from the ground up with a passion for spotless spaces and exceptional service.",
-    photo: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&q=80",
+    photo: "/images/team/founder.jpg",
   },
   {
     name: "Amara Osei",
@@ -113,8 +113,8 @@ export default function AboutPage() {
             <div className="relative">
               <div className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl">
                 <Image
-                  src="/images/gallery/commercial-cleaner-action.jpg"
-                  alt="Bimbo Oyedotun, founder of UltraTidy, cleaning a medical office"
+                  src="/images/team/bimbo.jpg"
+                  alt="Bimbo Oyedotun, founder of UltraTidy Cleaning Services"
                   fill
                   className="object-cover object-center"
                   sizes="(max-width: 1024px) 100vw, 50vw"
