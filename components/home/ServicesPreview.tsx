@@ -5,7 +5,7 @@ import { ServiceCard } from "@/components/services/ServiceCard";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 
 export function ServicesPreview() {
-  const featured = SERVICES.slice(0, 3);
+  const featured = SERVICES.slice(0, 6);
 
   return (
     <section className="py-20 md:py-28 relative">
@@ -21,7 +21,7 @@ export function ServicesPreview() {
             <div
               key={service.id}
               className="animate-slide-up"
-              style={{ animationDelay: `${index * 150}ms` }}
+              style={{ animationDelay: `${index * 100}ms` }}
             >
               <ServiceCard
                 service={service}

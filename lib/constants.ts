@@ -106,6 +106,63 @@ export const SERVICES: Service[] = [
     minDuration: "5 hours",
     icon: "HardHat",
   },
+  {
+    id: "airbnb",
+    name: "Airbnb / Short-Term Rental Cleaning",
+    shortDescription:
+      "Turnover cleaning that keeps guests coming back — fast, thorough, and reliable.",
+    description:
+      "We specialise in fast, professional turnovers for Airbnb and short-term rental properties. We deep-clean between guests so you maintain your ratings, maximise bookings, and never worry about the clean.",
+    features: [
+      "Full bathroom sanitization",
+      "Kitchen and appliance wipe-down",
+      "Fresh linen change and bed-making",
+      "Restocking consumables (soap, paper products)",
+      "Trash removal and new bag placement",
+      "Quick turnaround to match check-out/check-in windows",
+    ],
+    startingPrice: 150,
+    minDuration: "2 hours",
+    icon: "Star",
+  },
+  {
+    id: "restaurant-cafe",
+    name: "Restaurant & Café Cleaning",
+    shortDescription:
+      "Health-code-compliant cleaning for food service environments.",
+    description:
+      "Maintain a spotless, compliant kitchen and dining area with our specialised restaurant and café cleaning. We handle grease, grime, and high-touch surfaces so your team can focus on the food.",
+    features: [
+      "Commercial kitchen deep cleaning",
+      "Grease trap and hood filter degreasing",
+      "Dining area and seating sanitization",
+      "Washroom cleaning and restocking",
+      "Food prep surface disinfection",
+      "Health-code compliance ready",
+    ],
+    startingPrice: 200,
+    minDuration: "3 hours",
+    icon: "UtensilsCrossed",
+  },
+  {
+    id: "clinic-medical",
+    name: "Clinic & Medical Facility Cleaning",
+    shortDescription:
+      "IPAC-compliant sanitization for clinics, urgent care centres, and medical offices.",
+    description:
+      "Our clinic cleaning follows strict Infection Prevention and Control (IPAC) protocols. We use hospital-grade disinfectants to ensure patient safety and regulatory compliance for medical and dental offices.",
+    features: [
+      "Hospital-grade disinfectant application",
+      "Exam room and treatment area sanitization",
+      "High-touch surface disinfection",
+      "Waiting area and reception cleaning",
+      "Medical waste area cleaning support",
+      "IPAC-compliant procedures throughout",
+    ],
+    startingPrice: 250,
+    minDuration: "3 hours",
+    icon: "Cross",
+  },
 ];
 
 export const SERVICE_OPTIONS = [
@@ -114,37 +171,39 @@ export const SERVICE_OPTIONS = [
   { value: "deep-cleaning", label: "Deep Cleaning" },
   { value: "move-in-out", label: "Move-In/Move-Out Cleaning" },
   { value: "post-construction", label: "Post-Construction Cleaning" },
-  { value: "airbnb", label: "Airbnb Cleaning" },
+  { value: "airbnb", label: "Airbnb / Short-Term Rental Cleaning" },
+  { value: "restaurant-cafe", label: "Restaurant & Café Cleaning" },
+  { value: "clinic-medical", label: "Clinic & Medical Facility Cleaning" },
 ];
 
 export const TESTIMONIALS: Testimonial[] = [
   {
     id: "1",
-    name: "Sarah M.",
+    name: "Karanveer Kabuli",
     serviceType: "Residential Cleaning",
     rating: 5,
-    text: "UltraTidy transformed my home! The team was professional, thorough, and left everything spotless. I couldn't believe the difference. Highly recommend their residential cleaning service!",
+    text: "Outstanding service from start to finish. The team arrived punctual and fully equipped. They transformed my home with spotless surfaces and gleaming floors. Their attention to detail exceeded my expectations.",
   },
   {
     id: "2",
-    name: "David K.",
-    serviceType: "Post-Construction Cleaning",
+    name: "Oshinowski Adenike",
+    serviceType: "Deep Cleaning",
     rating: 5,
-    text: "After our kitchen renovation, the mess was overwhelming. UltraTidy came in and handled everything — dust, debris, paint splatters — all gone. They made our new kitchen shine!",
+    text: "Outstanding deep clean experience. Punctual, thorough, and professional throughout. Excellent attention to detail. Highly recommend UltraTidy to anyone looking for a truly exceptional clean.",
   },
   {
     id: "3",
-    name: "Priya T.",
-    serviceType: "Move-In/Move-Out Cleaning",
+    name: "Ozo Nwankwo",
+    serviceType: "Airbnb / Short-Term Rental Cleaning",
     rating: 5,
-    text: "I hired UltraTidy for a move-out clean and got my full deposit back. They cleaned areas I didn't even think of. Will definitely use them again for my next move!",
+    text: "Great services — will definitely recommend. My guests have been leaving 5-star reviews consistently since I started using UltraTidy for my property turnovers.",
   },
   {
     id: "4",
-    name: "James R.",
-    serviceType: "Commercial Cleaning",
+    name: "Christina Chansamone",
+    serviceType: "Restaurant & Café Cleaning",
     rating: 5,
-    text: "Our office has never looked better. The UltraTidy team is reliable, efficient, and always goes the extra mile. Our clients have even commented on how clean the space is!",
+    text: "Amazing, nice people. Definitely recommend if you want significant space improvement. Our restaurant looks better than it ever has. The team is professional and thorough.",
   },
 ];
 

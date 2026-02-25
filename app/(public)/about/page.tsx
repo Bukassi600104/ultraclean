@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Clock, Heart, Shield, Users, Award, ArrowRight } from "lucide-react";
+import { MapPin, Clock, Heart, Shield, Users, Award, Star, ArrowRight, Target, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { BUSINESS_HOURS } from "@/lib/constants";
@@ -23,32 +23,39 @@ export const metadata: Metadata = {
 
 const VALUES = [
   {
-    icon: Heart,
-    title: "Passion for Clean",
+    icon: Users,
+    title: "People",
     description:
-      "We don't just clean — we transform spaces. Every job gets our full attention and care.",
-    color: "from-rose-500/10 to-rose-500/5",
-  },
-  {
-    icon: Shield,
-    title: "Trust & Reliability",
-    description:
-      "Bonded and insured professionals who show up on time, every time. Your home is in safe hands.",
+      "Our team are our greatest asset. We invest in training, respect, and growth for every member of the UltraTidy family.",
     color: "from-blue-500/10 to-blue-500/5",
   },
   {
-    icon: Users,
-    title: "Client-Focused",
+    icon: Award,
+    title: "Pride",
     description:
-      "Your satisfaction is our priority. We listen, customize, and deliver beyond expectations.",
+      "We take immense pride in our work. Every job — no matter the size — gets our full attention and craftsmanship.",
     color: "from-amber-500/10 to-amber-500/5",
   },
   {
-    icon: Award,
-    title: "Quality Guaranteed",
+    icon: Shield,
+    title: "Reliability",
+    description:
+      "Bonded and insured professionals who show up on time, every time. Your home is in safe hands.",
+    color: "from-primary/10 to-primary/5",
+  },
+  {
+    icon: Heart,
+    title: "Team",
+    description:
+      "We work together with trust and respect, supporting each other to deliver the best result for every client.",
+    color: "from-rose-500/10 to-rose-500/5",
+  },
+  {
+    icon: Star,
+    title: "Quality",
     description:
       "It's not clean until it's ULTRACLEAN. We stand behind every job with our satisfaction guarantee.",
-    color: "from-primary/10 to-primary/5",
+    color: "from-violet-500/10 to-violet-500/5",
   },
 ];
 
@@ -102,6 +109,40 @@ export default function AboutPage() {
             badge="Our Story"
             light
           />
+        </div>
+      </section>
+
+      {/* Mission & Vision */}
+      <section className="py-16 md:py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {/* Mission */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-border/50 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-2xl" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Target className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-heading font-bold text-lg">Our Mission</h3>
+              </div>
+              <p className="text-foreground/70 leading-relaxed text-sm">
+                To provide first-class cleaning services through an unparalleled level of professionalism, supported by a flexible online and offline approach so you can make time for what matters most: YOU!
+              </p>
+            </div>
+            {/* Vision */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-border/50 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-2xl" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Eye className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-heading font-bold text-lg">Our Vision</h3>
+              </div>
+              <p className="text-foreground/70 leading-relaxed text-sm">
+                To lead the residential and commercial cleaning industry by providing the highest level of customer service and quality of work.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -172,7 +213,7 @@ export default function AboutPage() {
             subtitle="What drives us to deliver exceptional cleaning every single time."
             badge="Core Values"
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {VALUES.map((value) => (
               <div
                 key={value.title}

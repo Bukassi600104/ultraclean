@@ -14,16 +14,14 @@ const TRUST_BADGES = [
 export function HeroSection() {
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden -mt-16 md:-mt-20">
-      {/* Background image — cleaning-specific */}
+      {/* Background image — team photo */}
       <Image
-        src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&q=75"
-        alt="Professional cleaner wiping kitchen surface"
+        src="/images/team/staffs.png"
+        alt="UltraTidy professional cleaning team"
         fill
-        className="object-cover"
+        className="object-cover object-center"
         priority
         sizes="100vw"
-        placeholder="blur"
-        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRm knyJckliyjqTzSlKQiGOZ//Z"
       />
 
       {/* Gradient overlays */}

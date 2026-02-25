@@ -78,7 +78,7 @@ export default function ServicesPage() {
       <section className="relative py-20 md:py-28 overflow-hidden">
         <div className="absolute inset-0">
           <Image
-            src="/images/gallery/commercial-cleaner-action.jpg"
+            src="/images/team/staff-cleaning-office.png"
             alt="UltraTidy professional cleaner at work"
             fill
             className="object-cover object-center"

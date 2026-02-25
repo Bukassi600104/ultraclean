@@ -4,6 +4,7 @@ import { StatsBar } from "@/components/home/StatsBar";
 import { ServicesPreview } from "@/components/home/ServicesPreview";
 import { WhyChooseUs } from "@/components/home/WhyChooseUs";
 import { GalleryPreview } from "@/components/home/GalleryPreview";
+import { AirbnbSection } from "@/components/home/AirbnbSection";
 import { TestimonialsCarousel } from "@/components/home/TestimonialsCarousel";
 import { BookingCTA } from "@/components/home/BookingCTA";
 import { CTASection } from "@/components/home/CTASection";
@@ -111,6 +112,7 @@ export default function HomePage() {
       <ServicesPreview />
       <WhyChooseUs />
       <GalleryPreview />
+      <AirbnbSection />
       <TestimonialsCarousel />
       <BookingCTA />
       <CTASection />
