@@ -84,7 +84,7 @@ export function AirbnbSection() {
             <Button
               asChild
               size="lg"
-              className="rounded-full text-base px-8 h-13 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
+              className="rounded-full text-base px-8 h-14 text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all duration-300"
             >
               <Link href="/contact?service=airbnb" className="flex items-center gap-2">
                 Get a Turnover Quote
