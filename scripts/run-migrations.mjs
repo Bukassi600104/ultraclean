@@ -43,12 +43,19 @@ if (!dbPassword) {
   process.exit(1);
 }
 
-const connectionString = `postgresql://postgres:${dbPassword}@db.${projectRef}.supabase.co:5432/postgres`;
-
 const filter = process.argv[2] ?? null; // optional: "009" filters to 009_*.sql
 
 async function main() {
-  const client = new pg.Client({ connectionString });
+  // Use named params instead of a connection string URL so special characters
+  // in the password ($, #, @, etc.) don't need percent-encoding.
+  const client = new pg.Client({
+    host: `db.${projectRef}.supabase.co`,
+    port: 5432,
+    database: "postgres",
+    user: "postgres",
+    password: dbPassword,
+    ssl: { rejectUnauthorized: false },
+  });
   await client.connect();
   console.log("✅ Connected to Supabase database\n");
 

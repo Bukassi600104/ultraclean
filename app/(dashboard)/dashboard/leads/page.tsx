@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { LeadTable } from "@/components/dashboard/leads/LeadTable";
@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Download } from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import type { Lead } from "@/types";
 
 export default function LeadsPage() {
@@ -70,6 +72,37 @@ function LeadsPageContent() {
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+
+  // ── Realtime subscription: new lead arrives → refresh + notify ──────────
+  const fetchLeadsRef = useRef(fetchLeads);
+  useEffect(() => {
+    fetchLeadsRef.current = fetchLeads;
+  }, [fetchLeads]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel("leads-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "leads" },
+        (payload) => {
+          const lead = payload.new as Lead;
+          fetchLeadsRef.current();
+          toast.success(`New quote request from ${lead.name}`, {
+            description: `${lead.service} · ${lead.email}`,
+            duration: 8000,
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []); // subscribe once, uses ref to always call latest fetchLeads
 
   // Debounce search
   useEffect(() => {
