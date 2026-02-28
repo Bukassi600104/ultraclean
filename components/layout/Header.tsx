@@ -86,7 +86,7 @@ export function Header() {
               size="lg"
               className="rounded-full px-6 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300"
             >
-              <Link href="/contact">Get Free Quote</Link>
+              <Link href="/quote">Get Instant Quote</Link>
             </Button>
           </div>
 
@@ -131,8 +131,8 @@ export function Header() {
                       className="w-full rounded-full"
                       size="lg"
                     >
-                      <Link href="/contact" onClick={() => setOpen(false)}>
-                        Get Free Quote
+                      <Link href="/quote" onClick={() => setOpen(false)}>
+                        Get Instant Quote
                       </Link>
                     </Button>
                   </SheetClose>

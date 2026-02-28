@@ -93,8 +93,8 @@ export function ServiceCard({ service, variant = "compact", featured = false }: 
             className={`w-full rounded-full h-11 font-semibold mt-auto ${featured ? "bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30" : ""}`}
             variant={featured ? "default" : "outline"}
           >
-            <Link href={`/contact?service=${service.id}`} className="flex items-center justify-center gap-2">
-              Get a Free Quote
+            <Link href={`/quote?service=${service.id}`} className="flex items-center justify-center gap-2">
+              Get Instant Quote
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -124,10 +124,10 @@ export function ServiceCard({ service, variant = "compact", featured = false }: 
                 From ${service.startingPrice}
               </span>
               <Link
-                href={`/contact?service=${service.id}`}
+                href={`/quote?service=${service.id}`}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground/60 hover:text-primary group-hover:text-primary transition-colors"
               >
-                Get a Quote
+                Get Instant Quote
                 <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
@@ -193,10 +193,10 @@ export function ServiceCard({ service, variant = "compact", featured = false }: 
               className="rounded-full px-8 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all"
             >
               <Link
-                href={`/contact?service=${service.id}`}
+                href={`/quote?service=${service.id}`}
                 className="flex items-center gap-2"
               >
-                Get a Quote
+                Get Instant Quote
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

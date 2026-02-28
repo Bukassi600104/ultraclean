@@ -65,8 +65,8 @@ export function HeroSection() {
               size="lg"
               className="rounded-full text-base text-white px-8 h-14 shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:scale-105 transition-all duration-300"
             >
-              <Link href="/contact" className="flex items-center gap-2">
-                Get Free Quote
+              <Link href="/quote" className="flex items-center gap-2">
+                Get Instant Quote
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

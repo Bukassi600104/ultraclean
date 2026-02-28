@@ -28,8 +28,8 @@ export function CTASection() {
             size="lg"
             className="rounded-full text-base px-8 h-14 font-semibold bg-white text-[#0a2a28] hover:bg-white/90 shadow-xl hover:scale-105 transition-all duration-300"
           >
-            <Link href="/contact" className="flex items-center gap-2">
-              Get Your Free Quote
+            <Link href="/quote" className="flex items-center gap-2">
+              Get Instant Quote
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
