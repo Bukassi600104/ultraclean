@@ -293,18 +293,7 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     category: "deep-cleaning",
     image: "/images/gallery/sink-polished.jpg",
   },
-  {
-    id: "40",
-    title: "Deep Clean Result",
-    category: "deep-cleaning",
-    image: "/images/gallery/0f7edb87-31f3-43b9-913e-5178cab84825.jpg",
-  },
-  {
-    id: "41",
-    title: "Thorough Sanitization",
-    category: "deep-cleaning",
-    image: "/images/gallery/514ac785-71d5-4977-88a8-d32ec4efbce1.jpg",
-  },
+
 
   // ════════════════════════════════════════════════════════════
   // MOVE-IN / MOVE-OUT
