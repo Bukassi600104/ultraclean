@@ -41,7 +41,7 @@ const PRODUCTS = [
     icon: Fish,
     // Nigerian catfish in water — Unsplash
     image:
-      "https://images.unsplash.com/photo-1615789591457-74a63395c990?w=400&q=70",
+      "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&q=70",
     badge: "Most Popular",
   },
   {
@@ -182,7 +182,7 @@ export default function PrimefieldPage() {
               <div className="space-y-4 pt-8">
                 <div className="relative h-52 rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
                   <Image
-                    src="https://images.unsplash.com/photo-1615789591457-74a63395c990?w=400&q=70"
+                    src="https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&q=70"
                     alt="Catfish"
                     fill
                     className="object-cover hover:scale-105 transition-transform duration-700"
