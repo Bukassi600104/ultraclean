@@ -1,71 +1,76 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
-interface Props {
-  priceId: string;
-}
-
-interface FieldError {
-  field?: string;
-  message: string;
-}
-
-export function RegistrationForm({ priceId }: Props) {
+export function RegistrationForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<FieldError[]>([]);
-
-  const fieldError = (field: string) =>
-    errors.find((e) => e.field === field)?.message;
-  const globalError = errors.find((e) => !e.field)?.message;
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setErrors([]);
+    setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/register", {
+      const res = await fetch("/api/submit-lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          priceId,
+          service: "DBA Course",
+          business: "dba",
+          specialRequests: message.trim() || undefined,
         }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        setErrors(data.errors || [{ message: "Something went wrong." }]);
+        const data = await res.json();
+        setError(data.error || "Something went wrong. Please try again.");
         setLoading(false);
         return;
       }
 
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      setSubmitted(true);
     } catch {
-      setErrors([{ message: "Network error. Please try again." }]);
+      setError("Network error. Please try again.");
       setLoading(false);
     }
   }
 
+  if (submitted) {
+    return (
+      <div className="text-center py-6 space-y-3">
+        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+          <CheckCircle2 className="h-8 w-8 text-green-600" />
+        </div>
+        <h3 className="text-lg font-heading font-bold">
+          You&apos;re on the list!
+        </h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+          Thanks, {name.split(" ")[0]}! Bimbo will be in touch with full course
+          details and next steps.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {globalError && (
+      {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-          {globalError}
+          {error}
         </div>
       )}
 
@@ -78,11 +83,8 @@ export function RegistrationForm({ priceId }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className={fieldError("name") ? "border-red-400" : ""}
+          minLength={2}
         />
-        {fieldError("name") && (
-          <p className="text-xs text-red-600">{fieldError("name")}</p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -94,11 +96,7 @@ export function RegistrationForm({ priceId }: Props) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className={fieldError("email") ? "border-red-400" : ""}
         />
-        {fieldError("email") && (
-          <p className="text-xs text-red-600">{fieldError("email")}</p>
-        )}
       </div>
 
       <div className="space-y-2">
@@ -110,11 +108,22 @@ export function RegistrationForm({ priceId }: Props) {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required
-          className={fieldError("phone") ? "border-red-400" : ""}
+          minLength={10}
         />
-        {fieldError("phone") && (
-          <p className="text-xs text-red-600">{fieldError("phone")}</p>
-        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="reg-message">
+          What are you hoping to learn?{" "}
+          <span className="text-muted-foreground font-normal">(optional)</span>
+        </Label>
+        <Textarea
+          id="reg-message"
+          placeholder="Tell Bimbo a bit about your goals or any questions you have..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={3}
+        />
       </div>
 
       <Button
@@ -125,16 +134,16 @@ export function RegistrationForm({ priceId }: Props) {
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Redirecting to payment...
+            Submitting...
           </>
         ) : (
-          "Continue to Payment"
+          "Register My Interest"
         )}
       </Button>
 
-      <p className="text-xs text-center text-muted-foreground pt-2">
-        You&apos;ll be redirected to Stripe&apos;s secure checkout to complete
-        payment.
+      <p className="text-xs text-center text-muted-foreground pt-1">
+        No payment required. Bimbo will reach out with course details and
+        pricing.
       </p>
     </form>
   );

@@ -17,8 +17,9 @@ export default function RegistrationSuccessPage() {
             You&apos;re Registered!
           </h1>
           <p className="text-muted-foreground leading-relaxed">
-            Payment received successfully. Check your email for a confirmation
-            with all the details. We&apos;re excited to have you!
+            Your registration has been received! Bimbo will be in touch shortly
+            with full course details and next steps. We&apos;re excited to have
+            you!
           </p>
         </div>
         <p className="text-xs text-muted-foreground mt-6">

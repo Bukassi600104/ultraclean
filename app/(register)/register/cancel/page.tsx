@@ -15,10 +15,10 @@ export default function RegistrationCancelPage() {
             <span className="text-3xl">&#8617;</span>
           </div>
           <h1 className="text-2xl font-heading font-extrabold mb-2">
-            Payment Cancelled
+            Hmm, something went wrong
           </h1>
           <p className="text-muted-foreground leading-relaxed mb-6">
-            No worries — you haven&apos;t been charged. You can try again
+            No worries — nothing was submitted. You can try again
             whenever you&apos;re ready.
           </p>
           <Link
