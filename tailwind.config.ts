@@ -59,6 +59,9 @@ const config: Config = {
       fontFamily: {
         heading: ["var(--font-heading)", "sans-serif"],
         body: ["var(--font-body)", "sans-serif"],
+        // Primefield Farms page
+        display: ["var(--font-playfair)", "serif"],
+        manrope: ["var(--font-manrope)", "sans-serif"],
       },
       keyframes: {
         "fade-in": {

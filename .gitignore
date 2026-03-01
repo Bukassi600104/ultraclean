@@ -50,4 +50,13 @@ next-env.d.ts
 # windows artifacts
 nul
 
+# local source/reference images (not web app assets)
+/Images/
+
+# project planning docs (not part of app)
+bossbimbz-overview.html
+
+# test/scratch files
+public/test_cf.jpg
+
 .vercel
