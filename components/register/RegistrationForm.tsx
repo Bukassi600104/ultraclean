@@ -49,9 +49,11 @@ export function RegistrationForm() {
     }
   }
 
+  const paymentLink = process.env.NEXT_PUBLIC_DBA_PAYMENT_LINK;
+
   if (submitted) {
     return (
-      <div className="text-center py-6 space-y-3">
+      <div className="text-center py-6 space-y-4">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
           <CheckCircle2 className="h-8 w-8 text-green-600" />
         </div>
@@ -59,9 +61,23 @@ export function RegistrationForm() {
           You&apos;re on the list!
         </h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          Thanks, {name.split(" ")[0]}! Bimbo will be in touch with full course
-          details and next steps.
+          Thanks, {name.split(" ")[0]}! Your registration has been received.
         </p>
+        {paymentLink && (
+          <a
+            href={paymentLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-full h-12 rounded-lg bg-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity"
+          >
+            Proceed to Payment →
+          </a>
+        )}
+        {!paymentLink && (
+          <p className="text-sm text-muted-foreground">
+            Bimbo will be in touch with payment details and next steps.
+          </p>
+        )}
       </div>
     );
   }
@@ -142,8 +158,7 @@ export function RegistrationForm() {
       </Button>
 
       <p className="text-xs text-center text-muted-foreground pt-1">
-        No payment required. Bimbo will reach out with course details and
-        pricing.
+        You will be directed to the payment portal after submitting.
       </p>
     </form>
   );

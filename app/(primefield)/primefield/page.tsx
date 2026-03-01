@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PrimefieldContactForm } from "@/components/primefield/PrimefieldContactForm";
+import { PrimefieldNav } from "@/components/primefield/PrimefieldNav";
 import {
   Leaf,
   DollarSign,
   ShieldCheck,
   MapPin,
   Mail,
+  Phone,
   Package,
+  ArrowRight,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -32,26 +35,35 @@ const PRODUCTS = [
   {
     name: "Premium Catfish",
     description: "Freshly harvested, sized to perfection.",
-    image: "https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&q=70",
+    // User's real catfish photo — white bg, use object-contain with sage bg
+    image: "/catfish.webp",
+    imageStyle: "object-contain p-6 bg-[#E8F3EB]",
     badge: "Most Popular",
+    badgeColor: "bg-[#11d469] text-[#0a2a28]",
   },
   {
     name: "Livestock Goats",
     description: "Well-fed, healthy breeds for events.",
-    image: "https://images.unsplash.com/photo-1527153857715-3908f2bae5e8?w=400&q=70",
+    image: "/pf_goat_card.jpg",
+    imageStyle: "object-cover",
     badge: null,
+    badgeColor: "",
   },
   {
     name: "Broiler Chicken",
     description: "Tender meat, organically raised.",
-    image: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=400&q=70",
+    image: "/pf_chicken.jpg",
+    imageStyle: "object-cover",
     badge: null,
+    badgeColor: "",
   },
   {
     name: "Farm Produce",
     description: "Fresh vegetables straight from soil.",
-    image: "https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&q=70",
+    image: "/pf_produce_card2.jpg",
+    imageStyle: "object-cover",
     badge: "Seasonal",
+    badgeColor: "bg-[#D4A373] text-white",
   },
 ];
 
@@ -85,61 +97,15 @@ const VALUE_PROPS = [
 export default function PrimefieldPage() {
   return (
     <div className="text-[#1B4332] overflow-x-hidden">
-
       {/* ── Sticky Navbar ── */}
-      <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-[#2D6A4F]/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#1B4332]/5 rounded-full flex items-center justify-center">
-                <Leaf className="h-5 w-5 text-[#1B4332]" />
-              </div>
-              <h2 className="text-[#1B4332] text-xl font-bold tracking-tight font-display">
-                Primefield Farms
-              </h2>
-            </div>
-            <nav className="hidden md:flex gap-8">
-              <a
-                className="text-[#1B4332] hover:text-[#40916C] transition-colors text-sm font-semibold"
-                href="#"
-              >
-                Home
-              </a>
-              <a
-                className="text-[#1B4332]/70 hover:text-[#40916C] transition-colors text-sm font-medium"
-                href="#about"
-              >
-                About
-              </a>
-              <a
-                className="text-[#1B4332]/70 hover:text-[#40916C] transition-colors text-sm font-medium"
-                href="#products"
-              >
-                Products
-              </a>
-              <a
-                className="text-[#1B4332]/70 hover:text-[#40916C] transition-colors text-sm font-medium"
-                href="#contact"
-              >
-                Contact
-              </a>
-            </nav>
-            <a
-              href="#contact"
-              className="bg-[#1B4332] hover:bg-[#2D6A4F] transition-colors text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-[#1B4332]/20"
-            >
-              Order Now
-            </a>
-          </div>
-        </div>
-      </header>
+      <PrimefieldNav />
 
       {/* ── Hero Section ── */}
       <div className="relative w-full bg-[#1B4332] overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Image
-            src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1400&q=70"
-            alt="Lush green farmland"
+            src="/pf_hero_bg.jpg"
+            alt="Scenic view of lush green farmland"
             fill
             className="object-cover opacity-40"
             sizes="100vw"
@@ -149,10 +115,10 @@ export default function PrimefieldPage() {
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32 flex flex-col lg:flex-row items-center gap-16">
-          {/* Left content */}
+          {/* Left Content */}
           <div className="flex-1 space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 rounded-full">
-              <MapPin className="h-3 w-3 text-[#95D5B2]" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#11d469]/10 border border-[#11d469]/20 rounded-full backdrop-blur-sm">
+              <MapPin className="h-3.5 w-3.5 text-[#11d469]" />
               <span className="text-white text-xs font-semibold tracking-wide uppercase">
                 Ibadan, Oyo State, Nigeria
               </span>
@@ -160,10 +126,10 @@ export default function PrimefieldPage() {
 
             <h1 className="text-4xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] font-display">
               From Our Farm, <br />
-              <em className="text-[#95D5B2] not-italic">Fresh</em> to Your Table
+              <em className="text-[#11d469] not-italic">Fresh</em> to Your Table
             </h1>
 
-            <p className="text-gray-300 text-lg max-w-xl font-light leading-relaxed">
+            <p className="text-gray-300 text-lg max-w-xl font-light leading-relaxed font-manrope">
               Primefield Farms delivers premium quality livestock and sustainably
               grown agricultural products directly from the rich soils of Ibadan.
             </p>
@@ -171,7 +137,7 @@ export default function PrimefieldPage() {
             <div className="flex flex-wrap gap-4">
               <a
                 href="#products"
-                className="bg-[#40916C] hover:bg-[#52B788] text-white px-8 py-4 rounded-lg text-base font-bold shadow-lg shadow-[#40916C]/30 transition-all hover:-translate-y-0.5"
+                className="bg-[#11d469] hover:bg-[#0B8A44] text-[#0a2a28] hover:text-white px-8 py-4 rounded-lg text-base font-bold shadow-lg shadow-[#11d469]/30 transition-all transform hover:-translate-y-0.5"
               >
                 View Products
               </a>
@@ -189,55 +155,43 @@ export default function PrimefieldPage() {
             <div className="space-y-4 mt-8">
               <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl relative group">
                 <Image
-                  src="https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&q=70"
+                  src="/pf_catfish_hero.jpg"
                   alt="Fresh catfish"
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                   sizes="250px"
                 />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-semibold">Catfish</p>
-                </div>
               </div>
               <div className="aspect-square rounded-2xl overflow-hidden shadow-2xl relative group">
                 <Image
-                  src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=400&q=70"
-                  alt="Farm produce"
+                  src="/pf_produce.jpg"
+                  alt="Variety of fresh farm produce"
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                   sizes="250px"
                 />
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-semibold">Farm Produce</p>
-                </div>
               </div>
             </div>
             <div className="space-y-4">
               <div className="aspect-square rounded-2xl overflow-hidden shadow-2xl relative group">
                 <Image
-                  src="https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=400&q=70"
-                  alt="Chicken"
+                  src="/pf_chicken.jpg"
+                  alt="Free range chicken on farm"
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                   sizes="250px"
                 />
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-semibold">Chicken</p>
-                </div>
               </div>
               <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl relative group">
                 <Image
-                  src="https://images.unsplash.com/photo-1527153857715-3908f2bae5e8?w=400&q=70"
-                  alt="Goat"
+                  src="/pf_goat.jpg"
+                  alt="Goat standing in a field"
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-110"
                   sizes="250px"
                 />
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
-                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <p className="text-white text-sm font-semibold">Goat</p>
-                </div>
               </div>
             </div>
           </div>
@@ -249,8 +203,10 @@ export default function PrimefieldPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-white/10">
           {STATS.map((stat) => (
             <div key={stat.label} className="p-6 text-center">
-              <p className="text-3xl font-bold text-white font-display">{stat.value}</p>
-              <p className="text-[#95D5B2] text-sm uppercase tracking-wider font-semibold mt-1">
+              <p className="text-3xl font-bold text-white font-display">
+                {stat.value}
+              </p>
+              <p className="text-[#11d469] text-sm uppercase tracking-wider font-semibold mt-1">
                 {stat.label}
               </p>
             </div>
@@ -259,7 +215,7 @@ export default function PrimefieldPage() {
       </div>
 
       {/* ── About Section ── */}
-      <section className="py-24 bg-[#F9F7F2]" id="about">
+      <section className="py-24 bg-[#F9F7F2] relative" id="about">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <span className="text-[#2D6A4F] font-bold tracking-widest text-sm uppercase mb-4 block">
             Our Story
@@ -269,12 +225,12 @@ export default function PrimefieldPage() {
             <br />
             Growing for You
           </h2>
-          <p className="text-lg text-gray-600 leading-relaxed">
+          <p className="text-lg text-gray-600 leading-relaxed font-manrope">
             Primefield Farms is more than just a farm; it&apos;s a commitment to
             excellence. We leverage modern agricultural practices combined with
             traditional care to bring you livestock and produce that are healthy,
-            organic, and ethically raised. Our dedication ensures that every product
-            from our farm meets the highest standards of quality.
+            organic, and ethically raised. Our dedication ensures that every
+            product from our farm meets the highest standards of quality.
           </p>
         </div>
       </section>
@@ -282,13 +238,22 @@ export default function PrimefieldPage() {
       {/* ── Products Section ── */}
       <section className="py-24 bg-[#E8F3EB]" id="products">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4 font-display">
-              Our Premium Products
-            </h2>
-            <p className="text-gray-600 max-w-xl">
-              Ethically raised livestock and fresh harvest, ready for order.
-            </p>
+          <div className="flex justify-between items-end mb-12">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1B4332] mb-4 font-display">
+                Our Premium Products
+              </h2>
+              <p className="text-gray-600 max-w-xl">
+                Ethically raised livestock and fresh harvest, ready for order.
+              </p>
+            </div>
+            <a
+              className="hidden md:flex items-center gap-2 text-[#2D6A4F] font-bold hover:text-[#1B4332] transition-colors group"
+              href="#contact"
+            >
+              View All Inventory
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </a>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -302,11 +267,13 @@ export default function PrimefieldPage() {
                     src={product.image}
                     alt={product.name}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    className={`transition-transform duration-500 group-hover:scale-105 ${product.imageStyle}`}
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   />
                   {product.badge && (
-                    <div className="absolute top-4 right-4 bg-[#40916C] text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                    <div
+                      className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full shadow-lg ${product.badgeColor}`}
+                    >
                       {product.badge}
                     </div>
                   )}
@@ -315,7 +282,9 @@ export default function PrimefieldPage() {
                   <h3 className="text-xl font-bold text-[#1B4332] font-display mb-2">
                     {product.name}
                   </h3>
-                  <p className="text-gray-500 text-sm mb-4">{product.description}</p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    {product.description}
+                  </p>
                   <a
                     href="#contact"
                     className="block w-full py-3 text-center border border-[#2D6A4F]/20 rounded-lg text-[#2D6A4F] font-bold hover:bg-[#2D6A4F] hover:text-white transition-colors text-sm"
@@ -325,6 +294,16 @@ export default function PrimefieldPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 text-center md:hidden">
+            <a
+              className="inline-flex items-center gap-2 text-[#2D6A4F] font-bold hover:text-[#1B4332] transition-colors"
+              href="#contact"
+            >
+              View All Inventory
+              <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </section>
@@ -366,15 +345,15 @@ export default function PrimefieldPage() {
       <section className="py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="relative rounded-3xl overflow-hidden bg-[#1B4332] px-6 py-16 md:px-16 md:py-20 text-center">
-            <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#40916C]/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#11d469]/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-[#D4A373]/20 rounded-full blur-3xl pointer-events-none" />
             <div className="relative z-10">
               <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 font-display">
                 Ready to Order Fresh Farm Products?
               </h2>
               <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
-                Experience the difference of locally sourced, premium agricultural
-                products.
+                Experience the difference of locally sourced, premium
+                agricultural products.
               </p>
               <a
                 href="#contact"
@@ -390,7 +369,7 @@ export default function PrimefieldPage() {
       {/* ── Contact Section ── */}
       <section className="py-24 bg-[#F9F7F2]" id="contact">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left: Contact info */}
             <div>
               <span className="text-[#2D6A4F] font-bold tracking-widest text-sm uppercase mb-3 block">
@@ -401,16 +380,26 @@ export default function PrimefieldPage() {
               </h2>
               <p className="text-gray-600 text-lg mb-8 leading-relaxed">
                 Whether you need a bulk supply of catfish, a specific livestock
-                order, or just have questions about our farm, we are here to help.
+                order, or just have questions about our farm, we are here to
+                help.
               </p>
               <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-[#2D6A4F]/10 flex items-center justify-center shrink-0">
+                    <Phone className="h-5 w-5 text-[#2D6A4F]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[#1B4332]">Call Us</h4>
+                    <p className="text-gray-600">+234 800 123 4567</p>
+                  </div>
+                </div>
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-full bg-[#2D6A4F]/10 flex items-center justify-center shrink-0">
                     <Mail className="h-5 w-5 text-[#2D6A4F]" />
                   </div>
                   <div>
                     <h4 className="font-bold text-[#1B4332]">Email Us</h4>
-                    <p className="text-gray-600">hello@ultratidycleaning.com</p>
+                    <p className="text-gray-600">orders@primefieldfarms.com</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
@@ -418,8 +407,10 @@ export default function PrimefieldPage() {
                     <MapPin className="h-5 w-5 text-[#2D6A4F]" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-[#1B4332]">Our Farm</h4>
-                    <p className="text-gray-600">Ibadan, Oyo State, Nigeria</p>
+                    <h4 className="font-bold text-[#1B4332]">Visit Us</h4>
+                    <p className="text-gray-600">
+                      KM 10, Moniya-Iseyin Road, Ibadan, Oyo State
+                    </p>
                   </div>
                 </div>
               </div>
@@ -439,13 +430,23 @@ export default function PrimefieldPage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center">
-                <Leaf className="h-4 w-4 text-[#95D5B2]" />
+                <Leaf className="h-4 w-4 text-[#11d469]" />
               </div>
               <h2 className="text-xl font-bold font-display tracking-tight">
                 Primefield Farms
               </h2>
             </div>
-            <p className="text-gray-400 text-sm">Ibadan, Oyo State, Nigeria</p>
+            <div className="flex gap-8 text-gray-400 text-sm">
+              <a href="/terms" className="hover:text-[#11d469] transition-colors">
+                Terms
+              </a>
+              <a
+                href="/privacy"
+                className="hover:text-[#11d469] transition-colors"
+              >
+                Privacy
+              </a>
+            </div>
             <p className="text-gray-500 text-sm">
               &copy; {new Date().getFullYear()} Primefield Farms. All rights
               reserved.
