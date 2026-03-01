@@ -208,7 +208,10 @@ export const TESTIMONIALS: Testimonial[] = [
 ];
 
 export const GALLERY_ITEMS: GalleryItem[] = [
-  // ── Residential ──────────────────────────────────────────────
+
+  // ════════════════════════════════════════════════════════════
+  // RESIDENTIAL
+  // ════════════════════════════════════════════════════════════
   {
     id: "1",
     title: "Bedroom Makeover",
@@ -229,6 +232,12 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     image: "/images/gallery/IMG_4129.jpg",
   },
   {
+    id: "18",
+    title: "Bathroom Vanity — Marble Finish",
+    category: "residential",
+    image: "/images/gallery/bathroom-vanity-marble.jpg",
+  },
+  {
     id: "22",
     title: "Dining Room — Spotless & Styled",
     category: "residential",
@@ -240,166 +249,11 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     category: "residential",
     image: "/images/gallery/residential-kitchen-island-clean.jpg",
   },
-  // ── Commercial — Office ──────────────────────────────────────
-  {
-    id: "4",
-    title: "Commercial Kitchen Clean",
-    category: "commercial",
-    beforeImage: "/images/gallery/IMG_4022.jpg",
-    afterImage: "/images/gallery/IMG_4055.jpg",
-  },
-  {
-    id: "11",
-    title: "Commercial Sink Polished",
-    category: "commercial",
-    image: "/images/gallery/commercial-sink-cleaning.jpg",
-  },
-  {
-    id: "12",
-    title: "Break Room Transformation",
-    category: "commercial",
-    beforeImage: "/images/gallery/kitchenette-before.jpg",
-    afterImage: "/images/gallery/kitchenette-after.jpg",
-  },
-  {
-    id: "13",
-    title: "Window Cleaning — Office",
-    category: "commercial",
-    image: "/images/gallery/window-cleaning-action.jpg",
-  },
-  {
-    id: "14",
-    title: "Team On-Site",
-    category: "commercial",
-    image: "/images/gallery/team-briefing.jpg",
-  },
-  {
-    id: "15",
-    title: "Commercial Kitchen Spotless",
-    category: "commercial",
-    image: "/images/gallery/commercial-kitchen-spotless.jpg",
-  },
-  {
-    id: "17",
-    title: "Office Space Sanitized",
-    category: "commercial",
-    image: "/images/gallery/office-sanitized.jpg",
-  },
-  {
-    id: "18",
-    title: "Bathroom Vanity — Marble Finish",
-    category: "commercial",
-    image: "/images/gallery/bathroom-vanity-marble.jpg",
-  },
-  {
-    id: "19",
-    title: "Window Detail Clean",
-    category: "commercial",
-    image: "/images/gallery/window-cleaning-closeup.jpg",
-  },
-  {
-    id: "21",
-    title: "Team Ready for Action",
-    category: "commercial",
-    image: "/images/gallery/team-lobby-equipment.jpg",
-  },
-  {
-    id: "24",
-    title: "Medical Office — Bright & Sanitized",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-office-bright.jpg",
-  },
-  {
-    id: "25",
-    title: "Exam Room Cleaned — Room 4",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-room-4.jpg",
-  },
-  {
-    id: "26",
-    title: "Multi-Station Exam Suite",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-multi-station.jpg",
-  },
-  {
-    id: "27",
-    title: "Medical Exam Room — Window View",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-exam-window.jpg",
-  },
-  {
-    id: "28",
-    title: "Medical Hallway — Polished Floors",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-hallway.jpg",
-  },
-  {
-    id: "29",
-    title: "Cleaner at Work — Medical Office",
-    category: "commercial",
-    image: "/images/gallery/commercial-cleaner-action.jpg",
-  },
-  {
-    id: "30",
-    title: "Medical Exam Room — Clean & Ready",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-exam-room.jpg",
-  },
-  {
-    id: "31",
-    title: "Exam Room — Clean Setup",
-    category: "commercial",
-    image: "/images/gallery/commercial-medical-exam-clean.jpg",
-  },
-  {
-    id: "32",
-    title: "Stainless Sink — Polished",
-    category: "commercial",
-    image: "/images/gallery/commercial-stainless-sink-polished.jpg",
-  },
-  {
-    id: "33",
-    title: "Office Breakroom Sink",
-    category: "commercial",
-    image: "/images/gallery/commercial-office-sink-sanitizer.jpg",
-  },
-  {
-    id: "34",
-    title: "Kindred Sink — After Clean",
-    category: "commercial",
-    image: "/images/gallery/commercial-kindred-sink-clean.jpg",
-  },
-  {
-    id: "35",
-    title: "Accessible Bathroom — Full Clean",
-    category: "commercial",
-    image: "/images/gallery/commercial-accessible-bathroom.jpg",
-  },
-  {
-    id: "36",
-    title: "Commercial Bathroom Vanity",
-    category: "commercial",
-    image: "/images/gallery/commercial-bathroom-vanity-full.jpg",
-  },
-  {
-    id: "37",
-    title: "Bathroom Vanity — Wide View",
-    category: "commercial",
-    image: "/images/gallery/commercial-bathroom-vanity-wide.jpg",
-  },
-  {
-    id: "38",
-    title: "Restroom Toilet — Spotless",
-    category: "commercial",
-    image: "/images/gallery/commercial-bathroom-toilet-fresh.jpg",
-  },
-  {
-    id: "39",
-    title: "Commercial Restroom — White & Clean",
-    category: "commercial",
-    image: "/images/gallery/commercial-bathroom-toilet-white.jpg",
-  },
-  // ── Deep Cleaning ────────────────────────────────────────────
+
+  // ════════════════════════════════════════════════════════════
+  // DEEP CLEANING
+  // Before/after transformations first, then single shots
+  // ════════════════════════════════════════════════════════════
   {
     id: "2",
     title: "Toilet Deep Clean",
@@ -440,10 +294,191 @@ export const GALLERY_ITEMS: GalleryItem[] = [
     image: "/images/gallery/sink-polished.jpg",
   },
   {
-    id: "20",
-    title: "Sink Sanitization",
+    id: "40",
+    title: "Deep Clean Result",
     category: "deep-cleaning",
-    image: "/images/gallery/sink-sanitized.jpg",
+    image: "/images/gallery/0f7edb87-31f3-43b9-913e-5178cab84825.jpg",
+  },
+  {
+    id: "41",
+    title: "Thorough Sanitization",
+    category: "deep-cleaning",
+    image: "/images/gallery/514ac785-71d5-4977-88a8-d32ec4efbce1.jpg",
+  },
+
+  // ════════════════════════════════════════════════════════════
+  // MOVE-IN / MOVE-OUT
+  // New real photos from Bimbo's jobs
+  // ════════════════════════════════════════════════════════════
+  {
+    id: "42",
+    title: "Move-Out Clean — Full Transformation",
+    category: "move-in-out",
+    beforeImage: "/images/gallery/move-out-before.jpg",
+    afterImage: "/images/gallery/move-out-after.jpg",
+  },
+  {
+    id: "43",
+    title: "Move-Out Clean — Room Detail",
+    category: "move-in-out",
+    beforeImage: "/images/gallery/move-out-before-2.jpg",
+    afterImage: "/images/gallery/move-out-after-clean.jpg",
+  },
+
+  // ════════════════════════════════════════════════════════════
+  // POST-CONSTRUCTION
+  // Pre-clean stage photos from renovation clean job
+  // ════════════════════════════════════════════════════════════
+  {
+    id: "44",
+    title: "Post-Renovation Clean — Stage 1",
+    category: "post-construction",
+    image: "/images/gallery/post-reno-clean-1.jpg",
+  },
+  {
+    id: "45",
+    title: "Post-Renovation Clean — Stage 2",
+    category: "post-construction",
+    image: "/images/gallery/post-reno-clean-2.jpg",
+  },
+  {
+    id: "46",
+    title: "Post-Renovation Clean — Stage 3",
+    category: "post-construction",
+    image: "/images/gallery/post-reno-clean-3.jpg",
+  },
+
+  // ════════════════════════════════════════════════════════════
+  // COMMERCIAL
+  // Kitchens, offices, medical facilities — before/after first
+  // ════════════════════════════════════════════════════════════
+  {
+    id: "4",
+    title: "Commercial Kitchen Clean",
+    category: "commercial",
+    beforeImage: "/images/gallery/IMG_4022.jpg",
+    afterImage: "/images/gallery/IMG_4055.jpg",
+  },
+  {
+    id: "12",
+    title: "Break Room Transformation",
+    category: "commercial",
+    beforeImage: "/images/gallery/kitchenette-before.jpg",
+    afterImage: "/images/gallery/kitchenette-after.jpg",
+  },
+  {
+    id: "15",
+    title: "Commercial Kitchen Spotless",
+    category: "commercial",
+    image: "/images/gallery/commercial-kitchen-spotless.jpg",
+  },
+  {
+    id: "11",
+    title: "Commercial Sink Polished",
+    category: "commercial",
+    image: "/images/gallery/commercial-sink-cleaning.jpg",
+  },
+  {
+    id: "32",
+    title: "Stainless Sink — Polished",
+    category: "commercial",
+    image: "/images/gallery/commercial-stainless-sink-polished.jpg",
+  },
+  {
+    id: "33",
+    title: "Office Breakroom Sink",
+    category: "commercial",
+    image: "/images/gallery/commercial-office-sink-sanitizer.jpg",
+  },
+  {
+    id: "34",
+    title: "Kindred Sink — After Clean",
+    category: "commercial",
+    image: "/images/gallery/commercial-kindred-sink-clean.jpg",
+  },
+  {
+    id: "35",
+    title: "Accessible Bathroom — Full Clean",
+    category: "commercial",
+    image: "/images/gallery/commercial-accessible-bathroom.jpg",
+  },
+  {
+    id: "36",
+    title: "Commercial Bathroom Vanity",
+    category: "commercial",
+    image: "/images/gallery/commercial-bathroom-vanity-full.jpg",
+  },
+  {
+    id: "38",
+    title: "Restroom Toilet — Spotless",
+    category: "commercial",
+    image: "/images/gallery/commercial-bathroom-toilet-fresh.jpg",
+  },
+  {
+    id: "13",
+    title: "Window Cleaning — Office",
+    category: "commercial",
+    image: "/images/gallery/window-cleaning-action.jpg",
+  },
+  {
+    id: "19",
+    title: "Window Detail Clean",
+    category: "commercial",
+    image: "/images/gallery/window-cleaning-closeup.jpg",
+  },
+  {
+    id: "17",
+    title: "Office Space Sanitized",
+    category: "commercial",
+    image: "/images/gallery/office-sanitized.jpg",
+  },
+  {
+    id: "24",
+    title: "Medical Office — Bright & Sanitized",
+    category: "commercial",
+    image: "/images/gallery/commercial-medical-office-bright.jpg",
+  },
+  {
+    id: "25",
+    title: "Exam Room — Cleaned & Ready",
+    category: "commercial",
+    image: "/images/gallery/commercial-medical-room-4.jpg",
+  },
+  {
+    id: "26",
+    title: "Multi-Station Exam Suite",
+    category: "commercial",
+    image: "/images/gallery/commercial-medical-multi-station.jpg",
+  },
+  {
+    id: "27",
+    title: "Medical Exam Room — Window View",
+    category: "commercial",
+    image: "/images/gallery/commercial-medical-exam-window.jpg",
+  },
+  {
+    id: "28",
+    title: "Medical Hallway — Polished Floors",
+    category: "commercial",
+    image: "/images/gallery/commercial-medical-hallway.jpg",
+  },
+  {
+    id: "29",
+    title: "Cleaner at Work — Medical Office",
+    category: "commercial",
+    image: "/images/gallery/commercial-cleaner-action.jpg",
+  },
+  {
+    id: "14",
+    title: "Team On-Site",
+    category: "commercial",
+    image: "/images/gallery/team-briefing.jpg",
+  },
+  {
+    id: "21",
+    title: "Team Ready for Action",
+    category: "commercial",
+    image: "/images/gallery/team-lobby-equipment.jpg",
   },
 ];
 
