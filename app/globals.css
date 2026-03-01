@@ -48,6 +48,23 @@
 
 /* scroll-behavior: smooth removed — causes issues with Next.js client navigation and bfcache */
 
+/* ── BossBimbz HQ — Dashboard colour theme ────────────────────────────────
+   Scoped to [data-hq] so the public UltraTidy site stays aquagreen.
+   Primary: #7C3AED (violet-600)  Ring/Focus: same.
+   ──────────────────────────────────────────────────────────────────────── */
+[data-hq] {
+  --primary:            263 70% 58%;
+  --primary-foreground: 0   0%  100%;
+  --ring:               263 70% 58%;
+  --muted:              250 20% 96%;
+  --muted-foreground:   250  8% 46%;
+  --border:             250 16% 91%;
+  --input:              250 16% 91%;
+  --background:         250 30% 98%;
+  --secondary:          250 20% 95%;
+  --secondary-foreground: 250 30% 20%;
+}
+
 /* Premium glass card effect */
 @layer utilities {
   .text-balance {

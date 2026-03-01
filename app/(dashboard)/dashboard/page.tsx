@@ -43,7 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const BUSINESS_COLORS: Record<string, string> = {
   ultratidy: "#0BBDB2",
-  dba: "#6366F1",
+  dba: "#7C3AED",
   primefield: "#F59E0B",
 };
 
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                     <XAxis dataKey="name" fontSize={12} />
                     <YAxis allowDecimals={false} fontSize={12} />
                     <Tooltip />
-                    <Bar dataKey="count" fill="#0BBDB2" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="#7C3AED" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
