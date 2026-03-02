@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { ArrowLeft, Skull, TrendingDown } from "lucide-react";
+import { ArrowLeft, Skull, TrendingDown, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";
 
@@ -26,25 +26,40 @@ interface MortalitySummary {
   mortality_rate: number;
 }
 
+const ACTION_BADGE: Record<
+  string,
+  { label: string; className: string }
+> = {
+  add:       { label: "Add",       className: "bg-green-100 text-green-700" },
+  remove:    { label: "Remove",    className: "bg-orange-100 text-orange-700" },
+  sale:      { label: "Sale",      className: "bg-blue-100 text-blue-700" },
+  mortality: { label: "Mortality", className: "bg-red-100 text-red-700" },
+};
+
 export default function FarmInventoryPage() {
   const [inventory, setInventory] = useState<FarmInventory[]>([]);
   const [mortalityLog, setMortalityLog] = useState<FarmInventoryTransaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<FarmInventoryTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [invRes, mortRes] = await Promise.all([
+        const [invRes, mortRes, allRes] = await Promise.all([
           fetch("/api/farm/inventory"),
           fetch("/api/farm/inventory/transaction?action=mortality"),
+          fetch("/api/farm/inventory/transaction"),
         ]);
         const invData = await invRes.json();
         const mortData = await mortRes.json();
+        const allData = await allRes.json();
         setInventory(Array.isArray(invData) ? invData : []);
         setMortalityLog(mortData.data || []);
+        setAllTransactions(allData.data || []);
       } catch {
         setInventory([]);
         setMortalityLog([]);
+        setAllTransactions([]);
       } finally {
         setIsLoading(false);
       }
@@ -57,7 +72,7 @@ export default function FarmInventoryPage() {
     const deaths = mortalityLog
       .filter((m) => m.product === inv.product)
       .reduce((sum, m) => sum + m.quantity, 0);
-    const total = inv.current_stock + deaths; // current_stock + total deaths = original stock
+    const total = inv.current_stock + deaths;
     const rate = total > 0 ? Math.round((deaths / total) * 100) : 0;
     return {
       product: inv.product,
@@ -66,6 +81,11 @@ export default function FarmInventoryPage() {
       mortality_rate: rate,
     };
   });
+
+  function formatDate(tx: FarmInventoryTransaction) {
+    const raw = tx.date || tx.created_at;
+    return format(new Date(raw), "dd MMM yyyy");
+  }
 
   return (
     <>
@@ -82,6 +102,7 @@ export default function FarmInventoryPage() {
         <Tabs defaultValue="stock">
           <TabsList>
             <TabsTrigger value="stock">Current Stock</TabsTrigger>
+            <TabsTrigger value="transactions">All Transactions</TabsTrigger>
             <TabsTrigger value="mortality">Mortality</TabsTrigger>
           </TabsList>
 
@@ -143,6 +164,97 @@ export default function FarmInventoryPage() {
                 ) : (
                   <p className="text-sm text-gray-500 text-center py-12">
                     No inventory data
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── All Transactions Tab ── */}
+          <TabsContent value="transactions" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-gray-500" />
+                <CardTitle className="text-base">
+                  All Inventory Entries
+                  {!isLoading && (
+                    <span className="ml-2 text-xs font-normal text-gray-400">
+                      ({allTransactions.length} records)
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="p-6 space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10" />
+                    ))}
+                  </div>
+                ) : allTransactions.length ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead className="hidden sm:table-cell">
+                          Reason / Cause
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Notes
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allTransactions.map((tx) => {
+                        const badge =
+                          ACTION_BADGE[tx.action] ?? {
+                            label: tx.action,
+                            className: "bg-gray-100 text-gray-700",
+                          };
+                        const isDecrease = ["remove", "sale", "mortality"].includes(
+                          tx.action
+                        );
+                        return (
+                          <TableRow key={tx.id}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                              {formatDate(tx)}
+                            </TableCell>
+                            <TableCell className="capitalize">
+                              {tx.product}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="secondary"
+                                className={badge.className}
+                              >
+                                {badge.label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell
+                              className={`font-semibold ${
+                                isDecrease ? "text-red-600" : "text-green-700"
+                              }`}
+                            >
+                              {isDecrease ? "-" : "+"}
+                              {tx.quantity}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm text-gray-500">
+                              {tx.reason || "—"}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-sm text-gray-400">
+                              {tx.notes || "—"}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-12">
+                    No transactions recorded yet
                   </p>
                 )}
               </CardContent>
@@ -227,9 +339,7 @@ export default function FarmInventoryPage() {
                       {mortalityLog.map((m) => (
                         <TableRow key={m.id}>
                           <TableCell className="font-medium">
-                            {m.date
-                              ? format(new Date(m.date), "dd MMM yyyy")
-                              : format(new Date(m.created_at), "dd MMM yyyy")}
+                            {formatDate(m)}
                           </TableCell>
                           <TableCell className="capitalize">
                             {m.product}
