@@ -37,7 +37,7 @@ const PRODUCTS = [
     description: "Freshly harvested, sized to perfection.",
     // User's real catfish photo — white bg, use object-contain with sage bg
     image: "/catfish.webp",
-    imageStyle: "object-contain p-6 bg-[#E8F3EB]",
+    imageStyle: "object-contain bg-[#C8E6C9]",
     badge: "Most Popular",
     badgeColor: "bg-[#11d469] text-[#0a2a28]",
   },
