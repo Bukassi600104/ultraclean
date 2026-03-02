@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import sanitizeHtml from "sanitize-html";
 import {
   Calendar,
   Clock,
@@ -290,7 +291,22 @@ export default async function BlogPostPage({
               {/* Content */}
               <div
                 className="prose prose-lg max-w-none prose-headings:font-heading prose-a:text-primary prose-img:rounded-xl"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(post.content, {
+                    allowedTags: [
+                      "h1","h2","h3","h4","h5","h6",
+                      "p","ul","ol","li","blockquote","pre","code",
+                      "strong","em","u","s","a","img","hr","br","div","span","table",
+                      "thead","tbody","tr","th","td",
+                    ],
+                    allowedAttributes: {
+                      a: ["href", "target", "rel"],
+                      img: ["src", "alt", "width", "height"],
+                      "*": ["class"],
+                    },
+                    allowedSchemes: ["https", "http", "mailto"],
+                  }),
+                }}
               />
 
               {/* Bottom share + CTA */}

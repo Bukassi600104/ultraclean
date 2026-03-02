@@ -2,20 +2,21 @@ import { z } from "zod";
 
 // ── Public contact form ──
 export const contactFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters").max(100),
   phone: z
     .string()
     .min(10, "Please enter a valid phone number")
+    .max(30)
     .regex(/^[\d\s()+\-]+$/, "Please enter a valid phone number"),
-  email: z.string().email("Please enter a valid email address"),
-  service: z.string().min(1, "Please select a service"),
-  propertyType: z.string().optional(),
-  squareFootage: z.string().optional(),
-  dateNeeded: z.string().optional(),
-  timePreference: z.string().optional(),
-  frequency: z.string().optional(),
-  specialRequests: z.string().optional(),
-  referralSource: z.string().optional(),
+  email: z.string().email("Please enter a valid email address").max(254),
+  service: z.string().min(1, "Please select a service").max(100),
+  propertyType: z.string().max(100).optional(),
+  squareFootage: z.string().max(20).optional(),
+  dateNeeded: z.string().max(30).optional(),
+  timePreference: z.string().max(50).optional(),
+  frequency: z.string().max(50).optional(),
+  specialRequests: z.string().max(2000).optional(),
+  referralSource: z.string().max(100).optional(),
 });
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
@@ -46,26 +47,27 @@ export const leadUpdateSchema = z.object({
   status: z
     .enum(["new", "contacted", "quoted", "booked", "completed", "lost"])
     .optional(),
-  notes: z.string().optional(),
-  name: z.string().min(2).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(7).optional(),
-  service: z.string().optional(),
-  property_size: z.string().nullable().optional(),
-  date_needed: z.string().nullable().optional(),
+  notes: z.string().max(5000).optional(),
+  name: z.string().min(2).max(100).optional(),
+  email: z.string().email().max(254).optional(),
+  phone: z.string().min(7).max(30).optional(),
+  service: z.string().max(100).optional(),
+  property_size: z.string().max(50).nullable().optional(),
+  date_needed: z.string().max(30).nullable().optional(),
 });
 
 // ── Blog ──
 export const blogPostSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Title is required").max(200),
   slug: z
     .string()
     .min(1, "Slug is required")
+    .max(200)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"),
-  content: z.string().optional(),
-  excerpt: z.string().optional(),
-  featured_image: z.string().nullable().optional(),
-  meta_description: z.string().optional(),
+  content: z.string().max(500000).optional(),
+  excerpt: z.string().max(500).optional(),
+  featured_image: z.string().max(500).nullable().optional(),
+  meta_description: z.string().max(300).optional(),
   status: z.enum(["draft", "published"]).optional(),
 });
 

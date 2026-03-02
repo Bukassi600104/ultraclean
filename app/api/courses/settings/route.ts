@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 
 const BUCKET = "config";
 const FILE = "dba-settings.json";
@@ -20,6 +21,12 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createServerClient();
   if (!supabase) {
     return NextResponse.json(
