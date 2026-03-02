@@ -89,8 +89,6 @@ export default function LoginPage() {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          method="POST"
-          action=""
           className="space-y-4"
         >
           <div className="space-y-2">
