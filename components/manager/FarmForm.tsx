@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle } from "lucide-react";
 
 interface FarmFormProps {
@@ -23,18 +22,21 @@ export function FarmForm({
     <form onSubmit={onSubmit} className="space-y-5 px-4 pb-24">
       {children}
 
-      <Button
+      <button
         type="submit"
         disabled={isLoading}
-        className="w-full h-14 text-lg font-semibold"
+        className="w-full h-14 rounded-xl text-lg font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+        style={{
+          backgroundColor: isSuccess ? "#11d469" : "#1B4332",
+        }}
       >
         {isLoading ? (
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin" />
         ) : isSuccess ? (
-          <CheckCircle className="mr-2 h-5 w-5" />
+          <CheckCircle className="h-5 w-5" />
         ) : null}
         {isSuccess ? "Saved!" : isLoading ? "Saving..." : submitLabel}
-      </Button>
+      </button>
     </form>
   );
 }

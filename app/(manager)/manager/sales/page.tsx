@@ -70,9 +70,10 @@ export default function ManagerSalesPage() {
 
   return (
     <div className="mx-auto max-w-lg">
-      <h2 className="px-4 mb-4 text-xl font-bold text-gray-900">
+      <h2 className="px-4 mb-4 text-xl font-bold" style={{ color: "#1B4332" }}>
         Record Sale
       </h2>
+      <div className="mx-4 rounded-2xl bg-white shadow-sm overflow-hidden mb-4">
       <FarmForm
         onSubmit={handleSubmit(onSubmit)}
         isLoading={isLoading}
@@ -166,6 +167,7 @@ export default function ManagerSalesPage() {
           />
         </div>
       </FarmForm>
+      </div>
     </div>
   );
 }
