@@ -390,7 +390,7 @@ export default function PrimefieldPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-[#1B4332]">Call Us</h4>
-                    <p className="text-gray-600">+234 800 123 4567</p>
+                    <p className="text-gray-600">+234 805 530 6917</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
@@ -409,7 +409,8 @@ export default function PrimefieldPage() {
                   <div>
                     <h4 className="font-bold text-[#1B4332]">Visit Us</h4>
                     <p className="text-gray-600">
-                      KM 10, Moniya-Iseyin Road, Ibadan, Oyo State
+                      Agbon Ile Village, Makoni Hotels Bus Stop,<br />
+                      Ido Eleyele-Ologuneru Road, Ibadan
                     </p>
                   </div>
                 </div>
