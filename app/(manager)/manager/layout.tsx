@@ -41,7 +41,7 @@ export default function ManagerLayout({
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-white px-2 py-1">
             <Image
-              src="/primefield-logo.jpg"
+              src="/primefield-logo.png"
               alt="Primefield Agri-Business Limited"
               width={100}
               height={36}

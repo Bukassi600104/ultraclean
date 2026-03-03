@@ -8,7 +8,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div data-hq className="flex h-screen overflow-hidden bg-[#F6F5FF]">
+      <div data-hq className="flex h-screen overflow-hidden bg-[#EEEEFF]">
         <Sidebar />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

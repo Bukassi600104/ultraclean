@@ -14,7 +14,7 @@ export function PrimefieldNav() {
           {/* Logo */}
           <div className="flex items-center">
             <Image
-              src="/primefield-logo.jpg"
+              src="/primefield-logo.png"
               alt="Primefield Agri-Business Limited"
               width={160}
               height={56}
