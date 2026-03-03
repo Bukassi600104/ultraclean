@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
@@ -12,7 +13,6 @@ import {
   Package,
   Wallet,
   LogOut,
-  Leaf,
 } from "lucide-react";
 
 const tabs = [
@@ -38,19 +38,18 @@ export default function ManagerLayout({
         className="flex h-16 items-center justify-between px-4 shadow-md"
         style={{ backgroundColor: "#1B4332" }}
       >
-        <div className="flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-full"
-            style={{ backgroundColor: "#11d469" }}
-          >
-            <Leaf className="h-4 w-4 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-white px-2 py-1">
+            <Image
+              src="/primefield-logo.jpg"
+              alt="Primefield Agri-Business Limited"
+              width={100}
+              height={36}
+              className="object-contain"
+              priority
+            />
           </div>
-          <div className="leading-none">
-            <p className="text-xs font-medium text-white/60 uppercase tracking-widest">
-              Primefield
-            </p>
-            <p className="text-base font-bold text-white">Farm Manager</p>
-          </div>
+          <p className="text-sm font-semibold text-white/80">Farm Manager</p>
         </div>
         <button
           onClick={signOut}
