@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   GraduationCap,
   Link2,
@@ -9,25 +9,113 @@ import {
   ExternalLink,
   Users,
   BookOpen,
+  PencilLine,
+  DollarSign,
+  Loader2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
+interface CourseSettings {
+  course_name: string;
+  price_cents: number;
+  currency: string;
+}
+
+function formatPrice(cents: number, currency: string) {
+  return (cents / 100).toLocaleString("en-CA", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  });
+}
+
 export default function CoursesPage() {
   const [copied, setCopied] = useState(false);
+  const [settings, setSettings] = useState<CourseSettings | null>(null);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
-  const siteUrl =
+  // Edit state
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const registrationLink =
     typeof window !== "undefined"
-      ? window.location.origin
-      : "https://ultratidy.vercel.app";
+      ? `${window.location.origin.replace("leads.", "register.")}/register`
+      : "https://register.ultratidycleaning.com";
 
-  const registrationLink = `${siteUrl}/register`;
+  useEffect(() => {
+    fetch("/api/courses/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        setSettings(data);
+        setLoadingSettings(false);
+      })
+      .catch(() => setLoadingSettings(false));
+  }, []);
+
+  function openEdit() {
+    if (!settings) return;
+    setEditName(settings.course_name);
+    setEditPrice((settings.price_cents / 100).toFixed(2));
+    setSaveError("");
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setEditing(false);
+    setSaveError("");
+  }
+
+  async function handleSave() {
+    setSaveError("");
+    const priceNum = parseFloat(editPrice);
+    if (!editName.trim()) {
+      setSaveError("Course name cannot be empty.");
+      return;
+    }
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setSaveError("Enter a valid price greater than $0.");
+      return;
+    }
+
+    const price_cents = Math.round(priceNum * 100);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/courses/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          course_name: editName.trim(),
+          price_cents,
+          currency: settings?.currency || "cad",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error || "Failed to save. Please try again.");
+        return;
+      }
+      setSettings(data);
+      setEditing(false);
+      toast.success("Course settings updated!");
+    } catch {
+      setSaveError("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleCopy() {
     await navigator.clipboard.writeText(registrationLink);
     setCopied(true);
-    toast.success("Registration link copied to clipboard!");
+    toast.success("Registration link copied!");
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -35,29 +123,132 @@ export default function CoursesPage() {
     <>
       <DashboardHeader title="DBA Courses" />
       <div className="p-4 lg:p-8 space-y-6 max-w-3xl">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-primary" />
-            Course Registration
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Share this link with prospective students. When they register their
-            interest, their details appear automatically in{" "}
-            <strong>Leads → DBA</strong>.
-          </p>
+
+        {/* Course Settings Card */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              <h2 className="font-heading font-semibold text-base">
+                Active Course
+              </h2>
+            </div>
+            {!editing && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openEdit}
+                disabled={loadingSettings}
+                className="gap-1.5"
+              >
+                <PencilLine className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
+          </div>
+
+          <div className="px-6 py-5">
+            {loadingSettings ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading course settings...
+              </div>
+            ) : editing ? (
+              /* ── Edit form ── */
+              <div className="space-y-4">
+                {saveError && (
+                  <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
+                    {saveError}
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-name">Course Name</Label>
+                  <Input
+                    id="c-name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Digital Boss Academy — Business Starter"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This name appears on the Stripe payment page and receipt.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-price">Price (CAD $)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="c-price"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      placeholder="497.00"
+                      className="pl-9"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter the full price in Canadian dollars (e.g. 497 for $497 CAD).
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <Button onClick={handleSave} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={cancelEdit}
+                    disabled={saving}
+                    className="gap-1.5"
+                  >
+                    <X className="h-4 w-4" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : settings ? (
+              /* ── Display mode ── */
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <GraduationCap className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-lg font-semibold text-gray-900 leading-tight">
+                    {settings.course_name}
+                  </p>
+                  <p className="text-2xl font-bold text-primary mt-1">
+                    {formatPrice(settings.price_cents, settings.currency)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This price is what students pay on the Stripe checkout page.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Could not load course settings.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Registration Link Card */}
         <div className="rounded-xl border bg-card p-6 space-y-4">
           <h2 className="font-heading font-semibold text-lg flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
-            Your Registration Link
+            Registration Link
           </h2>
-
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0 rounded-lg bg-muted/50 border px-4 py-3 font-mono text-sm break-all">
-              {registrationLink}
+              https://register.ultratidycleaning.com
             </div>
             <Button
               variant="outline"
@@ -72,11 +263,10 @@ export default function CoursesPage() {
               )}
             </Button>
           </div>
-
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" asChild>
               <a
-                href={registrationLink}
+                href="https://register.ultratidycleaning.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"
@@ -90,11 +280,9 @@ export default function CoursesPage() {
               Copy Link
             </Button>
           </div>
-
           <p className="text-xs text-muted-foreground">
-            Share this link on WhatsApp, Instagram, Facebook, or email. Students
-            fill in their name, email, and phone — no payment required at this
-            stage.
+            Share on WhatsApp, Instagram, Facebook, or email. Students register
+            their interest and are automatically directed to pay via Stripe.
           </p>
         </div>
 
@@ -104,44 +292,19 @@ export default function CoursesPage() {
             How It Works
           </h2>
           <ol className="space-y-4 text-sm text-muted-foreground">
-            <li className="flex gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
-                1
-              </span>
-              <span className="pt-0.5">
-                Share the registration link on social media or directly with
-                prospective students.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
-                2
-              </span>
-              <span className="pt-0.5">
-                Students fill in their name, email, phone, and optionally a
-                message about their goals.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
-                3
-              </span>
-              <span className="pt-0.5">
-                Their details appear instantly in{" "}
-                <strong className="text-foreground">Leads</strong> under the{" "}
-                <strong className="text-foreground">DBA</strong> business
-                filter.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
-                4
-              </span>
-              <span className="pt-0.5">
-                Follow up with each student to confirm enrollment, share payment
-                details, and onboard them into the course.
-              </span>
-            </li>
+            {[
+              "Share the registration link on social media or directly with prospective students.",
+              "Students fill in their name, email, and phone number.",
+              'They click "Proceed to Payment" and pay via Stripe — the price shown is whatever you set above.',
+              "Their details appear instantly in Leads under the DBA filter, and they receive a confirmation email.",
+            ].map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                  {i + 1}
+                </span>
+                <span className="pt-0.5">{step}</span>
+              </li>
+            ))}
           </ol>
         </div>
 

@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
-
-const BUCKET = "config";
-const FILE = "dba-settings.json";
+import { getCourseSettings, saveCourseSettings } from "@/lib/course-settings";
 
 export async function GET() {
-  const supabase = createServerClient();
-  if (!supabase) {
-    return NextResponse.json({ stripe_price_id: "" });
-  }
-
-  const { data, error } = await supabase.storage.from(BUCKET).download(FILE);
-  if (error) {
-    return NextResponse.json({ stripe_price_id: "" });
-  }
-
-  const config = JSON.parse(await data.text());
-  return NextResponse.json(config);
+  const settings = await getCourseSettings();
+  return NextResponse.json(settings);
 }
 
 export async function PUT(request: NextRequest) {
@@ -27,37 +14,30 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createServerClient();
-  if (!supabase) {
-    return NextResponse.json(
-      { error: "Database not configured" },
-      { status: 503 }
-    );
-  }
-
   const body = await request.json();
-  const priceId = body.stripe_price_id?.trim() || "";
 
-  // Validate price ID format if provided
-  if (priceId && !/^price_[a-zA-Z0-9]{8,}$/.test(priceId)) {
+  const course_name = (body.course_name || "").trim();
+  const price_cents = parseInt(body.price_cents, 10);
+  const currency = (body.currency || "cad").toLowerCase();
+
+  if (!course_name) {
     return NextResponse.json(
-      { error: "Invalid Stripe Price ID format. It should start with 'price_'" },
+      { error: "Course name is required" },
       { status: 400 }
     );
   }
 
-  const config = { stripe_price_id: priceId };
-
-  const { error } = await supabase.storage
-    .from(BUCKET)
-    .upload(FILE, JSON.stringify(config), {
-      contentType: "application/json",
-      upsert: true,
-    });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (isNaN(price_cents) || price_cents <= 0) {
+    return NextResponse.json(
+      { error: "Price must be a positive number" },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json(config);
+  const { error } = await saveCourseSettings({ course_name, price_cents, currency });
+  if (error) {
+    return NextResponse.json({ error }, { status: 500 });
+  }
+
+  return NextResponse.json({ course_name, price_cents, currency });
 }
