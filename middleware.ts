@@ -44,21 +44,33 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    const url = request.nextUrl.clone();
-    url.pathname = `/manager${pathname === "/" ? "/sales" : pathname}`;
-    return NextResponse.rewrite(url);
+    // API routes pass through as-is (don't rewrite /api/* to /manager/api/*)
+    if (!pathname.startsWith("/api/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/manager${pathname === "/" ? "/sales" : pathname}`;
+      return NextResponse.rewrite(url);
+    }
+    return supabaseResponse;
   }
 
   if (hostname.startsWith("leads.")) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    // API routes pass through as-is
+    if (!pathname.startsWith("/api/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
+      return NextResponse.rewrite(url);
+    }
+    // fall through to updateSession below
   }
 
   if (hostname.startsWith("register.")) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/register${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    // API routes pass through as-is
+    if (!pathname.startsWith("/api/")) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/register${pathname === "/" ? "" : pathname}`;
+      return NextResponse.rewrite(url);
+    }
+    // fall through to updateSession below
   }
 
   // Refresh session
