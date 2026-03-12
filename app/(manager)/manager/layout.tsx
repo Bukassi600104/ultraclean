@@ -16,10 +16,34 @@ import {
 } from "lucide-react";
 
 const tabs = [
-  { href: "/manager/sales", label: "Sales", icon: DollarSign },
-  { href: "/manager/expenses", label: "Expenses", icon: Receipt },
-  { href: "/manager/inventory", label: "Stock", icon: Package },
-  { href: "/manager/cash", label: "Cash", icon: Wallet },
+  {
+    href: "/manager/sales",
+    label: "Sales",
+    icon: DollarSign,
+    color: "#16a34a",        // green-600
+    bgColor: "#dcfce7",      // green-100
+  },
+  {
+    href: "/manager/expenses",
+    label: "Expenses",
+    icon: Receipt,
+    color: "#dc2626",        // red-600
+    bgColor: "#fee2e2",      // red-100
+  },
+  {
+    href: "/manager/inventory",
+    label: "Stock",
+    icon: Package,
+    color: "#2563eb",        // blue-600
+    bgColor: "#dbeafe",      // blue-100
+  },
+  {
+    href: "/manager/cash",
+    label: "Cash",
+    icon: Wallet,
+    color: "#d97706",        // amber-600
+    bgColor: "#fef3c7",      // amber-100
+  },
 ];
 
 export default function ManagerLayout({
@@ -80,23 +104,27 @@ export default function ManagerLayout({
                 href={tab.href}
                 className={cn(
                   "flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition-colors",
-                  isActive ? "text-[#1B4332]" : "text-gray-400 hover:text-gray-600"
+                  isActive ? "" : "text-gray-400 hover:text-gray-600"
                 )}
+                style={isActive ? { color: tab.color } : {}}
               >
                 <div
-                  className={cn(
-                    "flex h-7 w-7 items-center justify-center rounded-full transition-all",
-                    isActive ? "bg-[#11d469]/20" : "bg-transparent"
-                  )}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl transition-all"
+                  style={
+                    isActive
+                      ? { backgroundColor: tab.bgColor }
+                      : { backgroundColor: "transparent" }
+                  }
                 >
                   <tab.icon
-                    className={cn(
-                      "h-5 w-5",
-                      isActive ? "text-[#1B4332]" : "text-gray-400"
-                    )}
+                    className="h-5 w-5 transition-colors"
+                    style={isActive ? { color: tab.color } : { color: "#9ca3af" }}
                   />
                 </div>
-                <span className={isActive ? "font-semibold text-[#1B4332]" : ""}>
+                <span
+                  className={isActive ? "font-bold" : ""}
+                  style={isActive ? { color: tab.color } : {}}
+                >
                   {tab.label}
                 </span>
               </Link>

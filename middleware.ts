@@ -6,14 +6,58 @@ export async function middleware(request: NextRequest) {
 
   // Production subdomain rewriting
   const hostname = request.headers.get("host") || "";
+
+  if (hostname.startsWith("farm.")) {
+    // Refresh session first so we can check auth
+    const result = await updateSession(request);
+    const { supabaseResponse, user, supabase } = result;
+
+    // Allow the login page through (no auth required)
+    if (pathname === "/login") {
+      if (user) {
+        // Already logged in → redirect to farm home
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/";
+        return NextResponse.redirect(redirectUrl);
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/manager/login";
+      return NextResponse.rewrite(url);
+    }
+
+    // All other farm routes require auth
+    if (!user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/manager${pathname === "/" ? "/sales" : pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
   if (hostname.startsWith("leads.")) {
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
-  if (hostname.startsWith("farm.")) {
+
+  if (hostname.startsWith("register.")) {
     const url = request.nextUrl.clone();
-    url.pathname = `/manager${pathname === "/" ? "/sales" : pathname}`;
+    url.pathname = `/register${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
 
@@ -35,6 +79,11 @@ export async function middleware(request: NextRequest) {
         profile?.role === "manager" ? "/manager/sales" : "/dashboard";
       return NextResponse.redirect(redirectUrl);
     }
+    return supabaseResponse;
+  }
+
+  // Manager login page: always accessible
+  if (pathname === "/manager/login") {
     return supabaseResponse;
   }
 
@@ -89,9 +138,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/manager/:path*",
-    "/login",
-    "/auth/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

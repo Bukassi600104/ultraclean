@@ -49,7 +49,30 @@ export function RegistrationForm() {
     }
   }
 
-  const paymentLink = process.env.NEXT_PUBLIC_DBA_PAYMENT_LINK;
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+
+  async function handleProceedToPayment() {
+    setPaymentLoading(true);
+    setPaymentError("");
+    try {
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setPaymentError(data.error || "Could not start payment. Please try again.");
+        setPaymentLoading(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setPaymentError("Network error. Please try again.");
+      setPaymentLoading(false);
+    }
+  }
 
   if (submitted) {
     return (
@@ -61,23 +84,25 @@ export function RegistrationForm() {
           You&apos;re on the list!
         </h3>
         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          Thanks, {name.split(" ")[0]}! Your registration has been received.
+          Thanks, {name.split(" ")[0]}! Your registration has been received. Complete your payment to secure your spot.
         </p>
-        {paymentLink && (
-          <a
-            href={paymentLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center w-full h-12 rounded-lg bg-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity"
-          >
-            Proceed to Payment →
-          </a>
+        {paymentError && (
+          <p className="text-sm text-destructive">{paymentError}</p>
         )}
-        {!paymentLink && (
-          <p className="text-sm text-muted-foreground">
-            Bimbo will be in touch with payment details and next steps.
-          </p>
-        )}
+        <button
+          onClick={handleProceedToPayment}
+          disabled={paymentLoading}
+          className="inline-flex items-center justify-center w-full h-12 rounded-lg bg-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {paymentLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Redirecting to payment...
+            </>
+          ) : (
+            "Proceed to Payment →"
+          )}
+        </button>
       </div>
     );
   }
