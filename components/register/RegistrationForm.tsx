@@ -55,6 +55,8 @@ export function RegistrationForm() {
   async function handleProceedToPayment() {
     setPaymentLoading(true);
     setPaymentError("");
+
+    // Try dynamic Stripe checkout session first
     try {
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
@@ -62,16 +64,25 @@ export function RegistrationForm() {
         body: JSON.stringify({ name, email, phone }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) {
-        setPaymentError(data.error || "Could not start payment. Please try again.");
-        setPaymentLoading(false);
+      if (res.ok && data.url) {
+        window.location.href = data.url;
         return;
       }
-      window.location.href = data.url;
+      // Log the real error for debugging but fall through to payment link
+      console.warn("Checkout session failed:", data.error);
     } catch {
-      setPaymentError("Network error. Please try again.");
-      setPaymentLoading(false);
+      console.warn("Checkout session network error, trying payment link fallback");
     }
+
+    // Fallback: use static Stripe Payment Link if configured
+    const paymentLink = process.env.NEXT_PUBLIC_DBA_PAYMENT_LINK;
+    if (paymentLink) {
+      window.location.href = paymentLink;
+      return;
+    }
+
+    setPaymentError("Payment is not available right now. Please contact us at hello@ultratidycleaning.com to complete your registration.");
+    setPaymentLoading(false);
   }
 
   if (submitted) {

@@ -64,9 +64,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: unknown) {
-    console.error("Stripe checkout error:", (err as Error).message);
+    const message = (err as Error).message || "Unknown Stripe error";
+    console.error("Stripe checkout error:", message);
     return NextResponse.json(
-      { error: "Failed to create payment session" },
+      { error: `Stripe error: ${message}` },
       { status: 500 }
     );
   }
