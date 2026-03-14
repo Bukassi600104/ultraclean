@@ -196,7 +196,7 @@ test.describe("Gallery Page", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Filter buttons - use text locator as fallback
-    const allButton = page.getByRole("button", { name: "All" });
+    const allButton = page.getByRole("button", { name: "All", exact: true }).first();
     await expect(allButton).toBeVisible({ timeout: 10000 });
 
     // Gallery items should exist
