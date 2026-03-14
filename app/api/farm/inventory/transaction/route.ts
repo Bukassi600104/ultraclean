@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { farmInventoryTransactionSchema } from "@/lib/validations";
+import { requireAdmin, requireManager } from "@/lib/auth";
 
 // GET — admin: list transactions, optionally filtered by action
 export async function GET(request: NextRequest) {
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createServerClient();
   if (!supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
@@ -33,12 +40,24 @@ export async function GET(request: NextRequest) {
 
 // POST — manager: record a new inventory transaction
 export async function POST(request: NextRequest) {
+  try {
+    await requireManager();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createServerClient();
   if (!supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
   const parsed = farmInventoryTransactionSchema.safeParse(body);
 
   if (!parsed.success) {

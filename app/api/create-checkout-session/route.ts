@@ -14,19 +14,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = await request.json();
-  const { name, email, phone } = body as {
-    name?: string;
-    email?: string;
-    phone?: string;
-  };
-
-  if (!name || !email) {
-    return NextResponse.json(
-      { error: "Name and email are required" },
-      { status: 400 }
-    );
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  const { z } = await import("zod");
+  const schema = z.object({
+    name: z.string().min(2).max(100),
+    email: z.string().email().max(254),
+    phone: z.string().max(30).optional(),
+  });
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+  const { name, email, phone } = parsed.data;
 
   // Read course settings from database (falls back to defaults)
   const settings = await getCourseSettings();
@@ -66,10 +71,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: unknown) {
-    const message = (err as Error).message || "Unknown Stripe error";
-    console.error("Stripe checkout error:", message);
+    console.error("Stripe checkout error:", (err as Error).message);
     return NextResponse.json(
-      { error: `Stripe error: ${message}` },
+      { error: "Payment setup failed. Please try again." },
       { status: 500 }
     );
   }

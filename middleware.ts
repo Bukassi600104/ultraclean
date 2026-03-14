@@ -54,23 +54,59 @@ export async function middleware(request: NextRequest) {
   }
 
   if (hostname.startsWith("leads.")) {
+    const result = await updateSession(request);
+    const { supabaseResponse, user, supabase } = result;
+
     // API routes pass through as-is
-    if (!pathname.startsWith("/api/")) {
+    if (pathname.startsWith("/api/")) {
+      return supabaseResponse;
+    }
+
+    // Login page
+    if (pathname === "/login") {
+      if (user) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/";
+        return NextResponse.redirect(redirectUrl);
+      }
       const url = request.nextUrl.clone();
-      url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
+      url.pathname = "/login";
       return NextResponse.rewrite(url);
     }
-    // fall through to updateSession below
+
+    // All other leads routes require admin
+    if (!user) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
   }
 
   if (hostname.startsWith("register.")) {
     // API routes pass through as-is
-    if (!pathname.startsWith("/api/")) {
-      const url = request.nextUrl.clone();
-      url.pathname = `/register${pathname === "/" ? "" : pathname}`;
-      return NextResponse.rewrite(url);
+    if (pathname.startsWith("/api/")) {
+      const result = await updateSession(request);
+      return result.supabaseResponse;
     }
-    // fall through to updateSession below
+    const url = request.nextUrl.clone();
+    url.pathname = `/register${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
   }
 
   // Refresh session
