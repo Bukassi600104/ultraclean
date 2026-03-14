@@ -292,20 +292,26 @@ export default async function BlogPostPage({
               <div
                 className="prose prose-lg max-w-none prose-headings:font-heading prose-a:text-primary prose-img:rounded-xl"
                 dangerouslySetInnerHTML={{
-                  __html: sanitizeHtml(post.content, {
-                    allowedTags: [
-                      "h1","h2","h3","h4","h5","h6",
-                      "p","ul","ol","li","blockquote","pre","code",
-                      "strong","em","u","s","a","img","hr","br","div","span","table",
-                      "thead","tbody","tr","th","td",
-                    ],
-                    allowedAttributes: {
-                      a: ["href", "target", "rel"],
-                      img: ["src", "alt", "width", "height"],
-                      "*": ["class"],
-                    },
-                    allowedSchemes: ["https", "http", "mailto"],
-                  }),
+                  __html: (() => {
+                    try {
+                      return sanitizeHtml(post.content, {
+                        allowedTags: [
+                          "h1","h2","h3","h4","h5","h6",
+                          "p","ul","ol","li","blockquote","pre","code",
+                          "strong","em","u","s","a","img","hr","br","div","span","table",
+                          "thead","tbody","tr","th","td",
+                        ],
+                        allowedAttributes: {
+                          a: ["href", "target", "rel"],
+                          img: ["src", "alt", "width", "height"],
+                          "*": ["class"],
+                        },
+                        allowedSchemes: ["https", "http", "mailto"],
+                      });
+                    } catch {
+                      return "";
+                    }
+                  })(),
                 }}
               />
 

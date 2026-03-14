@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
+import { appointmentUpdateSchema } from "@/lib/validations";
 
 // GET — single appointment
 export async function GET(
@@ -66,9 +67,17 @@ export async function PUT(
     );
   }
 
+  const parsed = appointmentUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("appointments")
-    .update({ ...body, updated_at: new Date().toISOString() })
+    .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq("id", params.id)
     .select()
     .single();

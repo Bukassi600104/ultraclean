@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "20");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20") || 20));
 
   const { data, count, error } = await supabase
     .from("dba_sales")
@@ -65,22 +65,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Increment download count (non-critical)
+  // Increment download count atomically (non-critical)
   try {
-    await supabase
-      .from("dba_products")
-      .update({
-        download_count: (
-          await supabase
-            .from("dba_products")
-            .select("download_count")
-            .eq("id", parsed.data.product_id)
-            .single()
-        ).data?.download_count + 1 || 1,
-      })
-      .eq("id", parsed.data.product_id);
+    await supabase.rpc("increment_download_count", {
+      product_id: parsed.data.product_id,
+    });
   } catch {
-    // Non-critical
+    // Non-critical — count may lag but never blocks the sale
   }
 
   return NextResponse.json(data, { status: 201 });

@@ -195,3 +195,11 @@ export const managerResetPasswordSchema = z.object({
     .regex(/[A-Z]/, "Must contain an uppercase letter")
     .regex(/[0-9]/, "Must contain a number"),
 });
+
+// ── Appointment update (admin) ──
+export const appointmentUpdateSchema = z.object({
+  status: z.enum(["pending", "confirmed", "completed", "cancelled"]).optional(),
+  notes: z.string().max(2000).nullable().optional(),
+  appointment_date: z.string().max(30).optional(),
+  appointment_time: z.string().max(50).optional(),
+});
