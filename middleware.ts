@@ -7,7 +7,17 @@ export async function middleware(request: NextRequest) {
   // Production subdomain rewriting
   const hostname = request.headers.get("host") || "";
 
-  if (hostname.startsWith("farm.")) {
+  const isFarmDomain =
+    hostname.startsWith("farm.") ||
+    hostname === "primefieldfarms.com" ||
+    hostname === "www.primefieldfarms.com";
+
+  const isRegisterDomain =
+    hostname.startsWith("register.") ||
+    hostname === "digitalincometoblueprint.ca" ||
+    hostname === "www.digitalincometoblueprint.ca";
+
+  if (isFarmDomain) {
     // Refresh session first so we can check auth
     const result = await updateSession(request);
     const { supabaseResponse, user, supabase } = result;
@@ -98,7 +108,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.rewrite(url);
   }
 
-  if (hostname.startsWith("register.")) {
+  if (isRegisterDomain) {
     // API routes pass through as-is
     if (pathname.startsWith("/api/")) {
       const result = await updateSession(request);

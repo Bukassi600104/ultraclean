@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const baseUrl = siteUrl.includes("localhost")
     ? "http://localhost:3000/register"
-    : "https://register.ultratidycleaning.com";
+    : "https://digitalincometoblueprint.ca/register";
 
   try {
     const stripe = new Stripe(stripeKey);

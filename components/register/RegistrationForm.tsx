@@ -81,7 +81,7 @@ export function RegistrationForm() {
       return;
     }
 
-    setPaymentError("Payment is not available right now. Please contact us at hello@ultratidycleaning.com to complete your registration.");
+    setPaymentError("Payment is not available right now. Please contact us at info@digitalincometoblueprint.ca to complete your registration.");
     setPaymentLoading(false);
   }
 
@@ -103,7 +103,8 @@ export function RegistrationForm() {
         <button
           onClick={handleProceedToPayment}
           disabled={paymentLoading}
-          className="inline-flex items-center justify-center w-full h-12 rounded-lg bg-primary text-primary-foreground font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-60"
+          className="inline-flex items-center justify-center w-full h-12 rounded-lg font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-60 text-white"
+          style={{ backgroundColor: "#160C5A" }}
         >
           {paymentLoading ? (
             <>
@@ -181,7 +182,8 @@ export function RegistrationForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full h-12 text-base font-semibold mt-2"
+        className="w-full h-12 text-base font-semibold mt-2 text-white"
+        style={{ backgroundColor: "#160C5A" }}
       >
         {loading ? (
           <>
