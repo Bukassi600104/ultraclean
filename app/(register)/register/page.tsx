@@ -131,7 +131,7 @@ export default function RegisterPage() {
             March 28, 2026 · 12PM EST
           </span>
           <a
-            href="/register/form"
+            href="/form"
             className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold transition-opacity hover:opacity-90"
             style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
           >
@@ -205,7 +205,7 @@ export default function RegisterPage() {
               {/* CTAs */}
               <div className="flex flex-wrap gap-4">
                 <a
-                  href="/register/form"
+                  href="/form"
                   className="inline-flex items-center gap-2 rounded-full px-8 py-4 font-extrabold text-base transition-opacity hover:opacity-90 shadow-lg"
                   style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
                 >
@@ -561,7 +561,7 @@ export default function RegisterPage() {
               that compounds your income over time.
             </p>
             <a
-              href="/register/form"
+              href="/form"
               className="inline-flex items-center gap-2 rounded-full px-7 py-3.5 font-bold text-sm transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
             >
@@ -678,7 +678,7 @@ export default function RegisterPage() {
           </p>
 
           <a
-            href="/register/form"
+            href="/form"
             className="inline-flex items-center gap-3 rounded-full px-10 py-5 font-extrabold text-lg shadow-2xl transition-transform hover:scale-105"
             style={{ backgroundColor: "#160C5A", color: "#F5C842" }}
           >
