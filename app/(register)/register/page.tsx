@@ -62,7 +62,7 @@ const curriculum = [
     icon: Bot,
     number: "06",
     title: "AI Skills Training",
-    body: "Special guest Tony Orjiaku shows you exactly how to use AI to develop your digital skills faster — a full 1-hour dedicated session.",
+    body: "Special guest Tony Orjiako shows you exactly how to use AI to develop your digital skills faster — a full 1-hour dedicated session.",
   },
 ];
 
@@ -273,7 +273,7 @@ export default function RegisterPage() {
                   AI
                 </div>
                 <div>
-                  <p className="text-white font-bold text-sm">Special Guest: Tony Orjiaku</p>
+                  <p className="text-white font-bold text-sm">Special Guest: Tony Orjiako</p>
                   <p className="text-white/60 text-xs mt-0.5">
                     How to use AI to develop your digital skills faster
                   </p>
@@ -639,7 +639,7 @@ export default function RegisterPage() {
                 className="font-extrabold text-xl"
                 style={{ color: "#160C5A" }}
               >
-                Tony Orjiaku
+                Tony Orjiako
               </h3>
               <p
                 className="font-semibold text-sm mt-1 mb-4"
@@ -648,7 +648,7 @@ export default function RegisterPage() {
                 AI & Digital Skills Expert · Special Guest
               </p>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Tony Orjiaku joins as a special guest to deliver a dedicated
+                Tony Orjiako joins as a special guest to deliver a dedicated
                 1-hour AI training session. He&apos;ll show you exactly how to
                 use AI tools to develop your digital skills faster, find income
                 opportunities, and accelerate your business journey from day one.

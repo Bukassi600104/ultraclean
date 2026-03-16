@@ -14,7 +14,7 @@ const included = [
   "Digital income strategies for immediate implementation",
   "The complete reinvestment framework (50/30/20 split)",
   "Your personal 90-day funding action plan",
-  "1-hour AI skills training with Tony Orjiaku",
+  "1-hour AI skills training with Tony Orjiako",
   "Live Q&A — get your specific questions answered",
 ];
 
