@@ -238,15 +238,16 @@ export default function RegisterPage() {
                   $20
                 </div>
 
-                {/* Photo placeholder */}
+                {/* Bimbo photo */}
                 <div
-                  className="w-32 h-32 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl font-extrabold text-white ring-4"
-                  style={{
-                    background: "linear-gradient(135deg, #2a1d9e, #160C5A)",
-                    boxShadow: "0 0 0 4px #F5C842",
-                  }}
+                  className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden shrink-0"
+                  style={{ boxShadow: "0 0 0 4px #F5C842" }}
                 >
-                  BO
+                  <img
+                    src="/bimbo-oyedotun.jpg"
+                    alt="Bimbo Oyedotun"
+                    className="w-full h-full object-cover object-top"
+                  />
                 </div>
 
                 <h3 className="text-white font-extrabold text-xl tracking-wide">
@@ -601,13 +602,14 @@ export default function RegisterPage() {
               style={{ backgroundColor: "#160C5A" }}
             >
               <div
-                className="w-24 h-24 rounded-full mx-auto mb-5 flex items-center justify-center text-2xl font-black text-white"
-                style={{
-                  background: "linear-gradient(135deg, #2a1d9e, #0f0840)",
-                  boxShadow: "0 0 0 4px #F5C842",
-                }}
+                className="w-24 h-24 rounded-full mx-auto mb-5 overflow-hidden shrink-0"
+                style={{ boxShadow: "0 0 0 4px #F5C842" }}
               >
-                BO
+                <img
+                  src="/bimbo-oyedotun.jpg"
+                  alt="Bimbo Oyedotun"
+                  className="w-full h-full object-cover object-top"
+                />
               </div>
               <h3 className="text-white font-extrabold text-xl">Bimbo Oyedotun</h3>
               <p className="font-semibold text-sm mt-1 mb-4" style={{ color: "#F5C842" }}>
