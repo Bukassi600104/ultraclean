@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { BOLogo } from "@/components/register/BOLogo";
-import { RegistrationForm } from "@/components/register/RegistrationForm";
 import {
   Calendar,
   Clock,
@@ -112,15 +111,6 @@ const roadmap = [
   },
 ];
 
-const included = [
-  "3+ hours of live mentorship with Bimbo Oyedotun",
-  "Digital income strategies for immediate implementation",
-  "The complete reinvestment framework (50/30/20 split)",
-  "Your personal 90-day funding action plan",
-  "1-hour AI skills training with Tony Orjiaku",
-  "Live Q&A — get your specific questions answered",
-];
-
 export default function RegisterPage() {
   return (
     <div className="font-sans antialiased">
@@ -141,7 +131,7 @@ export default function RegisterPage() {
             March 28, 2026 · 12PM EST
           </span>
           <a
-            href="#register"
+            href="/register/form"
             className="inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold transition-opacity hover:opacity-90"
             style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
           >
@@ -215,7 +205,7 @@ export default function RegisterPage() {
               {/* CTAs */}
               <div className="flex flex-wrap gap-4">
                 <a
-                  href="#register"
+                  href="/register/form"
                   className="inline-flex items-center gap-2 rounded-full px-8 py-4 font-extrabold text-base transition-opacity hover:opacity-90 shadow-lg"
                   style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
                 >
@@ -571,7 +561,7 @@ export default function RegisterPage() {
               that compounds your income over time.
             </p>
             <a
-              href="#register"
+              href="/register/form"
               className="inline-flex items-center gap-2 rounded-full px-7 py-3.5 font-bold text-sm transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
             >
@@ -668,62 +658,35 @@ export default function RegisterPage() {
         </div>
       </section>
 
-      {/* ── PRICING + REGISTRATION ───────────────────────── */}
+      {/* ── CTA SECTION ──────────────────────────────────── */}
       <section id="register" className="py-20 px-6" style={{ backgroundColor: "#F5C842" }}>
-        <div className="max-w-2xl mx-auto">
-
-          {/* Pricing card */}
-          <div
-            className="rounded-3xl overflow-hidden shadow-2xl"
-            style={{ backgroundColor: "#160C5A" }}
+        <div className="max-w-2xl mx-auto text-center">
+          <p
+            className="text-xs font-bold tracking-widest uppercase mb-4"
+            style={{ color: "#160C5A", opacity: 0.6 }}
           >
-            {/* Card header */}
-            <div className="px-8 py-8 text-center border-b" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-              <p className="text-white/60 text-xs font-bold tracking-widest uppercase mb-2">
-                One Session · One System · One Price
-              </p>
-              <div className="flex items-end justify-center gap-2 mb-1">
-                <span
-                  className="text-7xl font-black leading-none"
-                  style={{ color: "#F5C842" }}
-                >
-                  $20
-                </span>
-                <span className="text-white/60 text-lg mb-3">only</span>
-              </div>
-              <p className="text-white/50 text-sm">
-                March 28th, 2026 · 12PM EST · Live Online
-              </p>
-            </div>
+            Limited Spots Available
+          </p>
+          <h2
+            className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight"
+            style={{ color: "#160C5A" }}
+          >
+            Ready to Build Your Blueprint?
+          </h2>
+          <p className="text-lg mb-8 font-medium" style={{ color: "#160C5A", opacity: 0.75 }}>
+            One session. One system. $20 — March 28th, 2026 at 12PM EST.
+          </p>
 
-            {/* What's included */}
-            <div className="px-8 py-6 border-b" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-              <p className="text-white font-bold text-sm uppercase tracking-wide mb-4">
-                What&apos;s Included:
-              </p>
-              <ul className="space-y-3">
-                {included.map((item) => (
-                  <li key={item} className="flex items-start gap-3 text-white/80 text-sm">
-                    <CheckCircle2
-                      className="h-4 w-4 mt-0.5 shrink-0"
-                      style={{ color: "#F5C842" }}
-                    />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <a
+            href="/register/form"
+            className="inline-flex items-center gap-3 rounded-full px-10 py-5 font-extrabold text-lg shadow-2xl transition-transform hover:scale-105"
+            style={{ backgroundColor: "#160C5A", color: "#F5C842" }}
+          >
+            Secure My Spot — $20
+            <ArrowRight className="h-5 w-5" />
+          </a>
 
-            {/* Registration form */}
-            <div className="px-8 py-8">
-              <p className="text-white font-bold text-base mb-6 text-center">
-                Secure your spot below
-              </p>
-              <RegistrationForm />
-            </div>
-          </div>
-
-          <p className="text-center text-[#160C5A]/70 text-sm font-semibold mt-6">
+          <p className="mt-5 text-sm font-semibold" style={{ color: "#160C5A", opacity: 0.55 }}>
             Spots are limited. Registration closes when the session is full.
           </p>
         </div>
