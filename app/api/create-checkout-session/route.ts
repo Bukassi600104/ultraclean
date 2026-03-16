@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const baseUrl = siteUrl.includes("localhost")
     ? "http://localhost:3000"
-    : "https://digitalincometoblueprint.ca";
+    : "https://bboconcepts.com";
 
   try {
     const stripe = new Stripe(stripeKey);

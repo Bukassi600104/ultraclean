@@ -399,7 +399,7 @@ export default function PrimefieldPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-[#1B4332]">Email Us</h4>
-                    <p className="text-gray-600">orders@primefieldfarms.com</p>
+                    <p className="text-gray-600">orders@primefieldagric.com</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">

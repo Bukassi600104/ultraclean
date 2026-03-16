@@ -81,7 +81,7 @@ export function RegistrationForm() {
       return;
     }
 
-    setPaymentError("Payment is not available right now. Please contact us at info@digitalincometoblueprint.ca to complete your registration.");
+    setPaymentError("Payment is not available right now. Please contact us at info@bboconcepts.com to complete your registration.");
     setPaymentLoading(false);
   }
 

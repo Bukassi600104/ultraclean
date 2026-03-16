@@ -713,10 +713,10 @@ export default function RegisterPage() {
           </div>
           <div className="flex flex-col items-center md:items-end gap-1">
             <a
-              href="mailto:info@digitalincometoblueprint.ca"
+              href="mailto:info@bboconcepts.com"
               className="text-white/60 text-sm hover:text-white transition-colors"
             >
-              info@digitalincometoblueprint.ca
+              info@bboconcepts.com
             </a>
             <p className="text-white/30 text-xs">
               &copy; {new Date().getFullYear()} Bimbo Oyedotun. All rights reserved.

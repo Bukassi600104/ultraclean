@@ -9,13 +9,13 @@ export async function middleware(request: NextRequest) {
 
   const isFarmDomain =
     hostname.startsWith("farm.") ||
-    hostname === "primefieldfarms.com" ||
-    hostname === "www.primefieldfarms.com";
+    hostname === "primefieldagric.com" ||
+    hostname === "www.primefieldagric.com";
 
   const isRegisterDomain =
     hostname.startsWith("register.") ||
-    hostname === "digitalincometoblueprint.ca" ||
-    hostname === "www.digitalincometoblueprint.ca";
+    hostname === "bboconcepts.com" ||
+    hostname === "www.bboconcepts.com";
 
   if (isFarmDomain) {
     // Refresh session first so we can check auth
