@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { BOLogo } from "@/components/register/BOLogo";
 import {
   Calendar,
@@ -240,13 +241,15 @@ export default function RegisterPage() {
 
                 {/* Bimbo photo */}
                 <div
-                  className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden shrink-0"
+                  className="w-32 h-32 rounded-full mx-auto mb-4 overflow-hidden shrink-0 relative"
                   style={{ boxShadow: "0 0 0 4px #F5C842" }}
                 >
-                  <img
-                    src="/bimbo-oyedotun.jpg"
+                  <Image
+                    src="/bimbo-oyedotun-optimized.jpg"
                     alt="Bimbo Oyedotun"
-                    className="w-full h-full object-cover object-top"
+                    fill
+                    className="object-cover object-top"
+                    priority
                   />
                 </div>
 
@@ -602,13 +605,14 @@ export default function RegisterPage() {
               style={{ backgroundColor: "#160C5A" }}
             >
               <div
-                className="w-24 h-24 rounded-full mx-auto mb-5 overflow-hidden shrink-0"
+                className="w-24 h-24 rounded-full mx-auto mb-5 overflow-hidden shrink-0 relative"
                 style={{ boxShadow: "0 0 0 4px #F5C842" }}
               >
-                <img
-                  src="/bimbo-oyedotun.jpg"
+                <Image
+                  src="/bimbo-oyedotun-optimized.jpg"
                   alt="Bimbo Oyedotun"
-                  className="w-full h-full object-cover object-top"
+                  fill
+                  className="object-cover object-top"
                 />
               </div>
               <h3 className="text-white font-extrabold text-xl">Bimbo Oyedotun</h3>
