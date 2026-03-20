@@ -6,7 +6,7 @@ const resend = process.env.RESEND_API_KEY
   : null;
 
 const FROM_EMAIL = "UltraTidy <hello@ultratidycleaning.com>";
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ultratidy.ca";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ultratidycleaning.com";
 const GOOGLE_REVIEW_URL = "https://g.page/r/CbgkPYbL4D3JEBM/review";
 
 function caslFooter(email: string) {

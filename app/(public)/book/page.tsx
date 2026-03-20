@@ -11,13 +11,13 @@ export const metadata: Metadata = {
   description:
     "Book a free consultation call with UltraTidy. Pick a date and time that works for you and we'll discuss your cleaning needs.",
   alternates: {
-    canonical: "https://ultratidy.ca/book",
+    canonical: "https://ultratidycleaning.com/book",
   },
   openGraph: {
     title: "Book a Free Consultation | UltraTidy Cleaning Services",
     description:
       "Book a free consultation call with UltraTidy. Pick a time that works for you.",
-    url: "https://ultratidy.ca/book",
+    url: "https://ultratidycleaning.com/book",
   },
 };
 

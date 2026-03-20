@@ -14,25 +14,25 @@ export const metadata: Metadata = {
   description:
     "Professional cleaning services in Brantford & the GTA. Residential, commercial, deep cleaning, move-in/out, and post-construction cleaning. It's not clean until it's ULTRACLEAN!",
   alternates: {
-    canonical: "https://ultratidy.ca",
+    canonical: "https://ultratidycleaning.com",
   },
   openGraph: {
     title: "UltraTidy Cleaning Services | Brantford & GTA",
     description:
       "Professional cleaning services in Brantford & the GTA. It's not clean until it's ULTRACLEAN!",
-    url: "https://ultratidy.ca",
+    url: "https://ultratidycleaning.com",
   },
 };
 
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  "@id": "https://ultratidy.ca/#organization",
+  "@id": "https://ultratidycleaning.com/#organization",
   name: "UltraTidy Cleaning Services",
   alternateName: "UltraTidy",
   description:
     "Professional cleaning services in Brantford and the Greater Toronto Area. Residential, commercial, deep cleaning, move-in/move-out, and post-construction cleaning.",
-  url: "https://ultratidy.ca",
+  url: "https://ultratidycleaning.com",
   telephone: "+15483286260",
   email: "hello@ultratidycleaning.com",
   founder: {

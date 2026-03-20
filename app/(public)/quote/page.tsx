@@ -12,13 +12,13 @@ export const metadata: Metadata = {
   description:
     "Get an instant price estimate for your cleaning service in seconds. Select your service, property details, and optional add-ons — no obligation.",
   alternates: {
-    canonical: "https://ultratidy.ca/quote",
+    canonical: "https://ultratidycleaning.com/quote",
   },
   openGraph: {
     title: "Instant Quote | UltraTidy Cleaning Services",
     description:
       "Get an instant cleaning quote in seconds. Residential, commercial, deep cleaning, Airbnb and more.",
-    url: "https://ultratidy.ca/quote",
+    url: "https://ultratidycleaning.com/quote",
   },
 };
 

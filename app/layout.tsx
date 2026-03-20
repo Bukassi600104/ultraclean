@@ -17,7 +17,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ultratidy.ca"),
+  metadataBase: new URL("https://ultratidycleaning.com"),
   title: {
     default: "UltraTidy Cleaning Services | Brantford & GTA",
     template: "%s | UltraTidy Cleaning Services",
@@ -51,12 +51,12 @@ export const metadata: Metadata = {
     address: true,
   },
   alternates: {
-    canonical: "https://ultratidy.ca",
+    canonical: "https://ultratidycleaning.com",
   },
   openGraph: {
     type: "website",
     locale: "en_CA",
-    url: "https://ultratidy.ca",
+    url: "https://ultratidycleaning.com",
     siteName: "UltraTidy Cleaning Services",
     title: "UltraTidy Cleaning Services | Brantford & GTA",
     description:

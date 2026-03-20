@@ -322,7 +322,7 @@ export default function ManagersPage() {
           <p className="text-xs text-gray-600">
             Managers visit{" "}
             <span className="font-mono font-semibold">
-              farm.ultratidycleaning.com
+              primefieldagric.com
             </span>{" "}
             and sign in with their email and password. Share the credentials
             securely — they cannot see or delete historical data.

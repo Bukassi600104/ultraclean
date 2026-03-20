@@ -11,13 +11,13 @@ export const metadata: Metadata = {
   description:
     "Learn about UltraTidy Cleaning Services, founded by Bimbo Oyedotun. Professional cleaning in Brantford & the GTA with a passion for perfection.",
   alternates: {
-    canonical: "https://ultratidy.ca/about",
+    canonical: "https://ultratidycleaning.com/about",
   },
   openGraph: {
     title: "About Us | UltraTidy Cleaning Services",
     description:
       "Learn about UltraTidy Cleaning Services, founded by Bimbo Oyedotun.",
-    url: "https://ultratidy.ca/about",
+    url: "https://ultratidycleaning.com/about",
   },
 };
 

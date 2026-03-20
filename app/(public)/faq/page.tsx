@@ -18,12 +18,12 @@ export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
     "Got questions about UltraTidy Cleaning Services? Find answers about booking, pricing, supplies, cancellations, and more. Serving Brantford & the GTA.",
-  alternates: { canonical: "https://ultratidy.ca/faq" },
+  alternates: { canonical: "https://ultratidycleaning.com/faq" },
   openGraph: {
     title: "FAQ | UltraTidy Cleaning Services",
     description:
       "Answers to the most common questions about UltraTidy Cleaning Services.",
-    url: "https://ultratidy.ca/faq",
+    url: "https://ultratidycleaning.com/faq",
   },
 };
 

@@ -47,10 +47,7 @@ export default function CoursesPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  const registrationLink =
-    typeof window !== "undefined"
-      ? `${window.location.origin.replace("leads.", "register.")}/register`
-      : "https://register.ultratidycleaning.com";
+  const registrationLink = "https://bboconcepts.com";
 
   useEffect(() => {
     fetch("/api/courses/settings")
@@ -278,7 +275,7 @@ export default function CoursesPage() {
           </h2>
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0 rounded-lg bg-muted/50 border px-4 py-3 font-mono text-sm break-all">
-              https://register.ultratidycleaning.com
+              https://bboconcepts.com
             </div>
             <Button
               variant="outline"
@@ -296,7 +293,7 @@ export default function CoursesPage() {
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" asChild>
               <a
-                href="https://register.ultratidycleaning.com"
+                href="https://bboconcepts.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-2"

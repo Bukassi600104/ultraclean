@@ -378,7 +378,7 @@ test.describe("SEO", () => {
       const canonical = page.locator('link[rel="canonical"]');
       await expect(canonical).toBeAttached();
       const href = await canonical.getAttribute("href");
-      expect(href).toContain("ultratidy.ca");
+      expect(href).toContain("ultratidycleaning.com");
     }
   });
 

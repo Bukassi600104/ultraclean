@@ -21,13 +21,13 @@ export const metadata: Metadata = {
   description:
     "Get a free cleaning quote from UltraTidy! Contact us for residential, commercial, and specialty cleaning services in Brantford & the GTA.",
   alternates: {
-    canonical: "https://ultratidy.ca/contact",
+    canonical: "https://ultratidycleaning.com/contact",
   },
   openGraph: {
     title: "Contact Us | UltraTidy Cleaning Services",
     description:
       "Get a free cleaning quote from UltraTidy! Contact us for cleaning services in Brantford & the GTA.",
-    url: "https://ultratidy.ca/contact",
+    url: "https://ultratidycleaning.com/contact",
   },
 };
 

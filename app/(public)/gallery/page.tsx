@@ -10,13 +10,13 @@ export const metadata: Metadata = {
   description:
     "See the UltraTidy difference! Browse our portfolio of cleaning transformations across Brantford & the GTA.",
   alternates: {
-    canonical: "https://ultratidy.ca/gallery",
+    canonical: "https://ultratidycleaning.com/gallery",
   },
   openGraph: {
     title: "Gallery | UltraTidy Cleaning Services",
     description:
       "See the UltraTidy difference! Browse our portfolio of cleaning transformations.",
-    url: "https://ultratidy.ca/gallery",
+    url: "https://ultratidycleaning.com/gallery",
   },
 };
 

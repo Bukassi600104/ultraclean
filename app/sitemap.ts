@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { createServerClient } from "@/lib/supabase/server";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://ultratidy.ca";
+  const baseUrl = "https://ultratidycleaning.com";
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },

@@ -75,7 +75,7 @@ export async function generateMetadata({
     openGraph: {
       title: post.title,
       description: post.meta_description || post.excerpt || "",
-      url: `https://ultratidy.ca/blog/${post.slug}`,
+      url: `https://ultratidycleaning.com/blog/${post.slug}`,
       type: "article",
       publishedTime: post.published_at || undefined,
       ...(post.featured_image && {
@@ -100,7 +100,7 @@ export default async function BlogPostPage({
     "@type": "Article",
     headline: post.title,
     description: post.meta_description || post.excerpt,
-    url: `https://ultratidy.ca/blog/${post.slug}`,
+    url: `https://ultratidycleaning.com/blog/${post.slug}`,
     datePublished: post.published_at,
     dateModified: post.updated_at,
     author: {
@@ -110,7 +110,7 @@ export default async function BlogPostPage({
     publisher: {
       "@type": "Organization",
       name: "UltraTidy Cleaning Services",
-      url: "https://ultratidy.ca",
+      url: "https://ultratidycleaning.com",
     },
     ...(post.featured_image && {
       image: post.featured_image,

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: "Privacy Policy | UltraTidy Cleaning Services",
     description:
       "UltraTidy Cleaning Services Privacy Policy. Learn how we collect, use, and protect your personal information.",
-    url: "https://ultratidy.ca/privacy",
+    url: "https://ultratidycleaning.com/privacy",
   },
 };
 
@@ -39,7 +39,7 @@ export default function PrivacyPolicyPage() {
               &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;)
               operates the website located at{" "}
               <Link href="/" className="text-primary">
-                ultratidy.ca
+                ultratidycleaning.com
               </Link>{" "}
               and provides professional cleaning services throughout the Greater
               Toronto Area and Brantford, Ontario. We take your privacy

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: "Terms of Service | UltraTidy Cleaning Services",
     description:
       "Terms of Service for UltraTidy Cleaning Services. Service terms, cancellation policy, liability, and client responsibilities.",
-    url: "https://ultratidy.ca/terms",
+    url: "https://ultratidycleaning.com/terms",
   },
 };
 
@@ -38,7 +38,7 @@ export default function TermsOfServicePage() {
               These Terms of Service (&ldquo;Terms&rdquo;) govern your use of
               the UltraTidy Cleaning Services website at{" "}
               <Link href="/" className="text-primary">
-                ultratidy.ca
+                ultratidycleaning.com
               </Link>{" "}
               and any cleaning services provided by UltraTidy Cleaning Services
               (&ldquo;UltraTidy,&rdquo; &ldquo;we,&rdquo; &ldquo;us,&rdquo; or
