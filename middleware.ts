@@ -103,6 +103,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
+    // Paths already prefixed with /dashboard pass through as-is
+    // (Sidebar links use /dashboard/leads, /dashboard/blog, etc.)
+    if (pathname.startsWith("/dashboard")) {
+      return supabaseResponse;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
