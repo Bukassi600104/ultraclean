@@ -1,3 +1,13 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  icons: {
+    icon: [{ url: "/favicon-bbo.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/favicon-bbo.png", sizes: "512x512", type: "image/png" }],
+    shortcut: "/favicon-bbo.png",
+  },
+};
+
 export default function RegisterLayout({
   children,
 }: {
