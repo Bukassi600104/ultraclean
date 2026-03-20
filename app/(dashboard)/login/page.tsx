@@ -80,10 +80,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6 rounded-xl border bg-white p-8 shadow-lg">
         <div className="text-center">
           <h1 className="font-heading text-2xl font-bold text-gray-900">
-            Ultra<span className="text-primary">Tidy</span>
+            Control Center
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Sign in to your dashboard
+            Sign in to your account
           </p>
         </div>
 
