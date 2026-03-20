@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+const FALLBACK_LINK = "https://buy.stripe.com/aFa6oH1qjb5jd3a3op3F600";
 
 export function RegistrationForm() {
   const [name, setName] = useState("");
@@ -14,6 +16,16 @@ export function RegistrationForm() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [paymentLink, setPaymentLink] = useState(FALLBACK_LINK);
+
+  useEffect(() => {
+    fetch("/api/courses/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.stripe_payment_link) setPaymentLink(data.stripe_payment_link);
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -41,7 +53,7 @@ export function RegistrationForm() {
         return;
       }
 
-      window.location.href = "https://buy.stripe.com/aFa6oH1qjb5jd3a3op3F600";
+      window.location.href = paymentLink;
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

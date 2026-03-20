@@ -4,6 +4,7 @@ export interface CourseSettings {
   course_name: string;
   price_cents: number;
   currency: string;
+  stripe_payment_link?: string;
 }
 
 const BUCKET = "config";
@@ -11,8 +12,9 @@ const FILE = "dba-settings.json";
 
 const DEFAULTS: CourseSettings = {
   course_name: "Digital Boss Academy Course",
-  price_cents: 49700,
-  currency: "cad",
+  price_cents: 2000,
+  currency: "usd",
+  stripe_payment_link: "https://buy.stripe.com/aFa6oH1qjb5jd3a3op3F600",
 };
 
 export async function getCourseSettings(): Promise<CourseSettings> {
@@ -31,6 +33,7 @@ export async function getCourseSettings(): Promise<CourseSettings> {
           ? raw.price_cents
           : DEFAULTS.price_cents,
       currency: raw.currency || DEFAULTS.currency,
+      stripe_payment_link: raw.stripe_payment_link || DEFAULTS.stripe_payment_link,
     };
   } catch {
     return DEFAULTS;

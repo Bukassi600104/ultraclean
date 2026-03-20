@@ -24,6 +24,7 @@ interface CourseSettings {
   course_name: string;
   price_cents: number;
   currency: string;
+  stripe_payment_link?: string;
 }
 
 function formatPrice(cents: number, currency: string) {
@@ -42,6 +43,7 @@ export default function CoursesPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editLink, setEditLink] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -64,6 +66,7 @@ export default function CoursesPage() {
     if (!settings) return;
     setEditName(settings.course_name);
     setEditPrice((settings.price_cents / 100).toFixed(2));
+    setEditLink(settings.stripe_payment_link || "");
     setSaveError("");
     setEditing(true);
   }
@@ -94,7 +97,8 @@ export default function CoursesPage() {
         body: JSON.stringify({
           course_name: editName.trim(),
           price_cents,
-          currency: settings?.currency || "cad",
+          currency: settings?.currency || "usd",
+          stripe_payment_link: editLink.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -174,7 +178,7 @@ export default function CoursesPage() {
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="c-price">Price (CAD $)</Label>
+                  <Label htmlFor="c-price">Price (USD $)</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -184,12 +188,25 @@ export default function CoursesPage() {
                       step="0.01"
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
-                      placeholder="497.00"
+                      placeholder="20.00"
                       className="pl-9"
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Enter the full price in Canadian dollars (e.g. 497 for $497 CAD).
+                    This must match the price set in your Stripe payment link.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-link">Stripe Payment Link</Label>
+                  <Input
+                    id="c-link"
+                    type="url"
+                    value={editLink}
+                    onChange={(e) => setEditLink(e.target.value)}
+                    placeholder="https://buy.stripe.com/..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste the Stripe payment link. Students are sent here after registering.
                   </p>
                 </div>
                 <div className="flex items-center gap-3 pt-1">
@@ -230,6 +247,19 @@ export default function CoursesPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     This price is what students pay on the Stripe checkout page.
                   </p>
+                  {settings.stripe_payment_link && (
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                      <Link2 className="h-3 w-3 shrink-0" />
+                      <a
+                        href={settings.stripe_payment_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline truncate"
+                      >
+                        {settings.stripe_payment_link}
+                      </a>
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (

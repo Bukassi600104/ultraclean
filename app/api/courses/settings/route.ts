@@ -18,7 +18,8 @@ export async function PUT(request: NextRequest) {
 
   const course_name = (body.course_name || "").trim();
   const price_cents = parseInt(body.price_cents, 10);
-  const currency = (body.currency || "cad").toLowerCase();
+  const currency = (body.currency || "usd").toLowerCase();
+  const stripe_payment_link = (body.stripe_payment_link || "").trim() || undefined;
 
   if (!course_name) {
     return NextResponse.json(
@@ -34,10 +35,10 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  const { error } = await saveCourseSettings({ course_name, price_cents, currency });
+  const { error } = await saveCourseSettings({ course_name, price_cents, currency, stripe_payment_link });
   if (error) {
     return NextResponse.json({ error }, { status: 500 });
   }
 
-  return NextResponse.json({ course_name, price_cents, currency });
+  return NextResponse.json({ course_name, price_cents, currency, stripe_payment_link });
 }
