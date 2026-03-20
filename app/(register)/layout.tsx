@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   icons: {
-    icon: [{ url: "/favicon-bbo.png", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/favicon-bbo.png", sizes: "512x512", type: "image/png" }],
-    shortcut: "/favicon-bbo.png",
+    icon: [{ url: "/bbo-icon.png", sizes: "512x512", type: "image/png" }],
+    apple: [{ url: "/bbo-icon.png", sizes: "512x512", type: "image/png" }],
+    shortcut: "/bbo-icon.png",
+    other: [{ rel: "shortcut icon", url: "/bbo-icon.png" }],
   },
 };
 

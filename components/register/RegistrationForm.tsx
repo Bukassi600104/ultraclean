@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,6 @@ export function RegistrationForm() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,81 +41,11 @@ export function RegistrationForm() {
         return;
       }
 
-      setSubmitted(true);
+      window.location.href = "https://buy.stripe.com/aFa6oH1qjb5jd3a3op3F600";
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);
     }
-  }
-
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
-
-  async function handleProceedToPayment() {
-    setPaymentLoading(true);
-    setPaymentError("");
-
-    // Try dynamic Stripe checkout session first
-    try {
-      const res = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone }),
-      });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-        return;
-      }
-      // Log the real error for debugging but fall through to payment link
-      console.warn("Checkout session failed:", data.error);
-    } catch {
-      console.warn("Checkout session network error, trying payment link fallback");
-    }
-
-    // Fallback: use static Stripe Payment Link if configured
-    const paymentLink = process.env.NEXT_PUBLIC_DBA_PAYMENT_LINK;
-    if (paymentLink) {
-      window.location.href = paymentLink;
-      return;
-    }
-
-    setPaymentError("Payment is not available right now. Please contact us at info@bboconcepts.com to complete your registration.");
-    setPaymentLoading(false);
-  }
-
-  if (submitted) {
-    return (
-      <div className="text-center py-6 space-y-4">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="h-8 w-8 text-green-600" />
-        </div>
-        <h3 className="text-lg font-heading font-bold">
-          You&apos;re on the list!
-        </h3>
-        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-          Thanks, {name.split(" ")[0]}! Your registration has been received. Complete your payment to secure your spot.
-        </p>
-        {paymentError && (
-          <p className="text-sm text-destructive">{paymentError}</p>
-        )}
-        <button
-          onClick={handleProceedToPayment}
-          disabled={paymentLoading}
-          className="inline-flex items-center justify-center w-full h-12 rounded-lg font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-60 text-white"
-          style={{ backgroundColor: "#160C5A" }}
-        >
-          {paymentLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              Redirecting to payment...
-            </>
-          ) : (
-            "Proceed to Payment →"
-          )}
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -182,16 +111,16 @@ export function RegistrationForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full h-12 text-base font-semibold mt-2 text-white"
-        style={{ backgroundColor: "#160C5A" }}
+        className="w-full h-12 text-base font-semibold mt-2"
+        style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
       >
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Submitting...
+            Redirecting...
           </>
         ) : (
-          "Register My Interest"
+          "Register My Interest →"
         )}
       </Button>
 

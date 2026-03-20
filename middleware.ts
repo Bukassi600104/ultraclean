@@ -44,11 +44,19 @@ export async function middleware(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, suspended")
       .eq("id", user.id)
       .single();
 
     if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Deny suspended managers
+    if (profile.suspended === true) {
+      await supabase.auth.signOut();
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       return NextResponse.redirect(redirectUrl);

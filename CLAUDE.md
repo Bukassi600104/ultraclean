@@ -1,12 +1,20 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # UltraTidy Website — CLAUDE.md
 
 ## Project Overview
 
-UltraTidy Cleaning Services website for Mrs. Bimbo Oyedotun (BossBimbz), based in Toronto, Canada. This is a monorepo Next.js application serving three applications via route groups and subdomains:
+UltraTidy Cleaning Services website for Mrs. Bimbo Oyedotun (BossBimbz), based in Toronto, Canada. This is a monorepo Next.js application serving **five applications** via route groups and subdomains:
 
-1. **Public Website** (`ultratidy.ca`) — Marketing site with services, gallery, blog, contact form
-2. **Admin Dashboard** (`leads.ultratidy.ca`) — Lead management, blog CMS, farm data overview
-3. **Farm Manager Portal** (`farm.ultratidy.ca`) — Input-only forms for farm operations (Primefield, Ibadan, Nigeria)
+1. **Public Website** (`ultratidycleaning.com`) — Marketing site with services, gallery, blog, contact form
+2. **Admin Dashboard** (`leads.ultratidycleaning.com`) — Lead management, blog CMS, farm data overview, course management
+3. **Farm Manager Portal** (`farm.ultratidycleaning.com`) — Input-only forms for farm operations (Primefield, Ibadan, Nigeria)
+4. **Primefield Landing** (`ultratidycleaning.com/primefield`) — Separate landing page for the agri-business
+5. **DBA Registration** (`register.ultratidycleaning.com`) — Course registration with Stripe payment processing
+
+**Working directory:** All commands below must be run from inside the `Ultratidy Website/` subdirectory.
 
 **Tagline:** "It's not clean until it's ULTRACLEAN!"
 
@@ -29,7 +37,8 @@ UltraTidy Cleaning Services website for Mrs. Bimbo Oyedotun (BossBimbz), based i
 - **Resend** — Email API (free tier: 3,000/month)
 - **Cloudinary** — Image CDN (free tier: 25GB storage + 25GB bandwidth)
 - **Upstash Redis** — Rate limiting (`@upstash/ratelimit` + `@upstash/redis`)
-- **Vercel** — Hosting (auto-deploy from GitHub)
+- **Stripe** — Payment processing for DBA course registration (webhook at `/api/stripe-webhook`)
+- **Vercel** — Hosting (auto-deploy from GitHub), cron jobs (`vercel.json`)
 
 ### Development Tools
 - **npm** (package manager)
@@ -44,10 +53,15 @@ UltraTidy Cleaning Services website for Mrs. Bimbo Oyedotun (BossBimbz), based i
 ```bash
 npm run dev          # Start dev server (localhost:3000)
 npm run build        # Production build
-npm run lint         # ESLint + Prettier
-npm test             # Unit tests (Vitest)
-npx playwright test  # E2E tests (Playwright)
+npm run start        # Start production server
+npm run lint         # ESLint + TypeScript check
+npx playwright test  # E2E tests (81 tests, public site coverage)
 ```
+
+> **Note:** `npm test` (Vitest) is configured but no unit tests are written yet. E2E tests only cover the public site; `/book`, `/primefield`, `/register`, and `/dashboard` are pending.
+
+### Cron Jobs
+`vercel.json` schedules `/api/cron/email-automation` at `0 14 * * *` (2 PM UTC). Secured with `CRON_SECRET` header.
 
 ### Deployment Flow
 ```
@@ -62,41 +76,35 @@ git push -> GitHub -> Vercel auto-deploys to staging -> merge to main -> Vercel 
 app/
 ├── (public)/                # Public website routes
 │   ├── page.tsx             # Homepage
-│   ├── services/page.tsx
-│   ├── gallery/page.tsx
-│   ├── about/page.tsx
-│   ├── contact/page.tsx
-│   ├── blog/page.tsx
+│   ├── services/, gallery/, about/, contact/, blog/, faq/, quote/, book/
+│   ├── privacy/, terms/
 │   └── blog/[slug]/page.tsx
-├── (dashboard)/             # Admin dashboard (protected)
-│   ├── dashboard/page.tsx
-│   ├── leads/page.tsx
-│   ├── leads/[id]/page.tsx
-│   ├── farm/page.tsx
-│   ├── farm/sales/page.tsx
-│   ├── farm/expenses/page.tsx
-│   ├── farm/inventory/page.tsx
-│   ├── blog/page.tsx
-│   ├── blog/new/page.tsx
-│   ├── blog/edit/[id]/page.tsx
-│   └── settings/page.tsx
-├── (manager)/               # Farm manager portal (protected, input-only)
-│   └── manager/
-│       ├── sales/page.tsx
-│       ├── expenses/page.tsx
-│       ├── inventory/page.tsx
-│       └── cash/page.tsx
+├── (dashboard)/             # Admin dashboard (protected, leads.ultratidy.ca)
+│   ├── dashboard/           # Overview + appointments
+│   ├── leads/, leads/[id]/
+│   ├── farm/, farm/sales|expenses|inventory/
+│   ├── blog/, blog/new/, blog/edit/[id]/
+│   ├── courses/
+│   └── settings/
+├── (manager)/               # Farm manager portal (protected, farm.ultratidy.ca, input-only)
+│   └── manager/sales|expenses|inventory|cash/
+├── (primefield)/            # Primefield agri-business landing (ultratidy.ca/primefield)
+├── (register)/              # DBA course registration with Stripe (ultratidy.ca/register)
+├── auth/                    # Supabase auth callbacks
 ├── api/
 │   ├── submit-lead/         # POST — public contact form
-│   ├── leads/               # GET/POST — admin CRUD
-│   ├── leads/[id]/          # GET/PUT/DELETE
-│   ├── farm/sales/          # GET/POST
-│   ├── farm/expenses/       # GET/POST
-│   ├── farm/inventory/      # GET
-│   ├── farm/inventory/transaction/  # POST
-│   ├── blog/                # GET/POST
-│   ├── blog/[id]/           # GET/PUT/DELETE (also [slug] for public)
-│   └── email/send/          # POST
+│   ├── leads/, leads/[id]/  # GET/POST/PUT/DELETE
+│   ├── farm/sales|expenses|inventory|inventory/transaction/
+│   ├── blog/, blog/[id]/
+│   ├── courses/             # DBA course management
+│   ├── register/            # Course registration
+│   ├── stripe-webhook/      # Stripe payment events
+│   ├── cron/email-automation/  # Scheduled email sequences
+│   ├── email/send/
+│   ├── appointments/
+│   ├── dba/
+│   ├── managers/
+│   └── upload/
 ├── layout.tsx
 └── globals.css
 components/
@@ -202,14 +210,18 @@ Every email must include:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_DB_PASSWORD=        # For auto-migrations
 RESEND_API_KEY=
 ADMIN_EMAIL=
 NEXT_PUBLIC_SITE_URL=
 UPSTASH_REDIS_URL=
 UPSTASH_REDIS_TOKEN=
+CRON_SECRET=                 # Secures /api/cron/email-automation
+STRIPE_SECRET_KEY=           # DBA course payments
+STRIPE_WEBHOOK_SECRET=       # Stripe webhook verification
 ```
 
-Never commit actual values. Use `.env.local` for development.
+Use `.env.local` for development. See `.env.example` for reference.
 
 ---
 
@@ -272,12 +284,15 @@ Mon-Fri 9AM-6PM, Sat 8AM-6PM, Sun 10AM-4PM
 SMS/WhatsApp automation, payment processing, online booking calendar, customer accounts/login, multi-language, native mobile apps, advanced analytics, inventory alerts, automated invoicing, accounting integrations, email marketing beyond 6 templates.
 
 ## DNS Configuration
+Domain registrar: **Namecheap** — `ultratidycleaning.com`
 ```
-A record:    ultratidy.ca          -> 76.76.21.21 (Vercel)
-CNAME:       www.ultratidy.ca      -> cname.vercel-dns.com
-CNAME:       leads.ultratidy.ca    -> cname.vercel-dns.com
-CNAME:       farm.ultratidy.ca     -> cname.vercel-dns.com
+A record:    @                          -> 76.76.21.21 (Vercel)
+CNAME:       www                        -> cname.vercel-dns.com
+CNAME:       leads                      -> cname.vercel-dns.com
+CNAME:       farm                       -> cname.vercel-dns.com
+CNAME:       register                   -> cname.vercel-dns.com
 ```
+> Leave the existing MX records (Google Workspace email) untouched.
 
 ---
 

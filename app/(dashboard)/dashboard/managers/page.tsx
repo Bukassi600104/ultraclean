@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, KeyRound, UserCircle2, Loader2 } from "lucide-react";
+import { Plus, Trash2, KeyRound, UserCircle2, Loader2, Eye, EyeOff, Ban, UserCheck } from "lucide-react";
 
 interface Manager {
   id: string;
@@ -31,6 +31,7 @@ interface Manager {
   email: string | null;
   role: "manager";
   created_at: string;
+  suspended: boolean | null;
 }
 
 export default function ManagersPage() {
@@ -42,6 +43,9 @@ export default function ManagersPage() {
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
+  const [showAddPassword, setShowAddPassword] = useState(false);
+  const [addConfirmPassword, setAddConfirmPassword] = useState("");
+  const [showAddConfirm, setShowAddConfirm] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
 
@@ -53,6 +57,9 @@ export default function ManagersPage() {
   const [resetTarget, setResetTarget] = useState<Manager | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+
+  // Suspend
+  const [suspendLoading, setSuspendLoading] = useState(false);
 
   const fetchManagers = useCallback(async () => {
     setLoading(true);
@@ -83,6 +90,10 @@ export default function ManagersPage() {
       );
       return;
     }
+    if (addPassword !== addConfirmPassword) {
+      setAddError("Passwords do not match.");
+      return;
+    }
     setAddLoading(true);
     try {
       const res = await fetch("/api/managers", {
@@ -104,6 +115,9 @@ export default function ManagersPage() {
       setAddName("");
       setAddEmail("");
       setAddPassword("");
+      setAddConfirmPassword("");
+      setShowAddPassword(false);
+      setShowAddConfirm(false);
       fetchManagers();
     } catch {
       setAddError("Network error. Please try again.");
@@ -151,6 +165,30 @@ export default function ManagersPage() {
       }
     } finally {
       setResetLoading(false);
+    }
+  }
+
+  async function handleSuspend(manager: Manager, suspend: boolean) {
+    setSuspendLoading(true);
+    try {
+      const res = await fetch(`/api/managers/${manager.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ suspended: suspend }),
+      });
+      if (res.ok) {
+        toast.success(
+          suspend
+            ? `${manager.name || "Manager"} has been suspended`
+            : `${manager.name || "Manager"} has been reactivated`
+        );
+        fetchManagers();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to update manager.");
+      }
+    } finally {
+      setSuspendLoading(false);
     }
   }
 
@@ -210,9 +248,16 @@ export default function ManagersPage() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">
-                    {m.name || "—"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {m.name || "—"}
+                    </p>
+                    {m.suspended && (
+                      <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600 border border-red-100 shrink-0">
+                        Suspended
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 truncate">{m.email}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
                     Added {formatDate(m.created_at)}
@@ -231,6 +276,29 @@ export default function ManagersPage() {
                     <KeyRound className="h-3.5 w-3.5" />
                     Reset Password
                   </Button>
+                  {m.suspended ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSuspend(m, false)}
+                      disabled={suspendLoading}
+                      className="h-8 px-3 text-xs gap-1.5 text-green-600 hover:text-green-700 hover:border-green-200"
+                    >
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Reactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSuspend(m, true)}
+                      disabled={suspendLoading}
+                      className="h-8 px-3 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:border-amber-200"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      Suspend
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
@@ -271,6 +339,9 @@ export default function ManagersPage() {
             setAddName("");
             setAddEmail("");
             setAddPassword("");
+            setAddConfirmPassword("");
+            setShowAddPassword(false);
+            setShowAddConfirm(false);
             setAddError("");
           }
         }}
@@ -306,17 +377,59 @@ export default function ManagersPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="m-password">Password</Label>
-              <Input
-                id="m-password"
-                type="password"
-                placeholder="e.g. Primefield1"
-                value={addPassword}
-                onChange={(e) => setAddPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="m-password"
+                  type={showAddPassword ? "text" : "password"}
+                  placeholder="e.g. Primefield1"
+                  value={addPassword}
+                  onChange={(e) => setAddPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAddPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showAddPassword ? "Hide password" : "Show password"}
+                >
+                  {showAddPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Min. 8 characters, one uppercase letter, one number. Share
                 securely with the manager.
               </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="m-confirm">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="m-confirm"
+                  type={showAddConfirm ? "text" : "password"}
+                  placeholder="Repeat password"
+                  value={addConfirmPassword}
+                  onChange={(e) => setAddConfirmPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowAddConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label={showAddConfirm ? "Hide password" : "Show password"}
+                >
+                  {showAddConfirm ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
           <DialogFooter>

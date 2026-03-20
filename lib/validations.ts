@@ -186,6 +186,7 @@ export const managerUpdateSchema = z.object({
     .regex(/[0-9]/, "Must contain a number")
     .optional(),
   name: z.string().min(2).optional(),
+  suspended: z.boolean().optional(),
 });
 
 export const managerResetPasswordSchema = z.object({

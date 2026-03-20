@@ -102,6 +102,13 @@ export async function PUT(
       .eq("id", params.id);
   }
 
+  if (parsed.data.suspended !== undefined) {
+    await supabase
+      .from("profiles")
+      .update({ suspended: parsed.data.suspended })
+      .eq("id", params.id);
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
