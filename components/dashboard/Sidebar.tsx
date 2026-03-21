@@ -29,6 +29,7 @@ import {
   LogOut,
   ChevronUp,
   UserCog,
+  Sparkles,
 } from "lucide-react";
 
 // ── Navigation structure ────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ const NAV_SECTIONS = [
   {
     label: "Businesses",
     items: [
+      { href: "/dashboard/ultratidy", label: "UltraTidy", icon: Sparkles },
       { href: "/dashboard/dba", label: "DBA Products", icon: ShoppingBag },
       { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
       { href: "/dashboard/farm", label: "Farm", icon: Tractor },
