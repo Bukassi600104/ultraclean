@@ -15,11 +15,11 @@ The codebase has zero unfinished features. Everything left is environment config
 
 | App | Route Group | URL | Status |
 |-----|-------------|-----|--------|
-| **Public Website** | `(public)` | `ultratidy.ca` | Code done, not on real domain yet |
-| **Admin Dashboard** | `(dashboard)` | `leads.ultratidy.ca` | Code done, new tables needed |
-| **Farm Manager Portal** | `(manager)` | `farm.ultratidy.ca` | Code done, not on real domain yet |
-| **Primefield Landing Page** | `(primefield)` | `ultratidy.ca/primefield` | Standalone page, complete |
-| **DBA Course Registration** | `(register)` | `ultratidy.ca/register` | Standalone page, needs Stripe keys |
+| **Public Website** | `(public)` | `ultratidycleaning.com` | Live |
+| **Admin Dashboard** | `(dashboard)` | `leads.ultratidycleaning.com` | Live |
+| **Farm Manager Portal** | `(manager)` | `farm.primefieldagric.com` | Live |
+| **Primefield Landing Page** | `(primefield)` | `primefieldagric.com` | Live |
+| **DBA Course Registration** | `(register)` | `bboconcepts.com` | Live |
 
 ---
 
@@ -111,7 +111,6 @@ Push all env vars from `.env.local` to Vercel:
 Current: 81 tests covering the Phase 1 public site only.
 New pages that need smoke tests:
 - `/book` — booking form submission
-- `/primefield` — page loads, contact form visible
 - `/register` — shows "not available" gracefully when Stripe not configured
 - `/dashboard` — loads login redirect for unauthenticated users
 

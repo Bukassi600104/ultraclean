@@ -10,9 +10,9 @@ UltraTidy Cleaning Services website for Mrs. Bimbo Oyedotun (BossBimbz), based i
 
 1. **Public Website** (`ultratidycleaning.com`) — Marketing site with services, gallery, blog, contact form
 2. **Admin Dashboard** (`leads.ultratidycleaning.com`) — Lead management, blog CMS, farm data overview, course management
-3. **Farm Manager Portal** (`farm.ultratidycleaning.com`) — Input-only forms for farm operations (Primefield, Ibadan, Nigeria)
-4. **Primefield Landing** (`ultratidycleaning.com/primefield`) — Separate landing page for the agri-business
-5. **DBA Registration** (`register.ultratidycleaning.com`) — Course registration with Stripe payment processing
+3. **Farm Manager Portal** (`farm.primefieldagric.com`) — Input-only forms for farm operations (Primefield, Ibadan, Nigeria)
+4. **Primefield Landing** (`primefieldagric.com`) — Public-facing landing page for the Primefield agri-business
+5. **DBA Registration** (`bboconcepts.com`) — Course registration with Stripe payment processing
 
 **Working directory:** All commands below must be run from inside the `Ultratidy Website/` subdirectory.
 
@@ -58,7 +58,7 @@ npm run lint         # ESLint + TypeScript check
 npx playwright test  # E2E tests (81 tests, public site coverage)
 ```
 
-> **Note:** `npm test` (Vitest) is configured but no unit tests are written yet. E2E tests only cover the public site; `/book`, `/primefield`, `/register`, and `/dashboard` are pending.
+> **Note:** `npm test` (Vitest) is configured but no unit tests are written yet. E2E tests only cover the public site; `/book`, `/register`, and `/dashboard` are pending.
 
 ### Cron Jobs
 `vercel.json` schedules `/api/cron/email-automation` at `0 14 * * *` (2 PM UTC). Secured with `CRON_SECRET` header.
@@ -86,10 +86,10 @@ app/
 │   ├── blog/, blog/new/, blog/edit/[id]/
 │   ├── courses/
 │   └── settings/
-├── (manager)/               # Farm manager portal (protected, farm.ultratidy.ca, input-only)
+├── (manager)/               # Farm manager portal (protected, farm.primefieldagric.com, input-only)
 │   └── manager/sales|expenses|inventory|cash/
-├── (primefield)/            # Primefield agri-business landing (ultratidy.ca/primefield)
-├── (register)/              # DBA course registration with Stripe (ultratidy.ca/register)
+├── (primefield)/            # Primefield agri-business landing (primefieldagric.com)
+├── (register)/              # DBA course registration with Stripe (bboconcepts.com)
 ├── auth/                    # Supabase auth callbacks
 ├── api/
 │   ├── submit-lead/         # POST — public contact form

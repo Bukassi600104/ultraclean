@@ -8,7 +8,10 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
 
   const isFarmDomain =
-    hostname.startsWith("farm.") ||
+    hostname === "farm.primefieldagric.com" ||
+    hostname.startsWith("farm.");
+
+  const isPrimefieldDomain =
     hostname === "primefieldagric.com" ||
     hostname === "www.primefieldagric.com";
 
@@ -119,6 +122,17 @@ export async function middleware(request: NextRequest) {
 
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (isPrimefieldDomain) {
+    // API routes pass through as-is
+    if (pathname.startsWith("/api/")) {
+      const result = await updateSession(request);
+      return result.supabaseResponse;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = `/primefield${pathname === "/" ? "" : pathname}`;
     return NextResponse.rewrite(url);
   }
 

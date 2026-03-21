@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
+
+export const metadata: Metadata = {
+  icons: {
+    icon: [{ url: "/primefield-icon.png", type: "image/png" }],
+    apple: [{ url: "/primefield-icon.png" }],
+    shortcut: "/primefield-icon.png",
+  },
+};
 
 const manrope = Manrope({
   subsets: ["latin"],
