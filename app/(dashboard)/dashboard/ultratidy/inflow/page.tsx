@@ -140,7 +140,7 @@ export default function UltraTidyInflowPage() {
                 {loading ? (
                   <tr><td colSpan={7} className="text-center py-12"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
                 ) : records.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">No inflow records yet. Click "Add Inflow" to record your first payment.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">No inflow records yet. Click Add Inflow to record your first payment.</td></tr>
                 ) : records.map((r) => (
                   <tr key={r.id} className="hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 tabular-nums">{new Date(r.date + "T12:00:00").toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })}</td>

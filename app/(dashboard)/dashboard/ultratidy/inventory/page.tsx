@@ -23,7 +23,6 @@ import { toast } from "sonner";
 
 const CATEGORIES = ["supplies", "equipment", "protective_gear", "other"];
 const UNITS = ["units", "litres", "kg", "rolls", "pairs", "bottles", "boxes"];
-const ACTIONS = ["add", "use", "dispose", "adjust"];
 
 interface Item { id: string; item_name: string; category: string; current_quantity: string; unit: string; reorder_level: string; last_updated: string; }
 interface Tx { id: string; item_name: string; action: string; quantity: string; notes: string | null; created_at: string; }
@@ -156,7 +155,7 @@ export default function UltraTidyInventoryPage() {
                     {loading ? (
                       <tr><td colSpan={8} className="text-center py-12"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
                     ) : items.length === 0 ? (
-                      <tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">No inventory items yet. Click "Add Item" to create your first.</td></tr>
+                      <tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">No inventory items yet. Click Add Item to create your first.</td></tr>
                     ) : items.map((item) => {
                       const qty = Number(item.current_quantity);
                       const reorder = Number(item.reorder_level);

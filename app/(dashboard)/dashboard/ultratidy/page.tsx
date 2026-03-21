@@ -6,7 +6,6 @@ import {
   TrendingUp, TrendingDown, DollarSign, Package, ArrowRight, Loader2,
 } from "lucide-react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
