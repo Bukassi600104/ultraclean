@@ -160,9 +160,11 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .single();
 
+      if (profile?.role === "manager") {
+        return NextResponse.redirect("https://farm.primefieldagric.com");
+      }
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname =
-        profile?.role === "manager" ? "/manager/sales" : "/dashboard";
+      redirectUrl.pathname = "/dashboard";
       return NextResponse.redirect(redirectUrl);
     }
     return supabaseResponse;

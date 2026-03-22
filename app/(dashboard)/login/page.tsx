@@ -67,7 +67,7 @@ export default function LoginPage() {
         .single();
 
       if (profile?.role === "manager") {
-        router.push("/manager/sales");
+        window.location.href = "https://farm.primefieldagric.com";
       } else {
         router.push("/dashboard");
       }

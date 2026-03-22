@@ -17,28 +17,28 @@ import {
 
 const tabs = [
   {
-    href: "/manager/sales",
+    href: "/sales",
     label: "Sales",
     icon: DollarSign,
     color: "#16a34a",        // green-600
     bgColor: "#dcfce7",      // green-100
   },
   {
-    href: "/manager/expenses",
+    href: "/expenses",
     label: "Expenses",
     icon: Receipt,
     color: "#dc2626",        // red-600
     bgColor: "#fee2e2",      // red-100
   },
   {
-    href: "/manager/inventory",
+    href: "/inventory",
     label: "Stock",
     icon: Package,
     color: "#2563eb",        // blue-600
     bgColor: "#dbeafe",      // blue-100
   },
   {
-    href: "/manager/cash",
+    href: "/cash",
     label: "Cash",
     icon: Wallet,
     color: "#d97706",        // amber-600
@@ -97,7 +97,7 @@ export default function ManagerLayout({
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-white safe-area-bottom shadow-[0_-2px_12px_rgba(0,0,0,0.08)]">
         <div className="flex">
           {tabs.map((tab) => {
-            const isActive = pathname === tab.href;
+            const isActive = pathname === tab.href || pathname === `/manager${tab.href}`;
             return (
               <Link
                 key={tab.href}
