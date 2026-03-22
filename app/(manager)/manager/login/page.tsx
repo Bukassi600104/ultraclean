@@ -62,9 +62,9 @@ export default function ManagerLoginPage() {
         .single();
 
       if (profile?.role === "admin") {
-        router.push("/manager/sales");
+        router.push("/sales");
       } else if (profile?.role === "manager") {
-        router.push("/manager/sales");
+        router.push("/sales");
       } else {
         setError("You do not have access to the Farm Portal.");
         await supabase.auth.signOut();
