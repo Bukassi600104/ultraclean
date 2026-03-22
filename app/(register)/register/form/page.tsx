@@ -27,7 +27,7 @@ export default function RegisterFormPage() {
       {/* Back nav */}
       <div className="max-w-5xl mx-auto mb-6">
         <a
-          href="/register"
+          href="/"
           className="text-sm font-medium hover:underline"
           style={{ color: "#160C5A" }}
         >
