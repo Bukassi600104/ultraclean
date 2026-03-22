@@ -58,14 +58,17 @@ export function AddLeadForm({ open, onClose }: AddLeadFormProps) {
         body: JSON.stringify(data),
       });
 
-      if (!res.ok) throw new Error("Failed to create lead");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to create lead");
+      }
 
       toast.success("Lead created successfully");
       reset();
       onClose();
       router.refresh();
-    } catch {
-      toast.error("Failed to create lead");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create lead");
     } finally {
       setIsLoading(false);
     }

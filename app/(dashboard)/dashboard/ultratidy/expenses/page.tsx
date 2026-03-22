@@ -84,9 +84,10 @@ export default function UltraTidyExpensesPage() {
   async function handleDelete() {
     if (!deleteId) return;
     setDeleting(true);
-    await fetch(`/api/ultratidy/expenses/${deleteId}`, { method: "DELETE" });
+    const res = await fetch(`/api/ultratidy/expenses/${deleteId}`, { method: "DELETE" });
     setDeleting(false);
     setDeleteId(null);
+    if (!res.ok) { toast.error("Failed to delete record."); return; }
     toast.success("Record deleted.");
     load();
   }

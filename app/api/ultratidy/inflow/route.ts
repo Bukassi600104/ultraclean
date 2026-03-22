@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Unavailable" }, { status: 503 });
 
@@ -28,11 +30,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Unavailable" }, { status: 503 });
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const { date, client_name, service, amount, payment_method, notes } = body;
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("ultratidy_inflow")
-    .insert({ date, client_name, service, amount: parseFloat(amount), payment_method, notes, created_by: user.id })
+    .insert({ date, client_name, service, amount: parseFloat(amount), payment_method, notes, created_by: user?.id })
     .select()
     .single();
 
