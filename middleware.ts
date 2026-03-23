@@ -8,8 +8,7 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") || "";
 
   const isFarmDomain =
-    hostname === "farm.primefieldagric.com" ||
-    hostname.startsWith("farm.");
+    hostname === "farm.primefieldagric.com";
 
   const isPrimefieldDomain =
     hostname === "primefieldagric.com" ||
