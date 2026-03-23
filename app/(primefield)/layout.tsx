@@ -2,6 +2,17 @@ import type { Metadata } from "next";
 import { Manrope, Playfair_Display } from "next/font/google";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://primefieldagric.com"),
+  authors: [{ name: "Primefield Agriculture" }],
+  creator: "Primefield Agriculture",
+  publisher: "Primefield Agriculture",
+  keywords: [],
+  alternates: { canonical: "https://primefieldagric.com" },
+  openGraph: {
+    locale: "en_NG",
+    url: "https://primefieldagric.com",
+    siteName: "Primefield Agriculture",
+  },
   icons: {
     icon: [{ url: "/primefield-icon.png", type: "image/png" }],
     apple: [{ url: "/primefield-icon.png" }],
