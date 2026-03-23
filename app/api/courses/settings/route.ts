@@ -14,12 +14,17 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
 
-  const course_name = (body.course_name || "").trim();
-  const price_cents = parseInt(body.price_cents, 10);
-  const currency = (body.currency || "usd").toLowerCase();
-  const stripe_payment_link = (body.stripe_payment_link || "").trim() || undefined;
+  const course_name = (String(body.course_name ?? "")).trim();
+  const price_cents = parseInt(String(body.price_cents ?? ""), 10);
+  const currency = (String(body.currency ?? "usd")).toLowerCase();
+  const rawLink = (String(body.stripe_payment_link ?? "")).trim();
 
   if (!course_name) {
     return NextResponse.json(
@@ -35,9 +40,31 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  // Only accept Stripe-hosted payment links to prevent open-redirect abuse
+  if (rawLink) {
+    try {
+      const parsed = new URL(rawLink);
+      const isStripe =
+        parsed.protocol === "https:" &&
+        (parsed.hostname === "buy.stripe.com" ||
+          parsed.hostname === "checkout.stripe.com" ||
+          parsed.hostname.endsWith(".stripe.com"));
+      if (!isStripe) {
+        return NextResponse.json(
+          { error: "Payment link must be a valid Stripe URL (buy.stripe.com or checkout.stripe.com)" },
+          { status: 400 }
+        );
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid payment link URL" }, { status: 400 });
+    }
+  }
+
+  const stripe_payment_link = rawLink || undefined;
+
   const { error } = await saveCourseSettings({ course_name, price_cents, currency, stripe_payment_link });
   if (error) {
-    return NextResponse.json({ error }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
   }
 
   return NextResponse.json({ course_name, price_cents, currency, stripe_payment_link });

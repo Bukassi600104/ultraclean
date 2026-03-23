@@ -3,6 +3,16 @@ import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
+function esc(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 export async function POST(request: NextRequest) {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -25,7 +35,8 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const msg = (err as Error).message;
     console.error("Webhook signature verification failed:", msg);
-    return NextResponse.json({ error: `Webhook Error: ${msg}` }, { status: 400 });
+    // Never echo internal error details to the caller
+    return NextResponse.json({ error: "Webhook signature invalid" }, { status: 400 });
   }
 
   if (
@@ -69,12 +80,12 @@ export async function POST(request: NextRequest) {
           resend.emails.send({
             from: "DBA <courses@digitalbossacademy.com>",
             to: registrant_email,
-            subject: `Registration Confirmed — ${courseName}`,
+            subject: `Registration Confirmed — ${esc(courseName)}`,
             html: `
               <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
                 <h1 style="color:#0a2a28;font-size:24px">You're Registered!</h1>
-                <p>Hi <strong>${registrant_name}</strong>,</p>
-                <p>Thank you for registering for <strong>${courseName}</strong>. Your payment of <strong>${formattedAmount}</strong> has been received.</p>
+                <p>Hi <strong>${esc(registrant_name)}</strong>,</p>
+                <p>Thank you for registering for <strong>${esc(courseName)}</strong>. Your payment of <strong>${esc(formattedAmount)}</strong> has been received.</p>
                 <p>We'll be in touch with more details soon.</p>
                 <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
                 <p style="color:#999;font-size:13px">Digital Boss Academy — Empowering you to boss up.</p>
@@ -85,16 +96,16 @@ export async function POST(request: NextRequest) {
           resend.emails.send({
             from: "DBA <courses@digitalbossacademy.com>",
             to: adminEmail,
-            subject: `New Registration — ${courseName}`,
+            subject: `New Registration — ${esc(courseName)}`,
             html: `
               <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
                 <h1 style="color:#0a2a28;font-size:24px">New Course Registration</h1>
                 <table style="width:100%;border-collapse:collapse;font-size:15px">
-                  <tr><td style="padding:8px 0;color:#888;width:100px">Course</td><td style="padding:8px 0;font-weight:600">${courseName}</td></tr>
-                  <tr><td style="padding:8px 0;color:#888">Amount</td><td style="padding:8px 0;font-weight:600">${formattedAmount}</td></tr>
-                  <tr><td style="padding:8px 0;color:#888">Name</td><td style="padding:8px 0">${registrant_name}</td></tr>
-                  <tr><td style="padding:8px 0;color:#888">Email</td><td style="padding:8px 0">${registrant_email}</td></tr>
-                  <tr><td style="padding:8px 0;color:#888">Phone</td><td style="padding:8px 0">${registrant_phone}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888;width:100px">Course</td><td style="padding:8px 0;font-weight:600">${esc(courseName)}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888">Amount</td><td style="padding:8px 0;font-weight:600">${esc(formattedAmount)}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888">Name</td><td style="padding:8px 0">${esc(registrant_name)}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888">Email</td><td style="padding:8px 0">${esc(registrant_email)}</td></tr>
+                  <tr><td style="padding:8px 0;color:#888">Phone</td><td style="padding:8px 0">${esc(registrant_phone)}</td></tr>
                 </table>
               </div>
             `,

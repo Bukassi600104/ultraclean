@@ -9,6 +9,21 @@ import { Textarea } from "@/components/ui/textarea";
 
 const FALLBACK_LINK = "https://buy.stripe.com/aFa6oH1qjb5jd3a3op3F600";
 
+/** Only allow redirects to Stripe's own domains to prevent open-redirect abuse. */
+function isSafeStripeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      (parsed.hostname === "buy.stripe.com" ||
+        parsed.hostname === "checkout.stripe.com" ||
+        parsed.hostname.endsWith(".stripe.com"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function RegistrationForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -17,14 +32,19 @@ export function RegistrationForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [paymentLink, setPaymentLink] = useState(FALLBACK_LINK);
+  const [settingsReady, setSettingsReady] = useState(false);
 
   useEffect(() => {
     fetch("/api/courses/settings")
       .then((r) => r.json())
       .then((data) => {
-        if (data?.stripe_payment_link) setPaymentLink(data.stripe_payment_link);
+        const link = data?.stripe_payment_link;
+        if (link && isSafeStripeUrl(link)) {
+          setPaymentLink(link);
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setSettingsReady(true));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -122,7 +142,7 @@ export function RegistrationForm() {
 
       <Button
         type="submit"
-        disabled={loading}
+        disabled={loading || !settingsReady}
         className="w-full h-12 text-base font-semibold mt-2"
         style={{ backgroundColor: "#F5C842", color: "#160C5A" }}
       >

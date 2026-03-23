@@ -9,6 +9,17 @@ const FROM_EMAIL = "UltraTidy <hello@ultratidycleaning.com>";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ultratidycleaning.com";
 const GOOGLE_REVIEW_URL = "https://g.page/r/CbgkPYbL4D3JEBM/review";
 
+/** Escapes user-supplied strings before inserting into HTML email bodies. */
+function esc(str: string | null | undefined): string {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 function caslFooter(email: string) {
   return `
     <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;" />
@@ -38,8 +49,8 @@ export async function sendLeadConfirmation(data: {
       subject: "Thank you for contacting UltraTidy!",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #0BBDB2;">Thank You, ${data.name}!</h1>
-          <p>We've received your inquiry about <strong>${data.service}</strong> and we're excited to help.</p>
+          <h1 style="color: #0BBDB2;">Thank You, ${esc(data.name)}!</h1>
+          <p>We've received your inquiry about <strong>${esc(data.service)}</strong> and we're excited to help.</p>
           <p>A member of our team will get back to you within 24 hours to discuss your needs and provide a personalized quote.</p>
           <p>In the meantime, feel free to check out our <a href="${SITE_URL}/services" style="color: #0BBDB2;">services</a> or view our <a href="${SITE_URL}/gallery" style="color: #0BBDB2;">gallery</a> to see our work.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
@@ -88,11 +99,11 @@ export async function sendAdminNotification(data: {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">New Lead Received!</h1>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${data.name}</td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Phone:</td><td style="padding: 8px;"><a href="tel:${data.phone}">${data.phone}</a></td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${data.service}</td></tr>
-            ${data.notes ? `<tr><td style="padding: 8px; font-weight: bold;">Notes:</td><td style="padding: 8px;">${data.notes}</td></tr>` : ""}
+            <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${esc(data.name)}</td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${esc(data.email)}">${esc(data.email)}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Phone:</td><td style="padding: 8px;"><a href="tel:${esc(data.phone)}">${esc(data.phone)}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${esc(data.service)}</td></tr>
+            ${data.notes ? `<tr><td style="padding: 8px; font-weight: bold;">Notes:</td><td style="padding: 8px;">${esc(data.notes)}</td></tr>` : ""}
           </table>
           <p style="margin-top: 16px;"><a href="${SITE_URL}/dashboard/leads" style="color: #0BBDB2;">View in Dashboard →</a></p>
         </div>
@@ -124,10 +135,10 @@ export async function sendAppointmentConfirmation(data: {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">Consultation Booked!</h1>
-          <p>Hi ${data.name},</p>
-          <p>Your free consultation is booked for <strong>${dateStr}</strong> at <strong>${data.appointment_time}</strong>.</p>
-          ${data.service ? `<p>Topic: <strong>${data.service}</strong></p>` : ""}
-          <p>We'll call you at <strong>${data.phone}</strong> at the scheduled time.</p>
+          <p>Hi ${esc(data.name)},</p>
+          <p>Your free consultation is booked for <strong>${esc(dateStr)}</strong> at <strong>${esc(data.appointment_time)}</strong>.</p>
+          ${data.service ? `<p>Topic: <strong>${esc(data.service)}</strong></p>` : ""}
+          <p>We'll call you at <strong>${esc(data.phone)}</strong> at the scheduled time.</p>
           <p>If you need to reschedule, please contact us at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
@@ -163,12 +174,12 @@ export async function sendAppointmentAdminNotification(data: {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">New Consultation Booking</h1>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${data.name}</td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${data.email}">${data.email}</a></td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Phone:</td><td style="padding: 8px;"><a href="tel:${data.phone}">${data.phone}</a></td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${dateStr}</td></tr>
-            <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${data.appointment_time}</td></tr>
-            ${data.service ? `<tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${data.service}</td></tr>` : ""}
+            <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${esc(data.name)}</td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${esc(data.email)}">${esc(data.email)}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Phone:</td><td style="padding: 8px;"><a href="tel:${esc(data.phone)}">${esc(data.phone)}</a></td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Date:</td><td style="padding: 8px;">${esc(dateStr)}</td></tr>
+            <tr><td style="padding: 8px; font-weight: bold;">Time:</td><td style="padding: 8px;">${esc(data.appointment_time)}</td></tr>
+            ${data.service ? `<tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${esc(data.service)}</td></tr>` : ""}
           </table>
           <p style="margin-top: 16px;"><a href="${SITE_URL}/dashboard/appointments" style="color: #0BBDB2;">View in Dashboard →</a></p>
         </div>
@@ -194,8 +205,8 @@ export async function sendFollowUp(data: {
       subject: `${data.name}, still interested in ${data.service}?`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #0BBDB2;">Hi ${data.name},</h1>
-          <p>We reached out a few days ago about your interest in <strong>${data.service}</strong>, and we wanted to follow up.</p>
+          <h1 style="color: #0BBDB2;">Hi ${esc(data.name)},</h1>
+          <p>We reached out a few days ago about your interest in <strong>${esc(data.service)}</strong>, and we wanted to follow up.</p>
           <p>If you still need help, we'd love to chat! You can reply to this email or give us a call at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>If the timing isn't right, no worries — we're here whenever you're ready.</p>
           <p>It's not clean until it's <strong>ULTRACLEAN!</strong></p>
@@ -229,8 +240,8 @@ export async function sendBookingConfirmation(data: {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">Booking Confirmed!</h1>
-          <p>Hi ${data.name},</p>
-          <p>Great news — your <strong>${data.service}</strong> is confirmed for <strong>${dateStr}</strong>.</p>
+          <p>Hi ${esc(data.name)},</p>
+          <p>Great news — your <strong>${esc(data.service)}</strong> is confirmed for <strong>${esc(dateStr)}</strong>.</p>
           <h3 style="color: #333;">What to expect:</h3>
           <ul>
             <li>Our team will arrive on time with all necessary supplies</li>
@@ -267,8 +278,8 @@ export async function sendReminder(data: {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">See You Tomorrow!</h1>
-          <p>Hi ${data.name},</p>
-          <p>Just a friendly reminder that your <strong>${data.service}</strong> is scheduled for tomorrow, <strong>${dateStr}</strong>.</p>
+          <p>Hi ${esc(data.name)},</p>
+          <p>Just a friendly reminder that your <strong>${esc(data.service)}</strong> is scheduled for tomorrow, <strong>${esc(dateStr)}</strong>.</p>
           <p>Please ensure the areas to be cleaned are accessible. If you have any last-minute requests or need to reschedule, call us at <a href="tel:+15483286260" style="color: #0BBDB2;">(548) 328-6260</a>.</p>
           <p>We can't wait to make your space sparkle!</p>
           <p style="margin-top: 24px;">Best regards,<br/>The UltraTidy Team</p>
@@ -295,7 +306,7 @@ export async function sendThankYouReview(data: {
       subject: "Thank you for choosing UltraTidy!",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #0BBDB2;">Thank You, ${data.name}!</h1>
+          <h1 style="color: #0BBDB2;">Thank You, ${esc(data.name)}!</h1>
           <p>We hope you're enjoying your freshly cleaned space. It was a pleasure working with you!</p>
           <p>Your feedback helps us grow and helps others find quality cleaning services. Would you take a moment to leave us a review?</p>
           <p style="text-align: center; margin: 24px 0;">
@@ -327,7 +338,7 @@ export async function sendReEngagement(data: {
       subject: `${data.name}, ready for another clean?`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #0BBDB2;">We Miss You, ${data.name}!</h1>
+          <h1 style="color: #0BBDB2;">We Miss You, ${esc(data.name)}!</h1>
           <p>It's been a while since your last cleaning, and we'd love to help you again.</p>
           <p>Whether it's a regular maintenance clean or a deep clean refresh, we've got you covered.</p>
           <p style="text-align: center; margin: 24px 0;">
