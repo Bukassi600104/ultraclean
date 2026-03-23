@@ -13,6 +13,11 @@ export const metadata: Metadata = {
     url: "https://primefieldagric.com",
     siteName: "Primefield Agriculture",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Primefield Agriculture",
+    description: "Sustainable farming and agri-business in Ibadan, Nigeria.",
+  },
   icons: {
     icon: [{ url: "/primefield-icon.png", type: "image/png" }],
     apple: [{ url: "/primefield-icon.png" }],

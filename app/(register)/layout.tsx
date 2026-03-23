@@ -12,6 +12,12 @@ export const metadata: Metadata = {
     url: "https://bboconcepts.com",
     siteName: "BBO Concepts",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Digital Income Systems to Capital Blueprint — Bimbo Oyedotun",
+    description:
+      "Live mentorship by Bimbo Oyedotun — March 28, 2026 | 12PM EST | $20",
+  },
   icons: {
     icon: [{ url: "/empty.png", type: "image/png" }],
     apple: [],
