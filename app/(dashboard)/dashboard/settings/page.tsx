@@ -11,9 +11,14 @@ import { Label } from "@/components/ui/label";
 import { ManagerList } from "@/components/dashboard/settings/ManagerList";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SettingsPage() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
+
+  // Change username
+  const [newUsername, setNewUsername] = useState("");
+  const [isChangingUsername, setIsChangingUsername] = useState(false);
 
   // Change password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -28,6 +33,44 @@ export default function SettingsPage() {
   const [emailPassword, setEmailPassword] = useState("");
   const [showEmailPwd, setShowEmailPwd] = useState(false);
   const [isChangingEmail, setIsChangingEmail] = useState(false);
+
+  async function handleChangeUsername(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = newUsername.trim();
+    if (!trimmed) return;
+    setIsChangingUsername(true);
+    try {
+      const res = await fetch("/api/auth/change-username", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newUsername: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to change username");
+        return;
+      }
+      toast.success("Username updated successfully");
+      setNewUsername("");
+      // Refresh profile in Supabase client so the displayed name updates
+      const supabase = createClient();
+      if (supabase && user) {
+        const { data: updated } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        if (updated) {
+          // Force a page reload so AuthContext re-fetches the updated profile
+          window.location.reload();
+        }
+      }
+    } catch {
+      toast.error("Failed to change username");
+    } finally {
+      setIsChangingUsername(false);
+    }
+  }
 
   async function handleChangeEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -104,6 +147,12 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-500">Username</span>
+              <span className="text-sm font-medium">
+                {profile?.name || <span className="text-gray-400 italic">Not set</span>}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-sm text-gray-500">Email</span>
               <span className="text-sm font-medium">
                 {profile?.email || "—"}
@@ -115,6 +164,41 @@ export default function SettingsPage() {
                 {profile?.role || "—"}
               </Badge>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Change Username */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Change Username</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangeUsername} className="space-y-4 max-w-md">
+              <div className="space-y-2">
+                <Label htmlFor="new-username">New Username</Label>
+                <Input
+                  id="new-username"
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="letters, numbers, underscores only"
+                  required
+                  minLength={3}
+                  maxLength={30}
+                />
+                <p className="text-xs text-muted-foreground">
+                  3–30 characters. Letters, numbers, and underscores only.
+                  Once changed, your old username cannot be used again.
+                </p>
+              </div>
+              <Button type="submit" disabled={isChangingUsername}>
+                {isChangingUsername ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</>
+                ) : (
+                  "Change Username"
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
