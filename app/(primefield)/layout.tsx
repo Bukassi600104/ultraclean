@@ -3,6 +3,11 @@ import { Manrope, Playfair_Display } from "next/font/google";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://primefieldagric.com"),
+  title: {
+    default: "Primefield Agriculture",
+    template: "%s | Primefield Agriculture",
+  },
+  description: "Sustainable farming and agri-business in Ibadan, Nigeria.",
   authors: [{ name: "Primefield Agriculture" }],
   creator: "Primefield Agriculture",
   publisher: "Primefield Agriculture",
@@ -12,6 +17,8 @@ export const metadata: Metadata = {
     locale: "en_NG",
     url: "https://primefieldagric.com",
     siteName: "Primefield Agriculture",
+    title: "Primefield Agriculture",
+    description: "Sustainable farming and agri-business in Ibadan, Nigeria.",
   },
   twitter: {
     card: "summary_large_image",

@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://bboconcepts.com"),
+  title: {
+    default: "BBO Concepts | Digital Boss Academy",
+    template: "%s | BBO Concepts",
+  },
+  description: "Live mentorship by Bimbo Oyedotun — Digital Income Systems to Capital Blueprint.",
   authors: [{ name: "Bimbo Oyedotun" }],
   creator: "BBO Concepts",
   publisher: "BBO Concepts",
@@ -11,6 +16,8 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://bboconcepts.com",
     siteName: "BBO Concepts",
+    title: "BBO Concepts | Digital Boss Academy",
+    description: "Live mentorship by Bimbo Oyedotun — Digital Income Systems to Capital Blueprint.",
   },
   twitter: {
     card: "summary_large_image",
