@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   },
   description: "Farm operations portal for Primefield Agriculture, Ibadan, Nigeria.",
   robots: { index: false, follow: false },
+  manifest: "/farm-manifest.json",
   icons: {
     icon: [{ url: "/favicon-primefield.png", sizes: "512x512", type: "image/png" }],
     apple: [{ url: "/favicon-primefield.png", sizes: "512x512", type: "image/png" }],

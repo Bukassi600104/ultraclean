@@ -1,0 +1,18 @@
+{
+  "name": "Primefield Farm Portal",
+  "short_name": "Primefield",
+  "description": "Farm operations portal for Primefield Agriculture",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A1628",
+  "theme_color": "#11d469",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon-primefield.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

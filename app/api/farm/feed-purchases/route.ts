@@ -5,21 +5,26 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const saleItemSchema = z.object({
-  product: z.enum(["catfish", "goat", "chicken", "other"]),
-  quantity: z.number().positive("Quantity must be positive"),
-  unit_price: z.number().positive("Unit price must be positive"),
-  weight_kg: z.number().positive().optional().nullable(),
-  gender: z.enum(["male", "female"]).optional().nullable(),
-  other_product_name: z.string().max(100).optional().nullable(),
-  customer_name: z.string().max(200).optional().nullable(),
-  payment_method: z.enum(["cash", "transfer"]).default("cash"),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-});
+const feedItemSchema = z
+  .object({
+    feed_type: z.enum(["fish", "goat"]),
+    feed_source: z.enum(["local", "foreign"]),
+    weight_unit: z.enum(["tons", "kg"]),
+    weight_amount: z.number().positive("Weight must be positive"),
+    num_bags: z.number().int().positive("Number of bags must be positive"),
+    cost: z.number().positive("Cost must be positive"),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  })
+  .refine(
+    (d) =>
+      (d.feed_source === "local" && d.weight_unit === "tons") ||
+      (d.feed_source === "foreign" && d.weight_unit === "kg"),
+    { message: "Local feed must use tons; foreign feed must use kg" }
+  );
 
-const batchSaleSchema = z.array(saleItemSchema).min(1).max(50);
+const batchFeedSchema = z.array(feedItemSchema).min(1).max(50);
 
 export async function GET(request: NextRequest) {
   let profile;
@@ -42,20 +47,19 @@ export async function GET(request: NextRequest) {
   void profile;
 
   let query = supabase
-    .from("farm_sales")
+    .from("farm_feed_purchases")
     .select("*", { count: "exact" });
 
   if (date) query = query.eq("date", date);
 
   query = query
     .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
 
   const { data, count, error } = await query;
 
   if (error) {
-    console.error("farm_sales GET error:", error);
+    console.error("farm_feed_purchases GET error:", error);
     return NextResponse.json({ error: "Failed to fetch records" }, { status: 500 });
   }
 
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const parsed = batchSaleSchema.safeParse(body);
+  const parsed = batchFeedSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
@@ -92,17 +96,16 @@ export async function POST(request: NextRequest) {
 
   const rows = parsed.data.map((item) => ({
     ...item,
-    total_amount: item.quantity * item.unit_price,
     created_by: profile.id,
   }));
 
   const { data, error } = await supabase
-    .from("farm_sales")
+    .from("farm_feed_purchases")
     .insert(rows)
     .select();
 
   if (error) {
-    console.error("farm_sales POST error:", error);
+    console.error("farm_feed_purchases POST error:", error);
     return NextResponse.json({ error: "Failed to save records" }, { status: 500 });
   }
 
