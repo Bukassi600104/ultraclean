@@ -542,6 +542,7 @@ export default function ExpensesDockerPage() {
   const [savedExpenses, setSavedExpenses] = useState<{ id: string; category: string; amount: number; paid_to?: string; payment_method: string }[]>([]);
   const [savedFeed, setSavedFeed] = useState<{ id: string; feed_type: string; feed_source: string; weight_amount: number; num_bags: number; cost: number }[]>([]);
   const [showPast, setShowPast] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   const today = getTodayStr();
 
@@ -764,7 +765,7 @@ export default function ExpensesDockerPage() {
 
       {/* Content Area */}
       <div
-        className="px-4 pt-4 pb-56"
+        className="px-4 pt-4 pb-36"
         style={{
           backgroundColor: "#f4fbf8",
           borderRadius: "28px 28px 0 0",
@@ -916,57 +917,138 @@ export default function ExpensesDockerPage() {
         )}
       </div>
 
-      {/* Sticky Bottom */}
+      {/* Collapsible Summary Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-5 py-4"
+        className="fixed bottom-0 left-0 right-0"
         style={{
-          backgroundColor: "rgba(27,67,50,0.95)",
+          backgroundColor: "rgba(1,45,29,0.97)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
+          borderRadius: "20px 20px 0 0",
         }}
       >
-        <div className="space-y-1 mb-3">
-          <div className="flex justify-between text-sm">
-            <span style={{ color: "rgba(255,255,255,0.6)" }}>General Expenses</span>
-            <span className="text-white">{fmt(totalExpenses)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span style={{ color: "rgba(255,255,255,0.6)" }}>Feed Purchases</span>
-            <span className="text-white">{fmt(totalFeed)}</span>
-          </div>
+        {/* Pull handle — tapping toggles expanded/collapsed */}
+        <button
+          onClick={() => setSummaryExpanded((v) => !v)}
+          className="w-full flex flex-col items-center pt-2 pb-1"
+          aria-label={summaryExpanded ? "Collapse summary" : "Expand summary"}
+        >
           <div
-            className="flex justify-between font-bold pt-1 border-t"
-            style={{ borderColor: "rgba(255,255,255,0.1)" }}
-          >
-            <span className="text-white">Total Spent</span>
-            <span style={{ color: "#ef4444" }}>{fmt(totalSpent)}</span>
-          </div>
-          {closingBalance !== null && (
-            <div className="flex justify-between font-bold text-lg">
-              <span className="text-white">Closing Balance</span>
-              <span
-                className="text-2xl font-bold"
-                style={{ color: closingBalance >= 0 ? "#11d469" : "#ef4444" }}
-              >
-                {closingBalance < 0 ? "-" : ""}
-                {fmt(closingBalance)}
+            className="rounded-full"
+            style={{ width: "36px", height: "4px", backgroundColor: "rgba(255,255,255,0.25)" }}
+          />
+        </button>
+
+        {/* EXPANDED — full breakdown */}
+        {summaryExpanded && (
+          <div className="px-5 pt-1 pb-2 space-y-1">
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "rgba(255,255,255,0.55)" }}>General Expenses</span>
+              <span className="text-white font-medium">{fmt(totalExpenses)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "rgba(255,255,255,0.55)" }}>Feed Purchases</span>
+              <span className="text-white font-medium">{fmt(totalFeed)}</span>
+            </div>
+            <div
+              className="flex justify-between font-bold pt-2 border-t"
+              style={{ borderColor: "rgba(255,255,255,0.1)" }}
+            >
+              <span className="text-white">Total Spent</span>
+              <span style={{ color: totalSpent > 0 ? "#ef4444" : "rgba(255,255,255,0.6)" }}>
+                {fmt(totalSpent)}
               </span>
+            </div>
+            {closingBalance !== null && (
+              <div className="flex justify-between font-bold">
+                <span className="text-white">Closing Balance</span>
+                <span
+                  className="text-xl font-bold"
+                  style={{ color: closingBalance >= 0 ? "#11d469" : "#ef4444" }}
+                >
+                  {closingBalance < 0 ? "-" : ""}
+                  {fmt(closingBalance)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* COLLAPSED — single summary line */}
+        {!summaryExpanded && (
+          <button
+            onClick={() => setSummaryExpanded(true)}
+            className="w-full flex items-center justify-between px-5 py-2"
+          >
+            <span className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Spent{" "}
+              <span className="font-bold text-white">{fmt(totalSpent)}</span>
+              {closingBalance !== null && (
+                <>
+                  {" · "}Closing{" "}
+                  <span
+                    className="font-bold"
+                    style={{ color: closingBalance >= 0 ? "#11d469" : "#ef4444" }}
+                  >
+                    {closingBalance < 0 ? "-" : ""}
+                    {fmt(closingBalance)}
+                  </span>
+                </>
+              )}
+            </span>
+            <ChevronUp className="h-4 w-4 ml-2 flex-shrink-0" style={{ color: "rgba(255,255,255,0.4)" }} />
+          </button>
+        )}
+
+        {/* Bottom row — always visible: full Save button (expanded) or compact Save (collapsed) */}
+        <div className="px-5 pb-6 pt-1">
+          {summaryExpanded ? (
+            <button
+              disabled={!hasAnything}
+              onClick={() => setShowConfirm(true)}
+              className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+              style={{
+                backgroundColor: "#11d469",
+                color: "#012d1d",
+                height: "56px",
+                opacity: hasAnything ? 1 : 0.3,
+              }}
+            >
+              Save All Expenses
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSummaryExpanded(true)}
+                className="flex-1 rounded-2xl font-medium text-sm transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  color: "rgba(255,255,255,0.7)",
+                  height: "48px",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                }}
+              >
+                View Breakdown
+              </button>
+              <button
+                disabled={!hasAnything}
+                onClick={() => setShowConfirm(true)}
+                className="rounded-2xl font-bold text-sm transition-all active:scale-[0.98]"
+                style={{
+                  backgroundColor: "#11d469",
+                  color: "#012d1d",
+                  height: "48px",
+                  paddingLeft: "24px",
+                  paddingRight: "24px",
+                  opacity: hasAnything ? 1 : 0.3,
+                  flexShrink: 0,
+                }}
+              >
+                Save
+              </button>
             </div>
           )}
         </div>
-        <button
-          disabled={!hasAnything}
-          onClick={() => setShowConfirm(true)}
-          className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
-          style={{
-            backgroundColor: "#11d469",
-            color: "#012d1d",
-            height: "56px",
-            opacity: hasAnything ? 1 : 0.3,
-          }}
-        >
-          Save All Expenses
-        </button>
       </div>
     </div>
   );
