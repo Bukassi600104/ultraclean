@@ -66,24 +66,6 @@ const TEAM = [
     bio: "Bimbo built UltraTidy from the ground up with a passion for spotless spaces and exceptional service.",
     photo: "/images/team/founder.jpg",
   },
-  {
-    name: "Amara Osei",
-    role: "Head of Operations",
-    bio: "Keeps every job on schedule and ensures every client receives our five-star standard.",
-    photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
-  },
-  {
-    name: "Sarah Mitchell",
-    role: "Senior Cleaning Specialist",
-    bio: "A deep-clean expert with an eye for detail that no dust bunny can escape.",
-    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-  },
-  {
-    name: "Daniel Park",
-    role: "Commercial Lead",
-    bio: "Specialises in commercial and post-construction cleans across the GTA.",
-    photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80",
-  },
 ];
 
 export default function AboutPage() {
