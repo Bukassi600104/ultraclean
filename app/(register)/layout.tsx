@@ -25,11 +25,6 @@ export const metadata: Metadata = {
     description:
       "Live mentorship by Bimbo Oyedotun — March 28, 2026 | 12PM EST | $20",
   },
-  icons: {
-    icon: [{ url: "/empty.png", type: "image/png" }],
-    apple: [],
-    shortcut: "/empty.png",
-  },
 };
 
 export default function RegisterLayout({
