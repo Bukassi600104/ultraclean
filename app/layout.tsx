@@ -69,10 +69,6 @@ export const metadata: Metadata = {
       "Professional cleaning services in Brantford & the GTA. It's not clean until it's ULTRACLEAN!",
   },
   manifest: "/manifest.json",
-  icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
-  },
   robots: {
     index: true,
     follow: true,

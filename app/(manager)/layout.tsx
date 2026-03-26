@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   manifest: "/farm-manifest.json",
   icons: {
-    icon: [{ url: "/favicon-primefield.png", sizes: "512x512", type: "image/png" }],
-    apple: [{ url: "/favicon-primefield.png", sizes: "512x512", type: "image/png" }],
-    shortcut: "/favicon-primefield.png",
+    icon: [{ url: "/pf-emblem-icon.png", type: "image/png" }],
+    apple: [{ url: "/pf-emblem-icon.png" }],
+    shortcut: "/pf-emblem-icon.png",
   },
 };
 

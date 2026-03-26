@@ -25,6 +25,11 @@ export const metadata: Metadata = {
     title: "Primefield Agriculture",
     description: "Sustainable farming and agri-business in Ibadan, Nigeria.",
   },
+  icons: {
+    icon: [{ url: "/pf-emblem-icon.png", type: "image/png" }],
+    apple: [{ url: "/pf-emblem-icon.png" }],
+    shortcut: "/pf-emblem-icon.png",
+  },
 };
 
 const manrope = Manrope({
