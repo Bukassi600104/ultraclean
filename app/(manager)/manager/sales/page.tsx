@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
 
 function fmt(n: number): string {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -83,10 +83,16 @@ function isRowComplete(row: SaleRow): boolean {
 // ── Warning Modal ──
 function WarningModal({ onContinue }: { onContinue: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(1,45,29,0.9)" }}
+    >
       <div
-        className="w-full max-w-lg rounded-t-3xl p-6"
-        style={{ backgroundColor: "#112240" }}
+        className="w-full max-w-lg p-6"
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "28px 28px 0 0",
+        }}
       >
         <div className="flex justify-center mb-4">
           <div
@@ -96,14 +102,20 @@ function WarningModal({ onContinue }: { onContinue: () => void }) {
             <AlertTriangle className="h-10 w-10" style={{ color: "#F5C842" }} />
           </div>
         </div>
-        <h2 className="text-xl font-bold text-white text-center mb-3">Important Notice</h2>
-        <p className="text-center mb-6" style={{ color: "#94a3b8" }}>
+        <h2 className="text-xl font-bold text-center mb-3" style={{ color: "#161d1b" }}>
+          Important Notice
+        </h2>
+        <p className="text-center mb-6" style={{ color: "#6b7280" }}>
           Records you submit cannot be edited or deleted. Please review all entries carefully before saving.
         </p>
         <button
           onClick={onContinue}
-          className="w-full rounded-2xl py-4 text-lg font-bold"
-          style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+          className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+          style={{
+            backgroundColor: "#11d469",
+            color: "#012d1d",
+            height: "56px",
+          }}
         >
           I Understand, Continue
         </button>
@@ -128,21 +140,31 @@ function ConfirmSheet({
 }) {
   const completeRows = rows.filter(isRowComplete);
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(1,45,29,0.9)" }}
+    >
       <div
-        className="w-full max-w-lg rounded-t-3xl p-6"
-        style={{ backgroundColor: "#112240" }}
+        className="w-full max-w-lg p-6"
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "28px 28px 0 0",
+        }}
       >
-        <h2 className="text-xl font-bold text-white mb-2">Confirm Submission</h2>
-        <p className="mb-4" style={{ color: "#94a3b8" }}>
-          You are about to save <strong className="text-white">{completeRows.length}</strong> sale record{completeRows.length !== 1 ? "s" : ""}.
+        <h2 className="text-xl font-bold mb-2" style={{ color: "#161d1b" }}>
+          Confirm Submission
+        </h2>
+        <p className="mb-4" style={{ color: "#6b7280" }}>
+          You are about to save{" "}
+          <strong style={{ color: "#161d1b" }}>{completeRows.length}</strong> sale
+          record{completeRows.length !== 1 ? "s" : ""}.
         </p>
         <div
-          className="rounded-xl p-4 mb-6"
-          style={{ backgroundColor: "#0A1628" }}
+          className="rounded-2xl p-4 mb-6"
+          style={{ backgroundColor: "#eef5f2" }}
         >
-          <div className="flex justify-between text-white font-bold text-xl">
-            <span>Grand Total</span>
+          <div className="flex justify-between font-bold text-xl">
+            <span style={{ color: "#161d1b" }}>Grand Total</span>
             <span style={{ color: "#11d469" }}>{fmt(grandTotal)}</span>
           </div>
         </div>
@@ -150,8 +172,13 @@ function ConfirmSheet({
           <button
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="w-full rounded-2xl py-4 text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
-            style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+            className="w-full rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: "#11d469",
+              color: "#012d1d",
+              height: "56px",
+              opacity: isSubmitting ? 0.6 : 1,
+            }}
           >
             {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
             {isSubmitting ? "Submitting..." : "Confirm & Submit"}
@@ -159,8 +186,12 @@ function ConfirmSheet({
           <button
             onClick={onBack}
             disabled={isSubmitting}
-            className="w-full rounded-2xl py-4 text-lg font-semibold"
-            style={{ backgroundColor: "transparent", border: "1px solid #1e3a5f", color: "#94a3b8" }}
+            className="w-full rounded-2xl font-semibold text-base transition-all"
+            style={{
+              backgroundColor: "#eef5f2",
+              color: "#6b7280",
+              height: "56px",
+            }}
           >
             Go Back &amp; Review
           </button>
@@ -183,7 +214,7 @@ function SuccessScreen({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-      style={{ backgroundColor: "#0A1628" }}
+      style={{ backgroundColor: "#f4fbf8" }}
     >
       <div
         className="rounded-full p-6 mb-6"
@@ -191,8 +222,10 @@ function SuccessScreen({
       >
         <CheckCircle className="h-16 w-16" style={{ color: "#11d469" }} />
       </div>
-      <h2 className="text-3xl font-bold text-white mb-2">Saved!</h2>
-      <p className="text-center mb-2" style={{ color: "#94a3b8" }}>
+      <h2 className="text-3xl font-bold mb-2" style={{ color: "#161d1b" }}>
+        Saved!
+      </h2>
+      <p className="text-center mb-2" style={{ color: "#6b7280" }}>
         {count} record{count !== 1 ? "s" : ""} saved successfully.
       </p>
       <p className="text-2xl font-bold mb-8" style={{ color: "#11d469" }}>
@@ -200,8 +233,8 @@ function SuccessScreen({
       </p>
       <button
         onClick={onHome}
-        className="w-full max-w-sm rounded-2xl py-4 text-lg font-bold"
-        style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+        className="w-full max-w-sm rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+        style={{ backgroundColor: "#11d469", color: "#012d1d", height: "56px" }}
       >
         Back to Home
       </button>
@@ -228,18 +261,24 @@ function SaleRowCard({
   return (
     <div
       className="rounded-2xl p-4 mb-3"
-      style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+      style={{
+        backgroundColor: "#ffffff",
+        boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+      }}
     >
       {/* Row header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold" style={{ color: "#94a3b8" }}>
+        <span
+          className="text-xs font-semibold uppercase tracking-wide"
+          style={{ color: "#6b7280" }}
+        >
           Item {index + 1}
         </span>
         {canDelete && (
           <button
             onClick={() => onDelete(row.id)}
-            className="rounded-lg p-2"
-            style={{ color: "#ef4444" }}
+            className="rounded-xl p-2 transition-all active:scale-90"
+            style={{ color: "#ba1a1a" }}
             aria-label="Remove item"
           >
             <Trash2 className="h-4 w-4" />
@@ -249,19 +288,19 @@ function SaleRowCard({
 
       {/* Product */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
+        <label className="block text-xs font-semibold mb-2" style={{ color: "#6b7280" }}>
           Product
         </label>
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-4 gap-1.5">
           {(["catfish", "goat", "chicken", "other"] as Product[]).map((p) => (
             <button
               key={p}
               onClick={() => onUpdate(row.id, { product: p })}
-              className="rounded-xl py-2 text-xs font-semibold capitalize transition-all"
+              className="rounded-xl py-2 text-xs font-semibold capitalize transition-all active:scale-95"
               style={
                 row.product === p
-                  ? { backgroundColor: "#11d469", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? { backgroundColor: "#11d469", color: "#012d1d" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {p}
@@ -273,20 +312,21 @@ function SaleRowCard({
       {/* Other product name */}
       {row.product === "other" && (
         <div className="mb-3">
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-            Product Name <span style={{ color: "#ef4444" }}>*</span>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+            Product Name <span style={{ color: "#ba1a1a" }}>*</span>
           </label>
           <input
             type="text"
             value={row.other_product_name}
             onChange={(e) => onUpdate(row.id, { other_product_name: e.target.value })}
             placeholder="Enter product name"
-            className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
+            className="w-full rounded-xl px-4 outline-none transition-all"
             style={{
-              backgroundColor: "#0A1628",
-              border: "1px solid #1e3a5f",
-              height: "48px",
+              backgroundColor: "#eef5f2",
+              height: "52px",
               fontSize: "16px",
+              color: "#161d1b",
+              border: "none",
             }}
           />
         </div>
@@ -295,8 +335,8 @@ function SaleRowCard({
       {/* Quantity + Weight (catfish) */}
       <div className={`grid gap-3 mb-3 ${row.product === "catfish" ? "grid-cols-2" : "grid-cols-1"}`}>
         <div>
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-            Quantity <span style={{ color: "#ef4444" }}>*</span>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+            Quantity <span style={{ color: "#ba1a1a" }}>*</span>
           </label>
           <input
             type="text"
@@ -304,18 +344,19 @@ function SaleRowCard({
             value={row.quantity}
             onChange={(e) => onUpdate(row.id, { quantity: e.target.value })}
             placeholder="0"
-            className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
+            className="w-full rounded-xl px-4 outline-none transition-all"
             style={{
-              backgroundColor: "#0A1628",
-              border: "1px solid #1e3a5f",
-              height: "48px",
+              backgroundColor: "#eef5f2",
+              height: "52px",
               fontSize: "18px",
+              color: "#161d1b",
+              border: "none",
             }}
           />
         </div>
         {row.product === "catfish" && (
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
               Weight (kg)
             </label>
             <input
@@ -324,12 +365,13 @@ function SaleRowCard({
               value={row.weight_kg}
               onChange={(e) => onUpdate(row.id, { weight_kg: e.target.value })}
               placeholder="0.0"
-              className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
+              className="w-full rounded-xl px-4 outline-none transition-all"
               style={{
-                backgroundColor: "#0A1628",
-                border: "1px solid #1e3a5f",
-                height: "48px",
+                backgroundColor: "#eef5f2",
+                height: "52px",
                 fontSize: "18px",
+                color: "#161d1b",
+                border: "none",
               }}
             />
           </div>
@@ -339,7 +381,7 @@ function SaleRowCard({
       {/* Gender (goat) */}
       {row.product === "goat" && (
         <div className="mb-3">
-          <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
+          <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
             Gender
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -347,11 +389,11 @@ function SaleRowCard({
               <button
                 key={g}
                 onClick={() => onUpdate(row.id, { gender: g })}
-                className="rounded-xl py-3 text-sm font-semibold capitalize transition-all"
+                className="rounded-xl py-3 text-sm font-semibold capitalize transition-all active:scale-95"
                 style={
                   row.gender === g
-                    ? { backgroundColor: "#11d469", color: "#0A1628" }
-                    : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                    ? { backgroundColor: "#11d469", color: "#012d1d" }
+                    : { backgroundColor: "#eef5f2", color: "#6b7280" }
                 }
               >
                 {g}
@@ -363,8 +405,8 @@ function SaleRowCard({
 
       {/* Unit Price */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-          Unit Price (₦) <span style={{ color: "#ef4444" }}>*</span>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Unit Price (₦) <span style={{ color: "#ba1a1a" }}>*</span>
         </label>
         <input
           type="text"
@@ -372,12 +414,13 @@ function SaleRowCard({
           value={row.unit_price}
           onChange={(e) => onUpdate(row.id, { unit_price: e.target.value })}
           placeholder="0"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
+          className="w-full rounded-xl px-4 outline-none transition-all"
           style={{
-            backgroundColor: "#0A1628",
-            border: "1px solid #1e3a5f",
-            height: "48px",
+            backgroundColor: "#eef5f2",
+            height: "52px",
             fontSize: "18px",
+            color: "#161d1b",
+            border: "none",
           }}
         />
       </div>
@@ -387,7 +430,7 @@ function SaleRowCard({
         className="rounded-xl px-4 py-3 mb-3 flex items-center justify-between"
         style={{ backgroundColor: "rgba(17,212,105,0.08)" }}
       >
-        <span className="text-sm font-semibold" style={{ color: "#94a3b8" }}>
+        <span className="text-xs font-semibold" style={{ color: "#6b7280" }}>
           Row Total
         </span>
         <span className="text-xl font-bold" style={{ color: "#11d469" }}>
@@ -397,7 +440,7 @@ function SaleRowCard({
 
       {/* Customer Name */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
           Customer Name (optional)
         </label>
         <input
@@ -405,19 +448,20 @@ function SaleRowCard({
           value={row.customer_name}
           onChange={(e) => onUpdate(row.id, { customer_name: e.target.value })}
           placeholder="Enter customer name"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
+          className="w-full rounded-xl px-4 outline-none transition-all"
           style={{
-            backgroundColor: "#0A1628",
-            border: "1px solid #1e3a5f",
-            height: "48px",
+            backgroundColor: "#eef5f2",
+            height: "52px",
             fontSize: "16px",
+            color: "#161d1b",
+            border: "none",
           }}
         />
       </div>
 
       {/* Payment Method */}
       <div>
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
           Payment Method
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -425,11 +469,13 @@ function SaleRowCard({
             <button
               key={pm}
               onClick={() => onUpdate(row.id, { payment_method: pm })}
-              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all"
+              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all active:scale-95"
               style={
                 row.payment_method === pm
-                  ? { backgroundColor: "#F5C842", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? pm === "cash"
+                    ? { backgroundColor: "#F5C842", color: "#012d1d" }
+                    : { backgroundColor: "#1b4332", color: "#ffffff" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {pm === "cash" ? "Cash" : "Transfer"}
@@ -529,7 +575,7 @@ export default function SalesDockerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0A1628" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
       {showWarning && (
         <WarningModal
           onContinue={() => {
@@ -549,27 +595,58 @@ export default function SalesDockerPage() {
         />
       )}
 
-      {/* Sticky Header */}
+      {/* Forest Green Header */}
       <div
-        className="sticky top-0 z-10 px-4 py-3"
-        style={{ backgroundColor: "#0A1628", borderBottom: "1px solid #1e3a5f" }}
+        className="sticky top-0 z-10 px-5 pt-10 pb-5"
+        style={{
+          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
+        }}
       >
-        <p className="text-sm font-medium text-white">{formatDateDisplay(today)}</p>
+        {/* Back + Title row */}
+        <div className="flex items-center justify-between mb-1">
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-xl p-2 transition-all active:scale-90"
+            style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#ffffff" }}
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-bold text-white">Sales Record</h1>
+          <div className="w-9" />
+        </div>
+
+        {/* Date */}
+        <p className="text-center text-sm mb-3" style={{ color: "rgba(255,255,255,0.7)" }}>
+          {formatDateDisplay(today)}
+        </p>
+
+        {/* Running Total Banner */}
         <div
-          className="mt-1 rounded-xl px-3 py-2 flex items-center justify-between"
-          style={{ backgroundColor: "#112240" }}
+          className="rounded-2xl px-4 py-3 flex items-center justify-between"
+          style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
         >
-          <span className="text-sm" style={{ color: "#94a3b8" }}>
+          <span
+            className="text-xs uppercase tracking-wide"
+            style={{ color: "rgba(255,255,255,0.6)" }}
+          >
             Running Total
           </span>
-          <span className="text-lg font-bold" style={{ color: "#11d469" }}>
+          <span className="text-2xl font-bold" style={{ color: "#11d469" }}>
             {fmt(grandTotal)}
           </span>
         </div>
       </div>
 
-      {/* Sale Rows */}
-      <div className="px-4 pt-4 pb-40">
+      {/* Content Area */}
+      <div
+        className="px-4 pt-4 pb-40"
+        style={{
+          backgroundColor: "#f4fbf8",
+          borderRadius: "28px 28px 0 0",
+          marginTop: "-12px",
+        }}
+      >
         {rows.map((row, i) => (
           <SaleRowCard
             key={row.id}
@@ -584,11 +661,12 @@ export default function SalesDockerPage() {
         {/* Add row button */}
         <button
           onClick={() => setRows((prev) => [...prev, newRow()])}
-          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 font-semibold mb-6 transition-all active:scale-[0.98]"
+          className="w-full rounded-2xl flex items-center justify-center gap-2 font-semibold mb-6 transition-all active:scale-[0.98]"
           style={{
             backgroundColor: "transparent",
-            border: "2px dashed #1e3a5f",
-            color: "#94a3b8",
+            border: "2px dashed rgba(45,106,79,0.3)",
+            color: "#2d6a4f",
+            height: "56px",
           }}
         >
           <Plus className="h-5 w-5" />
@@ -597,16 +675,26 @@ export default function SalesDockerPage() {
 
         {/* Previously saved today */}
         {savedToday.length > 0 && (
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}>
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              backgroundColor: "#ffffff",
+              boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+            }}
+          >
             <button
               onClick={() => setShowPastRecords((v) => !v)}
               className="w-full flex items-center justify-between px-4 py-3"
-              style={{ color: "#94a3b8" }}
+              style={{ color: "#6b7280" }}
             >
               <span className="text-sm font-semibold">
                 Previously saved today ({savedToday.length})
               </span>
-              {showPastRecords ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showPastRecords ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </button>
             {showPastRecords && (
               <div className="px-4 pb-4 space-y-2">
@@ -614,17 +702,17 @@ export default function SalesDockerPage() {
                   <div
                     key={s.id}
                     className="rounded-xl p-3"
-                    style={{ backgroundColor: "#0A1628" }}
+                    style={{ backgroundColor: "#eef5f2" }}
                   >
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium capitalize text-white">
+                      <span className="text-sm font-medium capitalize" style={{ color: "#161d1b" }}>
                         {s.other_product_name || s.product}
                       </span>
                       <span className="text-sm font-bold" style={{ color: "#11d469" }}>
                         {fmt(s.total_amount)}
                       </span>
                     </div>
-                    <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+                    <p className="text-xs mt-0.5" style={{ color: "#6b7280" }}>
                       Qty: {s.quantity} × {fmt(s.unit_price)}
                       {s.weight_kg ? ` · ${s.weight_kg}kg` : ""}
                       {s.gender ? ` · ${s.gender}` : ""}
@@ -641,11 +729,17 @@ export default function SalesDockerPage() {
 
       {/* Sticky bottom bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-4 py-4"
-        style={{ backgroundColor: "#0A1628", borderTop: "1px solid #1e3a5f" }}
+        className="fixed bottom-0 left-0 right-0 px-5 py-4"
+        style={{
+          backgroundColor: "rgba(27,67,50,0.95)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
       >
         <div className="flex items-center justify-between mb-3">
-          <span className="font-semibold text-white">Grand Total</span>
+          <span className="text-sm font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
+            Grand Total
+          </span>
           <span className="text-2xl font-bold" style={{ color: "#11d469" }}>
             {fmt(grandTotal)}
           </span>
@@ -653,8 +747,13 @@ export default function SalesDockerPage() {
         <button
           disabled={!hasCompleteRow}
           onClick={() => setShowConfirm(true)}
-          className="w-full rounded-2xl py-4 text-lg font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+          className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+          style={{
+            backgroundColor: "#11d469",
+            color: "#012d1d",
+            height: "56px",
+            opacity: hasCompleteRow ? 1 : 0.3,
+          }}
         >
           Save All Records
         </button>

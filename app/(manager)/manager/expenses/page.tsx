@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
 
 function fmt(n: number): string {
   return `₦${Math.round(Math.abs(n)).toLocaleString("en-NG")}`;
@@ -59,24 +59,29 @@ function newFeedRow(): FeedRow {
 // ── Warning Modal ──
 function WarningModal({ onContinue }: { onContinue: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(1,45,29,0.9)" }}
+    >
       <div
-        className="w-full max-w-lg rounded-t-3xl p-6"
-        style={{ backgroundColor: "#112240" }}
+        className="w-full max-w-lg p-6"
+        style={{ backgroundColor: "#ffffff", borderRadius: "28px 28px 0 0" }}
       >
         <div className="flex justify-center mb-4">
           <div className="rounded-full p-4" style={{ backgroundColor: "rgba(245,200,66,0.15)" }}>
             <AlertTriangle className="h-10 w-10" style={{ color: "#F5C842" }} />
           </div>
         </div>
-        <h2 className="text-xl font-bold text-white text-center mb-3">Important Notice</h2>
-        <p className="text-center mb-6" style={{ color: "#94a3b8" }}>
+        <h2 className="text-xl font-bold text-center mb-3" style={{ color: "#161d1b" }}>
+          Important Notice
+        </h2>
+        <p className="text-center mb-6" style={{ color: "#6b7280" }}>
           Records you submit cannot be edited or deleted. Please review all entries carefully before saving.
         </p>
         <button
           onClick={onContinue}
-          className="w-full rounded-2xl py-4 text-lg font-bold"
-          style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+          className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+          style={{ backgroundColor: "#11d469", color: "#012d1d", height: "56px" }}
         >
           I Understand, Continue
         </button>
@@ -108,33 +113,52 @@ function ConfirmSheet({
   const totalSpent = totalExpenses + totalFeed;
   const closing = openingBalance !== null ? openingBalance - totalSpent : null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ backgroundColor: "rgba(0,0,0,0.8)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ backgroundColor: "rgba(1,45,29,0.9)" }}
+    >
       <div
-        className="w-full max-w-lg rounded-t-3xl p-6"
-        style={{ backgroundColor: "#112240" }}
+        className="w-full max-w-lg p-6"
+        style={{ backgroundColor: "#ffffff", borderRadius: "28px 28px 0 0" }}
       >
-        <h2 className="text-xl font-bold text-white mb-4">Confirm Submission</h2>
+        <h2 className="text-xl font-bold mb-4" style={{ color: "#161d1b" }}>
+          Confirm Submission
+        </h2>
         <div
-          className="rounded-xl p-4 mb-4 space-y-2"
-          style={{ backgroundColor: "#0A1628" }}
+          className="rounded-2xl p-4 mb-4 space-y-2"
+          style={{ backgroundColor: "#eef5f2" }}
         >
           <div className="flex justify-between text-sm">
-            <span style={{ color: "#94a3b8" }}>General Expenses ({expenseRows.filter(r => parseFloat(r.amount) > 0).length})</span>
-            <span className="text-white font-semibold">{fmt(totalExpenses)}</span>
+            <span style={{ color: "#6b7280" }}>
+              General Expenses ({expenseRows.filter((r) => parseFloat(r.amount) > 0).length})
+            </span>
+            <span className="font-semibold" style={{ color: "#161d1b" }}>
+              {fmt(totalExpenses)}
+            </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span style={{ color: "#94a3b8" }}>Feed Purchases ({feedRows.filter(r => parseFloat(r.cost) > 0).length})</span>
-            <span className="text-white font-semibold">{fmt(totalFeed)}</span>
+            <span style={{ color: "#6b7280" }}>
+              Feed Purchases ({feedRows.filter((r) => parseFloat(r.cost) > 0).length})
+            </span>
+            <span className="font-semibold" style={{ color: "#161d1b" }}>
+              {fmt(totalFeed)}
+            </span>
           </div>
-          <div className="border-t pt-2" style={{ borderColor: "#1e3a5f" }}>
+          <div
+            className="border-t pt-2"
+            style={{ borderColor: "rgba(27,67,50,0.1)" }}
+          >
             <div className="flex justify-between font-bold">
-              <span className="text-white">Total Spent</span>
-              <span style={{ color: "#ef4444" }}>{fmt(totalSpent)}</span>
+              <span style={{ color: "#161d1b" }}>Total Spent</span>
+              <span style={{ color: "#ba1a1a" }}>{fmt(totalSpent)}</span>
             </div>
             {closing !== null && (
               <div className="flex justify-between font-bold mt-1">
-                <span className="text-white">Closing Balance</span>
-                <span style={{ color: closing >= 0 ? "#11d469" : "#ef4444" }}>{closing < 0 ? "-" : ""}{fmt(closing)}</span>
+                <span style={{ color: "#161d1b" }}>Closing Balance</span>
+                <span style={{ color: closing >= 0 ? "#11d469" : "#ba1a1a" }}>
+                  {closing < 0 ? "-" : ""}
+                  {fmt(closing)}
+                </span>
               </div>
             )}
           </div>
@@ -143,8 +167,13 @@ function ConfirmSheet({
           <button
             onClick={onConfirm}
             disabled={isSubmitting}
-            className="w-full rounded-2xl py-4 text-lg font-bold flex items-center justify-center gap-2 disabled:opacity-60"
-            style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+            className="w-full rounded-2xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            style={{
+              backgroundColor: "#11d469",
+              color: "#012d1d",
+              height: "56px",
+              opacity: isSubmitting ? 0.6 : 1,
+            }}
           >
             {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
             {isSubmitting ? "Submitting..." : "Confirm & Submit"}
@@ -152,8 +181,8 @@ function ConfirmSheet({
           <button
             onClick={onBack}
             disabled={isSubmitting}
-            className="w-full rounded-2xl py-4 text-lg font-semibold"
-            style={{ backgroundColor: "transparent", border: "1px solid #1e3a5f", color: "#94a3b8" }}
+            className="w-full rounded-2xl font-semibold text-base transition-all"
+            style={{ backgroundColor: "#eef5f2", color: "#6b7280", height: "56px" }}
           >
             Go Back &amp; Review
           </button>
@@ -168,19 +197,21 @@ function SuccessScreen({ onHome }: { onHome: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
-      style={{ backgroundColor: "#0A1628" }}
+      style={{ backgroundColor: "#f4fbf8" }}
     >
       <div className="rounded-full p-6 mb-6" style={{ backgroundColor: "rgba(17,212,105,0.15)" }}>
         <CheckCircle className="h-16 w-16" style={{ color: "#11d469" }} />
       </div>
-      <h2 className="text-3xl font-bold text-white mb-2">Saved!</h2>
-      <p className="text-center mb-8" style={{ color: "#94a3b8" }}>
+      <h2 className="text-3xl font-bold mb-2" style={{ color: "#161d1b" }}>
+        Saved!
+      </h2>
+      <p className="text-center mb-8" style={{ color: "#6b7280" }}>
         All expenses recorded successfully.
       </p>
       <button
         onClick={onHome}
-        className="w-full max-w-sm rounded-2xl py-4 text-lg font-bold"
-        style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+        className="w-full max-w-sm rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+        style={{ backgroundColor: "#11d469", color: "#012d1d", height: "56px" }}
       >
         Back to Home
       </button>
@@ -213,12 +244,22 @@ function ExpenseRowCard({
   return (
     <div
       className="rounded-2xl p-4 mb-3"
-      style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+      style={{
+        backgroundColor: "#ffffff",
+        boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+      }}
     >
       <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-semibold" style={{ color: "#94a3b8" }}>Expense {index + 1}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#6b7280" }}>
+          Expense {index + 1}
+        </span>
         {canDelete && (
-          <button onClick={() => onDelete(row.id)} className="p-2" style={{ color: "#ef4444" }} aria-label="Remove">
+          <button
+            onClick={() => onDelete(row.id)}
+            className="p-2 rounded-xl transition-all active:scale-90"
+            style={{ color: "#ba1a1a" }}
+            aria-label="Remove"
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
@@ -226,17 +267,19 @@ function ExpenseRowCard({
 
       {/* Category */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>Category</label>
-        <div className="flex flex-wrap gap-1">
+        <label className="block text-xs font-semibold mb-2" style={{ color: "#6b7280" }}>
+          Category
+        </label>
+        <div className="flex flex-wrap gap-1.5">
           {cats.map((c) => (
             <button
               key={c.value}
               onClick={() => onUpdate(row.id, { category: c.value })}
-              className="rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+              className="rounded-xl px-3 py-2 text-xs font-semibold transition-all active:scale-95"
               style={
                 row.category === c.value
-                  ? { backgroundColor: "#F5C842", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? { backgroundColor: "#F5C842", color: "#012d1d" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {c.label}
@@ -247,8 +290,8 @@ function ExpenseRowCard({
 
       {/* Amount */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-          Amount (₦) <span style={{ color: "#ef4444" }}>*</span>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Amount (₦) <span style={{ color: "#ba1a1a" }}>*</span>
         </label>
         <input
           type="text"
@@ -256,37 +299,55 @@ function ExpenseRowCard({
           value={row.amount}
           onChange={(e) => onUpdate(row.id, { amount: e.target.value })}
           placeholder="0"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
-          style={{ backgroundColor: "#0A1628", border: "1px solid #1e3a5f", height: "48px", fontSize: "18px" }}
+          className="w-full rounded-xl px-4 outline-none transition-all"
+          style={{
+            backgroundColor: "#eef5f2",
+            height: "52px",
+            fontSize: "18px",
+            color: "#161d1b",
+            border: "none",
+          }}
         />
       </div>
 
       {/* Paid To */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>Paid To (optional)</label>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Paid To (optional)
+        </label>
         <input
           type="text"
           value={row.paid_to}
           onChange={(e) => onUpdate(row.id, { paid_to: e.target.value })}
           placeholder="Name or vendor"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
-          style={{ backgroundColor: "#0A1628", border: "1px solid #1e3a5f", height: "48px", fontSize: "16px" }}
+          className="w-full rounded-xl px-4 outline-none transition-all"
+          style={{
+            backgroundColor: "#eef5f2",
+            height: "52px",
+            fontSize: "16px",
+            color: "#161d1b",
+            border: "none",
+          }}
         />
       </div>
 
       {/* Payment Method */}
       <div>
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>Payment Method</label>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Payment Method
+        </label>
         <div className="grid grid-cols-2 gap-2">
           {(["cash", "transfer"] as Payment[]).map((pm) => (
             <button
               key={pm}
               onClick={() => onUpdate(row.id, { payment_method: pm })}
-              className="rounded-xl py-3 text-sm font-semibold transition-all"
+              className="rounded-xl py-3 text-sm font-semibold transition-all active:scale-95"
               style={
                 row.payment_method === pm
-                  ? { backgroundColor: "#F5C842", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? pm === "cash"
+                    ? { backgroundColor: "#F5C842", color: "#012d1d" }
+                    : { backgroundColor: "#1b4332", color: "#ffffff" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {pm === "cash" ? "Cash" : "Transfer"}
@@ -317,12 +378,22 @@ function FeedRowCard({
   return (
     <div
       className="rounded-2xl p-4 mb-3"
-      style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+      style={{
+        backgroundColor: "#ffffff",
+        boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+      }}
     >
       <div className="flex justify-between items-center mb-3">
-        <span className="text-xs font-semibold" style={{ color: "#94a3b8" }}>Feed {index + 1}</span>
+        <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#6b7280" }}>
+          Feed {index + 1}
+        </span>
         {canDelete && (
-          <button onClick={() => onDelete(row.id)} className="p-2" style={{ color: "#ef4444" }} aria-label="Remove">
+          <button
+            onClick={() => onDelete(row.id)}
+            className="p-2 rounded-xl transition-all active:scale-90"
+            style={{ color: "#ba1a1a" }}
+            aria-label="Remove"
+          >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
@@ -330,17 +401,19 @@ function FeedRowCard({
 
       {/* Feed Type */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>Feed Type</label>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Feed Type
+        </label>
         <div className="grid grid-cols-2 gap-2">
           {(["fish", "goat"] as FeedType[]).map((ft) => (
             <button
               key={ft}
               onClick={() => onUpdate(row.id, { feed_type: ft })}
-              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all"
+              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all active:scale-95"
               style={
                 row.feed_type === ft
-                  ? { backgroundColor: "#11d469", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? { backgroundColor: "#11d469", color: "#012d1d" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {ft} Feed
@@ -351,17 +424,21 @@ function FeedRowCard({
 
       {/* Source */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>Source</label>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Source
+        </label>
         <div className="grid grid-cols-2 gap-2">
           {(["local", "foreign"] as FeedSource[]).map((fs) => (
             <button
               key={fs}
               onClick={() => onUpdate(row.id, { feed_source: fs })}
-              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all"
+              className="rounded-xl py-3 text-sm font-semibold capitalize transition-all active:scale-95"
               style={
                 row.feed_source === fs
-                  ? { backgroundColor: "#11d469", color: "#0A1628" }
-                  : { backgroundColor: "#0A1628", color: "#94a3b8", border: "1px solid #1e3a5f" }
+                  ? fs === "local"
+                    ? { backgroundColor: "#1b4332", color: "#ffffff" }
+                    : { backgroundColor: "#F5C842", color: "#012d1d" }
+                  : { backgroundColor: "#eef5f2", color: "#6b7280" }
               }
             >
               {fs}
@@ -372,10 +449,12 @@ function FeedRowCard({
 
       {/* Weight unit badge */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="text-xs font-semibold" style={{ color: "#94a3b8" }}>Weight Unit:</span>
+        <span className="text-xs font-semibold" style={{ color: "#6b7280" }}>
+          Weight Unit:
+        </span>
         <span
           className="rounded-full px-3 py-1 text-xs font-bold"
-          style={{ backgroundColor: "rgba(17,212,105,0.15)", color: "#11d469" }}
+          style={{ backgroundColor: "#eef5f2", color: "#2d6a4f" }}
         >
           {weightUnit}
         </span>
@@ -383,8 +462,8 @@ function FeedRowCard({
 
       {/* Weight Amount */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-          Weight ({weightUnit}) <span style={{ color: "#ef4444" }}>*</span>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Weight ({weightUnit}) <span style={{ color: "#ba1a1a" }}>*</span>
         </label>
         <input
           type="text"
@@ -392,15 +471,21 @@ function FeedRowCard({
           value={row.weight_amount}
           onChange={(e) => onUpdate(row.id, { weight_amount: e.target.value })}
           placeholder="0"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
-          style={{ backgroundColor: "#0A1628", border: "1px solid #1e3a5f", height: "48px", fontSize: "18px" }}
+          className="w-full rounded-xl px-4 outline-none transition-all"
+          style={{
+            backgroundColor: "#eef5f2",
+            height: "52px",
+            fontSize: "18px",
+            color: "#161d1b",
+            border: "none",
+          }}
         />
       </div>
 
       {/* Num Bags */}
       <div className="mb-3">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-          No. of Bags <span style={{ color: "#ef4444" }}>*</span>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          No. of Bags <span style={{ color: "#ba1a1a" }}>*</span>
         </label>
         <input
           type="text"
@@ -408,15 +493,21 @@ function FeedRowCard({
           value={row.num_bags}
           onChange={(e) => onUpdate(row.id, { num_bags: e.target.value })}
           placeholder="0"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
-          style={{ backgroundColor: "#0A1628", border: "1px solid #1e3a5f", height: "48px", fontSize: "18px" }}
+          className="w-full rounded-xl px-4 outline-none transition-all"
+          style={{
+            backgroundColor: "#eef5f2",
+            height: "52px",
+            fontSize: "18px",
+            color: "#161d1b",
+            border: "none",
+          }}
         />
       </div>
 
       {/* Cost */}
       <div>
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>
-          Cost (₦) <span style={{ color: "#ef4444" }}>*</span>
+        <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+          Cost (₦) <span style={{ color: "#ba1a1a" }}>*</span>
         </label>
         <input
           type="text"
@@ -424,8 +515,14 @@ function FeedRowCard({
           value={row.cost}
           onChange={(e) => onUpdate(row.id, { cost: e.target.value })}
           placeholder="0"
-          className="w-full rounded-xl px-4 text-white placeholder-gray-500 outline-none"
-          style={{ backgroundColor: "#0A1628", border: "1px solid #1e3a5f", height: "48px", fontSize: "18px" }}
+          className="w-full rounded-xl px-4 outline-none transition-all"
+          style={{
+            backgroundColor: "#eef5f2",
+            height: "52px",
+            fontSize: "18px",
+            color: "#161d1b",
+            border: "none",
+          }}
         />
       </div>
     </div>
@@ -467,10 +564,12 @@ export default function ExpensesDockerPage() {
     Promise.all([
       fetch(`/api/farm/expenses?date=${today}&limit=50`).then((r) => r.json()),
       fetch(`/api/farm/feed-purchases?date=${today}&limit=50`).then((r) => r.json()),
-    ]).then(([expData, feedData]) => {
-      setSavedExpenses(expData.data || []);
-      setSavedFeed(feedData.data || []);
-    }).catch(() => {});
+    ])
+      .then(([expData, feedData]) => {
+        setSavedExpenses(expData.data || []);
+        setSavedFeed(feedData.data || []);
+      })
+      .catch(() => {});
   }, [today]);
 
   const totalExpenses = expenseRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
@@ -565,7 +664,7 @@ export default function ExpensesDockerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0A1628" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
       {showWarning && (
         <WarningModal
           onContinue={() => {
@@ -588,64 +687,99 @@ export default function ExpensesDockerPage() {
         />
       )}
 
-      {/* Balance Header */}
+      {/* Forest Green Header */}
       <div
-        className="sticky top-0 z-10 px-4 pt-4 pb-3"
-        style={{ backgroundColor: "#0A1628", borderBottom: "1px solid #1e3a5f" }}
+        className="sticky top-0 z-10 px-5 pt-10 pb-5"
+        style={{
+          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
+        }}
       >
+        {/* Back + Title row */}
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-xl p-2 transition-all active:scale-90"
+            style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#ffffff" }}
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-bold text-white">Expenses</h1>
+          <div className="w-9" />
+        </div>
+
+        {/* Balance Banner */}
         <div
           className="rounded-2xl p-4"
-          style={{ backgroundColor: "#112240" }}
+          style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
         >
-          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: "#94a3b8" }}>
+          <p
+            className="uppercase tracking-widest mb-1"
+            style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}
+          >
             Opening Balance
           </p>
           {balanceErr ? (
-            <p style={{ color: "#94a3b8" }}>Balance unavailable</p>
+            <p style={{ color: "rgba(255,255,255,0.6)" }}>Balance unavailable</p>
           ) : openingBalance === null ? (
-            <div className="h-8 w-32 rounded animate-pulse" style={{ backgroundColor: "#1e3a5f" }} />
+            <div
+              className="h-10 w-36 rounded-lg animate-pulse"
+              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+            />
           ) : openingBalance <= 0 ? (
             <div>
-              <p className="text-2xl font-bold" style={{ color: "#ef4444" }}>{fmt(openingBalance)}</p>
-              <p className="text-xs mt-1" style={{ color: "#ef4444" }}>No Funds Available</p>
-            </div>
-          ) : (
-            <p className="text-2xl font-bold" style={{ color: "#11d469" }}>{fmt(openingBalance)}</p>
-          )}
-        </div>
-
-        {/* Live deduction */}
-        {openingBalance !== null && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "#112240" }}>
-              <p className="text-xs" style={{ color: "#94a3b8" }}>Total Spent</p>
-              <p className="text-base font-bold" style={{ color: "#ef4444" }}>{fmt(totalSpent)}</p>
-            </div>
-            <div className="rounded-xl px-3 py-2" style={{ backgroundColor: "#112240" }}>
-              <p className="text-xs" style={{ color: "#94a3b8" }}>Remaining</p>
-              <p
-                className="text-base font-bold"
-                style={{ color: closingBalance !== null && closingBalance >= 0 ? "#11d469" : "#ef4444" }}
-              >
-                {closingBalance !== null ? (closingBalance < 0 ? "-" : "") + fmt(closingBalance) : "--"}
+              <p className="text-4xl font-bold" style={{ color: "#ef4444" }}>
+                {fmt(openingBalance)}
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#ef4444" }}>
+                No Funds Available
               </p>
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-4xl font-bold text-white">{fmt(openingBalance)}</p>
+          )}
+
+          {/* Live tracker */}
+          {openingBalance !== null && (
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
+                Spent: {fmt(totalSpent)}
+              </span>
+              <span
+                className="text-sm font-bold"
+                style={{
+                  color:
+                    closingBalance !== null && closingBalance >= 0 ? "#11d469" : "#ef4444",
+                }}
+              >
+                Remaining:{" "}
+                {closingBalance !== null
+                  ? (closingBalance < 0 ? "-" : "") + fmt(closingBalance)
+                  : "--"}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="px-4 pt-4 pb-56">
+      {/* Content Area */}
+      <div
+        className="px-4 pt-4 pb-56"
+        style={{
+          backgroundColor: "#f4fbf8",
+          borderRadius: "28px 28px 0 0",
+          marginTop: "-12px",
+        }}
+      >
         {/* Section A: General Expenses */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-px flex-1" style={{ backgroundColor: "#1e3a5f" }} />
+          <div className="flex items-center justify-start mb-3">
             <span
-              className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
-              style={{ backgroundColor: "#F5C842", color: "#0A1628" }}
+              className="rounded-full px-4 py-1.5 text-[11px] uppercase font-bold tracking-wide"
+              style={{ backgroundColor: "#eef5f2", color: "#2d6a4f" }}
             >
-              Section A — General Expenses
+              General Expenses
             </span>
-            <div className="h-px flex-1" style={{ backgroundColor: "#1e3a5f" }} />
           </div>
 
           {expenseRows.map((row, i) => (
@@ -661,8 +795,13 @@ export default function ExpensesDockerPage() {
 
           <button
             onClick={() => setExpenseRows((prev) => [...prev, newExpenseRow()])}
-            className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 font-semibold transition-all"
-            style={{ border: "2px dashed #1e3a5f", color: "#94a3b8", backgroundColor: "transparent" }}
+            className="w-full rounded-2xl flex items-center justify-center gap-2 font-semibold transition-all active:scale-[0.98]"
+            style={{
+              border: "2px dashed rgba(45,106,79,0.3)",
+              color: "#2d6a4f",
+              backgroundColor: "transparent",
+              height: "56px",
+            }}
           >
             <Plus className="h-5 w-5" />
             Add General Expense
@@ -671,15 +810,13 @@ export default function ExpensesDockerPage() {
 
         {/* Section B: Feed Purchases */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-px flex-1" style={{ backgroundColor: "#1e3a5f" }} />
+          <div className="flex items-center justify-start mb-3">
             <span
-              className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
-              style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+              className="rounded-full px-4 py-1.5 text-[11px] uppercase font-bold tracking-wide"
+              style={{ backgroundColor: "#fffbeb", color: "#715800" }}
             >
-              Section B — Feed Purchases
+              Feed Purchases
             </span>
-            <div className="h-px flex-1" style={{ backgroundColor: "#1e3a5f" }} />
           </div>
 
           {feedRows.map((row, i) => (
@@ -695,8 +832,13 @@ export default function ExpensesDockerPage() {
 
           <button
             onClick={() => setFeedRows((prev) => [...prev, newFeedRow()])}
-            className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 font-semibold transition-all"
-            style={{ border: "2px dashed #1e3a5f", color: "#94a3b8", backgroundColor: "transparent" }}
+            className="w-full rounded-2xl flex items-center justify-center gap-2 font-semibold transition-all active:scale-[0.98]"
+            style={{
+              border: "2px dashed rgba(45,106,79,0.3)",
+              color: "#2d6a4f",
+              backgroundColor: "transparent",
+              height: "56px",
+            }}
           >
             <Plus className="h-5 w-5" />
             Add Feed Purchase
@@ -705,37 +847,65 @@ export default function ExpensesDockerPage() {
 
         {/* Previously saved today */}
         {(savedExpenses.length > 0 || savedFeed.length > 0) && (
-          <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}>
+          <div
+            className="rounded-2xl overflow-hidden"
+            style={{
+              backgroundColor: "#ffffff",
+              boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+            }}
+          >
             <button
               onClick={() => setShowPast((v) => !v)}
               className="w-full flex items-center justify-between px-4 py-3"
-              style={{ color: "#94a3b8" }}
+              style={{ color: "#6b7280" }}
             >
               <span className="text-sm font-semibold">
                 Previously saved today ({savedExpenses.length + savedFeed.length})
               </span>
-              {showPast ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {showPast ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
             </button>
             {showPast && (
               <div className="px-4 pb-4 space-y-2">
                 {savedExpenses.map((e) => (
-                  <div key={e.id} className="rounded-xl p-3" style={{ backgroundColor: "#0A1628" }}>
+                  <div
+                    key={e.id}
+                    className="rounded-xl p-3"
+                    style={{ backgroundColor: "#eef5f2" }}
+                  >
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium capitalize text-white">{e.category}</span>
-                      <span className="text-sm font-bold" style={{ color: "#F5C842" }}>{fmt(e.amount)}</span>
+                      <span className="text-sm font-medium capitalize" style={{ color: "#161d1b" }}>
+                        {e.category}
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: "#F5C842" }}>
+                        {fmt(e.amount)}
+                      </span>
                     </div>
                     {e.paid_to && (
-                      <p className="text-xs" style={{ color: "#94a3b8" }}>To: {e.paid_to}</p>
+                      <p className="text-xs" style={{ color: "#6b7280" }}>
+                        To: {e.paid_to}
+                      </p>
                     )}
                   </div>
                 ))}
                 {savedFeed.map((f) => (
-                  <div key={f.id} className="rounded-xl p-3" style={{ backgroundColor: "#0A1628" }}>
+                  <div
+                    key={f.id}
+                    className="rounded-xl p-3"
+                    style={{ backgroundColor: "#eef5f2" }}
+                  >
                     <div className="flex justify-between">
-                      <span className="text-sm font-medium capitalize text-white">{f.feed_type} Feed ({f.feed_source})</span>
-                      <span className="text-sm font-bold" style={{ color: "#11d469" }}>{fmt(f.cost)}</span>
+                      <span className="text-sm font-medium capitalize" style={{ color: "#161d1b" }}>
+                        {f.feed_type} Feed ({f.feed_source})
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: "#11d469" }}>
+                        {fmt(f.cost)}
+                      </span>
                     </div>
-                    <p className="text-xs" style={{ color: "#94a3b8" }}>
+                    <p className="text-xs" style={{ color: "#6b7280" }}>
                       {f.weight_amount} · {f.num_bags} bags
                     </p>
                   </div>
@@ -748,27 +918,38 @@ export default function ExpensesDockerPage() {
 
       {/* Sticky Bottom */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-4 py-4"
-        style={{ backgroundColor: "#0A1628", borderTop: "1px solid #1e3a5f" }}
+        className="fixed bottom-0 left-0 right-0 px-5 py-4"
+        style={{
+          backgroundColor: "rgba(27,67,50,0.95)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }}
       >
         <div className="space-y-1 mb-3">
           <div className="flex justify-between text-sm">
-            <span style={{ color: "#94a3b8" }}>General Expenses</span>
+            <span style={{ color: "rgba(255,255,255,0.6)" }}>General Expenses</span>
             <span className="text-white">{fmt(totalExpenses)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span style={{ color: "#94a3b8" }}>Feed Purchases</span>
+            <span style={{ color: "rgba(255,255,255,0.6)" }}>Feed Purchases</span>
             <span className="text-white">{fmt(totalFeed)}</span>
           </div>
-          <div className="flex justify-between font-bold pt-1 border-t" style={{ borderColor: "#1e3a5f" }}>
+          <div
+            className="flex justify-between font-bold pt-1 border-t"
+            style={{ borderColor: "rgba(255,255,255,0.1)" }}
+          >
             <span className="text-white">Total Spent</span>
             <span style={{ color: "#ef4444" }}>{fmt(totalSpent)}</span>
           </div>
           {closingBalance !== null && (
             <div className="flex justify-between font-bold text-lg">
               <span className="text-white">Closing Balance</span>
-              <span style={{ color: closingBalance >= 0 ? "#11d469" : "#ef4444" }}>
-                {closingBalance < 0 ? "-" : ""}{fmt(closingBalance)}
+              <span
+                className="text-2xl font-bold"
+                style={{ color: closingBalance >= 0 ? "#11d469" : "#ef4444" }}
+              >
+                {closingBalance < 0 ? "-" : ""}
+                {fmt(closingBalance)}
               </span>
             </div>
           )}
@@ -776,8 +957,13 @@ export default function ExpensesDockerPage() {
         <button
           disabled={!hasAnything}
           onClick={() => setShowConfirm(true)}
-          className="w-full rounded-2xl py-4 text-lg font-bold disabled:opacity-40 transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "#11d469", color: "#0A1628" }}
+          className="w-full rounded-2xl font-bold text-base transition-all active:scale-[0.98]"
+          style={{
+            backgroundColor: "#11d469",
+            color: "#012d1d",
+            height: "56px",
+            opacity: hasAnything ? 1 : 0.3,
+          }}
         >
           Save All Expenses
         </button>

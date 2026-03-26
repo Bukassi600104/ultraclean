@@ -57,26 +57,45 @@ function DateFilterBar({
   onTo: (v: string) => void;
 }) {
   return (
-    <div className="flex gap-2 px-4 py-3" style={{ backgroundColor: "#0A1628" }}>
-      <div className="flex-1">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>From</label>
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => onFrom(e.target.value)}
-          className="w-full rounded-xl px-3 py-2 text-white outline-none text-sm"
-          style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f", height: "44px" }}
-        />
-      </div>
-      <div className="flex-1">
-        <label className="block text-xs font-semibold mb-1" style={{ color: "#94a3b8" }}>To</label>
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => onTo(e.target.value)}
-          className="w-full rounded-xl px-3 py-2 text-white outline-none text-sm"
-          style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f", height: "44px" }}
-        />
+    <div
+      className="rounded-2xl p-3 mx-4 mt-3"
+      style={{ backgroundColor: "#eef5f2" }}
+    >
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+            From
+          </label>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => onFrom(e.target.value)}
+            className="w-full rounded-xl px-3 py-2 outline-none text-sm"
+            style={{
+              backgroundColor: "#ffffff",
+              height: "44px",
+              color: "#161d1b",
+              border: "none",
+            }}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>
+            To
+          </label>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => onTo(e.target.value)}
+            className="w-full rounded-xl px-3 py-2 outline-none text-sm"
+            style={{
+              backgroundColor: "#ffffff",
+              height: "44px",
+              color: "#161d1b",
+              border: "none",
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -147,7 +166,11 @@ function SalesTab({ from, to }: { from: string; to: string }) {
     return (
       <div className="px-4 pt-4 space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-2xl h-20 animate-pulse" style={{ backgroundColor: "#112240" }} />
+          <div
+            key={i}
+            className="rounded-2xl h-20 animate-pulse"
+            style={{ backgroundColor: "#e8efec" }}
+          />
         ))}
       </div>
     );
@@ -155,7 +178,10 @@ function SalesTab({ from, to }: { from: string; to: string }) {
 
   if (!isLoading && records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" style={{ color: "#94a3b8" }}>
+      <div
+        className="flex flex-col items-center justify-center py-20"
+        style={{ color: "#6b7280" }}
+      >
         <p className="text-lg">No sales records found</p>
       </div>
     );
@@ -167,15 +193,22 @@ function SalesTab({ from, to }: { from: string; to: string }) {
         <div
           key={s.id}
           className="rounded-2xl p-4 mb-3"
-          style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+          style={{
+            backgroundColor: "#ffffff",
+            boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+          }}
         >
           <div className="flex justify-between items-start mb-1">
-            <div>
-              <span className="text-sm font-bold capitalize text-white">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: "#11d469" }}
+              />
+              <span className="text-sm font-bold capitalize" style={{ color: "#161d1b" }}>
                 {s.other_product_name || s.product}
               </span>
               {s.customer_name && (
-                <span className="text-xs ml-2" style={{ color: "#94a3b8" }}>
+                <span className="text-xs" style={{ color: "#6b7280" }}>
                   — {s.customer_name}
                 </span>
               )}
@@ -184,21 +217,33 @@ function SalesTab({ from, to }: { from: string; to: string }) {
               {fmt(s.total_amount)}
             </span>
           </div>
-          <p className="text-xs" style={{ color: "#94a3b8" }}>
+          <p className="text-xs ml-5" style={{ color: "#6b7280" }}>
             {new Date(s.date + "T00:00:00").toLocaleDateString("en-NG", {
               day: "numeric",
               month: "short",
               year: "numeric",
             })}
           </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-            <span className="text-xs" style={{ color: "#94a3b8" }}>Qty: {s.quantity}</span>
-            <span className="text-xs" style={{ color: "#94a3b8" }}>{fmt(s.unit_price)}/unit</span>
-            {s.weight_kg && <span className="text-xs" style={{ color: "#94a3b8" }}>{s.weight_kg}kg</span>}
-            {s.gender && <span className="text-xs capitalize" style={{ color: "#94a3b8" }}>{s.gender}</span>}
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1 ml-5">
+            <span className="text-xs" style={{ color: "#6b7280" }}>
+              Qty: {s.quantity}
+            </span>
+            <span className="text-xs" style={{ color: "#6b7280" }}>
+              {fmt(s.unit_price)}/unit
+            </span>
+            {s.weight_kg && (
+              <span className="text-xs" style={{ color: "#6b7280" }}>
+                {s.weight_kg}kg
+              </span>
+            )}
+            {s.gender && (
+              <span className="text-xs capitalize" style={{ color: "#6b7280" }}>
+                {s.gender}
+              </span>
+            )}
             <span
               className="text-xs rounded-full px-2 py-0.5 capitalize"
-              style={{ backgroundColor: "rgba(245,200,66,0.15)", color: "#F5C842" }}
+              style={{ backgroundColor: "rgba(245,200,66,0.15)", color: "#715800" }}
             >
               {s.payment_method}
             </span>
@@ -207,7 +252,9 @@ function SalesTab({ from, to }: { from: string; to: string }) {
       ))}
       <div ref={loaderRef} className="h-8" />
       {isLoading && (
-        <div className="text-center py-4" style={{ color: "#94a3b8" }}>Loading...</div>
+        <div className="text-center py-4" style={{ color: "#6b7280" }}>
+          Loading...
+        </div>
       )}
     </div>
   );
@@ -224,7 +271,10 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
     async (pageNum: number, reset: boolean) => {
       setIsLoading(true);
       try {
-        const params = new URLSearchParams({ page: pageNum.toString(), limit: PAGE_SIZE.toString() });
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: PAGE_SIZE.toString(),
+        });
         const res = await fetch(`/api/farm/expenses?${params}`);
         const d = await res.json();
         const allRecs: ExpenseRecord[] = d.data || [];
@@ -271,7 +321,11 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
     return (
       <div className="px-4 pt-4 space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-2xl h-16 animate-pulse" style={{ backgroundColor: "#112240" }} />
+          <div
+            key={i}
+            className="rounded-2xl h-16 animate-pulse"
+            style={{ backgroundColor: "#e8efec" }}
+          />
         ))}
       </div>
     );
@@ -279,7 +333,10 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
 
   if (!isLoading && records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" style={{ color: "#94a3b8" }}>
+      <div
+        className="flex flex-col items-center justify-center py-20"
+        style={{ color: "#6b7280" }}
+      >
         <p>No expense records found</p>
       </div>
     );
@@ -291,13 +348,26 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
         <div
           key={e.id}
           className="rounded-2xl p-4 mb-3"
-          style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+          style={{
+            backgroundColor: "#ffffff",
+            boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+          }}
         >
           <div className="flex justify-between items-start">
-            <span className="text-sm font-bold capitalize text-white">{e.category}</span>
-            <span className="text-lg font-bold" style={{ color: "#F5C842" }}>{fmt(e.amount)}</span>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: "#F5C842" }}
+              />
+              <span className="text-sm font-bold capitalize" style={{ color: "#161d1b" }}>
+                {e.category}
+              </span>
+            </div>
+            <span className="text-lg font-bold" style={{ color: "#F5C842" }}>
+              {fmt(e.amount)}
+            </span>
           </div>
-          <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+          <p className="text-xs mt-0.5 ml-5" style={{ color: "#6b7280" }}>
             {new Date(e.date + "T00:00:00").toLocaleDateString("en-NG", {
               day: "numeric",
               month: "short",
@@ -309,7 +379,11 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
         </div>
       ))}
       <div ref={loaderRef} className="h-8" />
-      {isLoading && <div className="text-center py-4" style={{ color: "#94a3b8" }}>Loading...</div>}
+      {isLoading && (
+        <div className="text-center py-4" style={{ color: "#6b7280" }}>
+          Loading...
+        </div>
+      )}
     </div>
   );
 }
@@ -325,7 +399,10 @@ function FeedTab({ from, to }: { from: string; to: string }) {
     async (pageNum: number, reset: boolean) => {
       setIsLoading(true);
       try {
-        const params = new URLSearchParams({ page: pageNum.toString(), limit: PAGE_SIZE.toString() });
+        const params = new URLSearchParams({
+          page: pageNum.toString(),
+          limit: PAGE_SIZE.toString(),
+        });
         const res = await fetch(`/api/farm/feed-purchases?${params}`);
         const d = await res.json();
         const allRecs: FeedRecord[] = d.data || [];
@@ -372,7 +449,11 @@ function FeedTab({ from, to }: { from: string; to: string }) {
     return (
       <div className="px-4 pt-4 space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-2xl h-16 animate-pulse" style={{ backgroundColor: "#112240" }} />
+          <div
+            key={i}
+            className="rounded-2xl h-16 animate-pulse"
+            style={{ backgroundColor: "#e8efec" }}
+          />
         ))}
       </div>
     );
@@ -380,7 +461,10 @@ function FeedTab({ from, to }: { from: string; to: string }) {
 
   if (!isLoading && records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20" style={{ color: "#94a3b8" }}>
+      <div
+        className="flex flex-col items-center justify-center py-20"
+        style={{ color: "#6b7280" }}
+      >
         <p>No feed records found</p>
       </div>
     );
@@ -392,15 +476,26 @@ function FeedTab({ from, to }: { from: string; to: string }) {
         <div
           key={f.id}
           className="rounded-2xl p-4 mb-3"
-          style={{ backgroundColor: "#112240", border: "1px solid #1e3a5f" }}
+          style={{
+            backgroundColor: "#ffffff",
+            boxShadow: "0 4px 12px rgba(27,67,50,0.06)",
+          }}
         >
           <div className="flex justify-between items-start">
-            <span className="text-sm font-bold capitalize text-white">
-              {f.feed_type} Feed — {f.feed_source}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: "#F5C842" }}
+              />
+              <span className="text-sm font-bold capitalize" style={{ color: "#161d1b" }}>
+                {f.feed_type} Feed — {f.feed_source}
+              </span>
+            </div>
+            <span className="text-lg font-bold" style={{ color: "#11d469" }}>
+              {fmt(f.cost)}
             </span>
-            <span className="text-lg font-bold" style={{ color: "#11d469" }}>{fmt(f.cost)}</span>
           </div>
-          <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+          <p className="text-xs mt-0.5 ml-5" style={{ color: "#6b7280" }}>
             {new Date(f.date + "T00:00:00").toLocaleDateString("en-NG", {
               day: "numeric",
               month: "short",
@@ -411,7 +506,11 @@ function FeedTab({ from, to }: { from: string; to: string }) {
         </div>
       ))}
       <div ref={loaderRef} className="h-8" />
-      {isLoading && <div className="text-center py-4" style={{ color: "#94a3b8" }}>Loading...</div>}
+      {isLoading && (
+        <div className="text-center py-4" style={{ color: "#6b7280" }}>
+          Loading...
+        </div>
+      )}
     </div>
   );
 }
@@ -423,27 +522,40 @@ export default function RecordsPage() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0A1628" }}>
-      {/* Main Tabs */}
+    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+      {/* Forest Green Header */}
       <div
         className="sticky top-0 z-10"
-        style={{ backgroundColor: "#0A1628", borderBottom: "1px solid #1e3a5f" }}
+        style={{
+          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
+          paddingBottom: "16px",
+        }}
       >
-        <div className="flex px-4 pt-3 gap-2">
-          {(["sales", "expenses"] as MainTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setMainTab(tab)}
-              className="flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all"
-              style={
-                mainTab === tab
-                  ? { backgroundColor: "#11d469", color: "#0A1628" }
-                  : { backgroundColor: "#112240", color: "#94a3b8" }
-              }
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="px-5 pt-10 pb-2">
+          <h1 className="text-lg font-bold text-white text-center">Past Records</h1>
+        </div>
+
+        {/* Main tab switcher */}
+        <div className="px-4 mt-3">
+          <div
+            className="flex rounded-2xl p-1"
+            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+          >
+            {(["sales", "expenses"] as MainTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setMainTab(tab)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all"
+                style={
+                  mainTab === tab
+                    ? { backgroundColor: "#ffffff", color: "#1b4332" }
+                    : { color: "rgba(255,255,255,0.6)" }
+                }
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Expense sub-tabs */}
@@ -456,8 +568,8 @@ export default function RecordsPage() {
                 className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
                 style={
                   expenseSub === sub
-                    ? { backgroundColor: "#F5C842", color: "#0A1628" }
-                    : { backgroundColor: "#112240", color: "#94a3b8" }
+                    ? { backgroundColor: "#F5C842", color: "#012d1d" }
+                    : { backgroundColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }
                 }
               >
                 {sub === "general" ? "General" : "Feed Purchases"}
@@ -465,23 +577,34 @@ export default function RecordsPage() {
             ))}
           </div>
         )}
+      </div>
 
+      {/* Content area with rounded top */}
+      <div
+        style={{
+          backgroundColor: "#f4fbf8",
+          borderRadius: "28px 28px 0 0",
+          marginTop: "-12px",
+          minHeight: "100vh",
+        }}
+      >
         <DateFilterBar
           from={fromDate}
           to={toDate}
           onFrom={setFromDate}
           onTo={setToDate}
         />
-      </div>
 
-      {/* Content */}
-      {mainTab === "sales" && <SalesTab from={fromDate} to={toDate} />}
-      {mainTab === "expenses" && expenseSub === "general" && (
-        <GeneralExpensesTab from={fromDate} to={toDate} />
-      )}
-      {mainTab === "expenses" && expenseSub === "feed" && (
-        <FeedTab from={fromDate} to={toDate} />
-      )}
+        <div className="mt-3">
+          {mainTab === "sales" && <SalesTab from={fromDate} to={toDate} />}
+          {mainTab === "expenses" && expenseSub === "general" && (
+            <GeneralExpensesTab from={fromDate} to={toDate} />
+          )}
+          {mainTab === "expenses" && expenseSub === "feed" && (
+            <FeedTab from={fromDate} to={toDate} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

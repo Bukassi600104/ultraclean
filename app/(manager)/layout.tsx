@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Manrope } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://farm.primefieldagric.com"),
@@ -22,5 +29,11 @@ export default function ManagerRootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AuthProvider>{children}</AuthProvider>;
+  return (
+    <AuthProvider>
+      <div className={`${manrope.variable}`} style={{ fontFamily: "var(--font-manrope), sans-serif" }}>
+        {children}
+      </div>
+    </AuthProvider>
+  );
 }
