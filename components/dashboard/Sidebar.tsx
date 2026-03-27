@@ -30,6 +30,7 @@ import {
   ChevronUp,
   UserCog,
   Sparkles,
+  Package,
 } from "lucide-react";
 
 // ── Navigation structure ────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/dba", label: "DBA Products", icon: ShoppingBag },
       { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
       { href: "/dashboard/farm", label: "Farm", icon: Tractor },
+      { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
     ],
   },
   {

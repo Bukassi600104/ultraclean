@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { PWAInstallPrompt } from "@/components/manager/PWAInstallPrompt";
-import { TrendingUp, Receipt, Clock, ChevronRight, LogOut, Eye, EyeOff } from "lucide-react";
+import { TrendingUp, Receipt, Clock, ChevronRight, LogOut, Eye, EyeOff, Package } from "lucide-react";
 
 function fmt(n: number) {
   return `₦${Math.round(Math.abs(n)).toLocaleString("en-NG")}`;
@@ -247,6 +247,25 @@ export default function ManagerHomePage() {
             </span>
           </div>
           <ChevronRight className="h-5 w-5" style={{ color: "#F5C842" }} />
+        </Link>
+
+        {/* Farm Supplies */}
+        <Link
+          href="/supplies"
+          className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
+          style={{
+            backgroundColor: "#eff6ff",
+            border: "1.5px solid #bfdbfe",
+            height: "64px",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <Package className="h-6 w-6" style={{ color: "#1d4ed8" }} />
+            <span className="text-base font-bold" style={{ color: "#1e3a8a" }}>
+              Farm Supplies
+            </span>
+          </div>
+          <ChevronRight className="h-5 w-5" style={{ color: "#3b82f6" }} />
         </Link>
 
         {/* View Records */}

@@ -243,6 +243,9 @@ export default function FarmOverviewPage() {
           <Button size="sm" variant="outline" asChild>
             <Link href="/dashboard/farm/inventory">View Inventory</Link>
           </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/dashboard/farm/supplies">View Supplies</Link>
+          </Button>
         </div>
 
         {/* Farm Funds Section */}
