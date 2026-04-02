@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PenLine } from "lucide-react";
 import type { FarmSale } from "@/types";
 
 export default function FarmSalesPage() {
@@ -102,6 +102,7 @@ export default function FarmSalesPage() {
                     <TableHead className="hidden sm:table-cell">Qty</TableHead>
                     <TableHead className="hidden sm:table-cell">Price</TableHead>
                     <TableHead>Total</TableHead>
+                    <TableHead className="hidden sm:table-cell"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -120,6 +121,14 @@ export default function FarmSalesPage() {
                       </TableCell>
                       <TableCell className="font-medium">
                         ₦{s.total_amount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {(s as FarmSale & { is_edited?: boolean }).is_edited && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                            <PenLine className="h-3 w-3" />
+                            Edited
+                          </span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

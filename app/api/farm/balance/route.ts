@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
 
     if (te) throw te;
 
-    // All expenses BEFORE the given date
+    // All expenses BEFORE the given date (exclude sales_cash expenses from balance calc)
     const { data: expensesBefore, error: ee } = await supabase
       .from("farm_expenses")
       .select("amount")
-      .lt("date", date);
+      .lt("date", date)
+      .neq("expense_source", "sales_cash");
 
     if (ee) throw ee;
 
@@ -48,10 +49,10 @@ export async function GET(request: NextRequest) {
 
     if (fe) throw fe;
 
-    // Expenses ON the given date
+    // Expenses ON the given date (exclude sales_cash from balance)
     const { data: expensesToday, error: et } = await supabase
       .from("farm_expenses")
-      .select("amount")
+      .select("amount, expense_source")
       .eq("date", date);
 
     if (et) throw et;
@@ -64,6 +65,14 @@ export async function GET(request: NextRequest) {
 
     if (ft) throw ft;
 
+    // Farm sales ON the given date
+    const { data: salesToday, error: st } = await supabase
+      .from("farm_sales")
+      .select("total_amount")
+      .eq("date", date);
+
+    if (st) throw st;
+
     const total_transferred = (transfers || []).reduce(
       (s: number, r: { amount: number }) => s + (r.amount || 0),
       0
@@ -75,10 +84,17 @@ export async function GET(request: NextRequest) {
     const opening_balance = total_transferred - total_spent_before;
 
     const total_spent_today =
-      (expensesToday || []).reduce((s: number, r: { amount: number }) => s + (r.amount || 0), 0) +
+      (expensesToday || []).filter((r: { amount: number; expense_source?: string }) => r.expense_source !== "sales_cash").reduce((s: number, r: { amount: number }) => s + (r.amount || 0), 0) +
       (feedToday || []).reduce((s: number, r: { cost: number }) => s + (r.cost || 0), 0);
 
+    const total_sales_cash_expenses =
+      (expensesToday || []).filter((r: { amount: number; expense_source?: string }) => r.expense_source === "sales_cash").reduce((s: number, r: { amount: number }) => s + (r.amount || 0), 0);
+
     const closing_balance = opening_balance - total_spent_today;
+
+    const total_sales_today = (salesToday || []).reduce((s: number, r: { total_amount: number }) => s + (r.total_amount || 0), 0);
+
+    const net_position = total_transferred + total_sales_today - total_spent_before - total_spent_today - total_sales_cash_expenses;
 
     return NextResponse.json({
       opening_balance,
@@ -86,6 +102,9 @@ export async function GET(request: NextRequest) {
       total_transferred,
       total_spent_before,
       total_spent_today,
+      total_sales_today,
+      total_sales_cash_expenses,
+      net_position,
     });
   } catch (err) {
     console.error("balance GET error:", err);
