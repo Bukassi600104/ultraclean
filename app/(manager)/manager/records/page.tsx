@@ -522,88 +522,64 @@ export default function RecordsPage() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().split("T")[0]);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
-      {/* Forest Green Header */}
+    <div className="max-w-2xl mx-auto">
+
+      {/* Tab switcher */}
       <div
-        className="sticky top-0 z-10"
-        style={{
-          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
-          paddingBottom: "16px",
-        }}
+        className="flex rounded-2xl p-1 mb-3"
+        style={{ backgroundColor: "#e8efec" }}
       >
-        <div className="px-5 pt-10 pb-2">
-          <h1 className="text-lg font-bold text-white text-center">Past Records</h1>
-        </div>
-
-        {/* Main tab switcher */}
-        <div className="px-4 mt-3">
-          <div
-            className="flex rounded-2xl p-1"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+        {(["sales", "expenses"] as MainTab[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setMainTab(tab)}
+            className="flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all"
+            style={
+              mainTab === tab
+                ? { backgroundColor: "#1b4332", color: "#ffffff" }
+                : { color: "#6b7280" }
+            }
           >
-            {(["sales", "expenses"] as MainTab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setMainTab(tab)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold capitalize transition-all"
-                style={
-                  mainTab === tab
-                    ? { backgroundColor: "#ffffff", color: "#1b4332" }
-                    : { color: "rgba(255,255,255,0.6)" }
-                }
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Expense sub-tabs */}
-        {mainTab === "expenses" && (
-          <div className="flex px-4 pt-2 gap-2">
-            {(["general", "feed"] as ExpenseSub[]).map((sub) => (
-              <button
-                key={sub}
-                onClick={() => setExpenseSub(sub)}
-                className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
-                style={
-                  expenseSub === sub
-                    ? { backgroundColor: "#F5C842", color: "#012d1d" }
-                    : { backgroundColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }
-                }
-              >
-                {sub === "general" ? "General" : "Feed Purchases"}
-              </button>
-            ))}
-          </div>
-        )}
+            {tab}
+          </button>
+        ))}
       </div>
 
-      {/* Content area with rounded top */}
-      <div
-        style={{
-          backgroundColor: "#f4fbf8",
-          borderRadius: "28px 28px 0 0",
-          marginTop: "-12px",
-          minHeight: "100vh",
-        }}
-      >
-        <DateFilterBar
-          from={fromDate}
-          to={toDate}
-          onFrom={setFromDate}
-          onTo={setToDate}
-        />
-
-        <div className="mt-3">
-          {mainTab === "sales" && <SalesTab from={fromDate} to={toDate} />}
-          {mainTab === "expenses" && expenseSub === "general" && (
-            <GeneralExpensesTab from={fromDate} to={toDate} />
-          )}
-          {mainTab === "expenses" && expenseSub === "feed" && (
-            <FeedTab from={fromDate} to={toDate} />
-          )}
+      {/* Expense sub-tabs */}
+      {mainTab === "expenses" && (
+        <div className="flex gap-2 mb-3">
+          {(["general", "feed"] as ExpenseSub[]).map((sub) => (
+            <button
+              key={sub}
+              onClick={() => setExpenseSub(sub)}
+              className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
+              style={
+                expenseSub === sub
+                  ? { backgroundColor: "#F5C842", color: "#012d1d" }
+                  : { backgroundColor: "#e8efec", color: "#6b7280" }
+              }
+            >
+              {sub === "general" ? "General" : "Feed Purchases"}
+            </button>
+          ))}
         </div>
+      )}
+
+      <DateFilterBar
+        from={fromDate}
+        to={toDate}
+        onFrom={setFromDate}
+        onTo={setToDate}
+      />
+
+      <div className="mt-3">
+        {mainTab === "sales" && <SalesTab from={fromDate} to={toDate} />}
+        {mainTab === "expenses" && expenseSub === "general" && (
+          <GeneralExpensesTab from={fromDate} to={toDate} />
+        )}
+        {mainTab === "expenses" && expenseSub === "feed" && (
+          <FeedTab from={fromDate} to={toDate} />
+        )}
       </div>
     </div>
   );

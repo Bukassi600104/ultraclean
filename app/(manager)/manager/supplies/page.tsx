@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -513,7 +512,7 @@ function AddItemSheet({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SuppliesPage() {
-  const router = useRouter();
+
   const [items, setItems] = useState<SupplyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<SupplyItem | null>(null);
@@ -550,61 +549,44 @@ export default function SuppliesPage() {
   }, {});
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
-      {/* Header */}
-      <div
-        className="sticky top-0 z-10 px-5 pt-10 pb-5"
-        style={{ background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)" }}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => router.push("/")}
-            className="rounded-xl p-2 transition-all active:scale-90"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#fff" }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-lg font-bold text-white">Farm Supplies</h1>
-          <div className="w-9" />
+    <div className="max-w-2xl mx-auto">
+
+      {/* Alert pills */}
+      {(outCount > 0 || lowCount > 0) && (
+        <div className="flex gap-2 mb-3">
+          {outCount > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.2)" }}>
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="text-xs font-semibold text-red-600">{outCount} out of stock</span>
+            </div>
+          )}
+          {lowCount > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#f59e0b" }} />
+              <span className="text-xs font-semibold" style={{ color: "#92400e" }}>{lowCount} low stock</span>
+            </div>
+          )}
         </div>
+      )}
 
-        {/* Alert pills */}
-        {(outCount > 0 || lowCount > 0) && (
-          <div className="flex gap-2 mb-3">
-            {outCount > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(220,38,38,0.2)" }}>
-                <div className="w-2 h-2 rounded-full bg-red-400" />
-                <span className="text-xs font-semibold text-red-300">{outCount} out of stock</span>
-              </div>
-            )}
-            {lowCount > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ backgroundColor: "rgba(245,158,11,0.2)" }}>
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#fbbf24" }} />
-                <span className="text-xs font-semibold" style={{ color: "#fcd34d" }}>{lowCount} low stock</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Search */}
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search supplies..."
-          className="w-full rounded-xl px-4 outline-none"
-          style={{
-            backgroundColor: "rgba(255,255,255,0.1)",
-            height: "44px",
-            fontSize: "14px",
-            color: "#fff",
-            border: "1px solid rgba(255,255,255,0.15)",
-          }}
-        />
-      </div>
+      {/* Search */}
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search supplies..."
+        className="w-full rounded-xl px-4 outline-none mb-4"
+        style={{
+          backgroundColor: "#fff",
+          height: "44px",
+          fontSize: "14px",
+          color: "#161d1b",
+          border: "1px solid rgba(27,67,50,0.12)",
+        }}
+      />
 
       {/* Content */}
-      <div className="px-4 pt-4 pb-32" style={{ backgroundColor: "#f4fbf8", borderRadius: "28px 28px 0 0", marginTop: "-12px" }}>
+      <div className="pb-24">
         {isLoading ? (
           <div className="space-y-3 pt-2">
             {Array.from({ length: 6 }).map((_, i) => (

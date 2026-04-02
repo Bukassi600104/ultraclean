@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 
 function fmt(n: number): string {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -575,7 +575,7 @@ export default function SalesDockerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+    <div className="max-w-2xl mx-auto">
       {showWarning && (
         <WarningModal
           onContinue={() => {
@@ -595,58 +595,22 @@ export default function SalesDockerPage() {
         />
       )}
 
-      {/* Forest Green Header */}
+      {/* Date + Running Total */}
       <div
-        className="sticky top-0 z-10 px-5 pt-10 pb-5"
-        style={{
-          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
-        }}
+        className="mb-4 rounded-2xl px-4 py-3 flex items-center justify-between"
+        style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}
       >
-        {/* Back + Title row */}
-        <div className="flex items-center justify-between mb-1">
-          <button
-            onClick={() => router.push("/")}
-            className="rounded-xl p-2 transition-all active:scale-90"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#ffffff" }}
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-lg font-bold text-white">Sales Record</h1>
-          <div className="w-9" />
-        </div>
-
-        {/* Date */}
-        <p className="text-center text-sm mb-3" style={{ color: "rgba(255,255,255,0.7)" }}>
+        <p className="text-sm font-medium" style={{ color: "#6b7280" }}>
           {formatDateDisplay(today)}
         </p>
-
-        {/* Running Total Banner */}
-        <div
-          className="rounded-2xl px-4 py-3 flex items-center justify-between"
-          style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-        >
-          <span
-            className="text-xs uppercase tracking-wide"
-            style={{ color: "rgba(255,255,255,0.6)" }}
-          >
-            Running Total
-          </span>
-          <span className="text-2xl font-bold" style={{ color: "#11d469" }}>
-            {fmt(grandTotal)}
-          </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide" style={{ color: "#9ca3af" }}>Total</span>
+          <span className="text-xl font-bold" style={{ color: "#11d469" }}>{fmt(grandTotal)}</span>
         </div>
       </div>
 
       {/* Content Area */}
-      <div
-        className="px-4 pt-4 pb-40"
-        style={{
-          backgroundColor: "#f4fbf8",
-          borderRadius: "28px 28px 0 0",
-          marginTop: "-12px",
-        }}
-      >
+      <div className="pb-32">
         {rows.map((row, i) => (
           <SaleRowCard
             key={row.id}
@@ -729,7 +693,7 @@ export default function SalesDockerPage() {
 
       {/* Sticky bottom bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-5 py-4"
+        className="fixed bottom-0 left-0 lg:left-64 right-0 px-5 py-4"
         style={{
           backgroundColor: "rgba(27,67,50,0.95)",
           backdropFilter: "blur(16px)",

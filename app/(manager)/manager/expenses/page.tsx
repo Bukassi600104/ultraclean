@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, ChevronDown, ChevronUp, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 
 function fmt(n: number): string {
   return `₦${Math.round(Math.abs(n)).toLocaleString("en-NG")}`;
@@ -665,7 +665,7 @@ export default function ExpensesDockerPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+    <div className="max-w-2xl mx-auto">
       {showWarning && (
         <WarningModal
           onContinue={() => {
@@ -688,90 +688,38 @@ export default function ExpensesDockerPage() {
         />
       )}
 
-      {/* Forest Green Header */}
+      {/* Balance summary card */}
       <div
-        className="sticky top-0 z-10 px-5 pt-10 pb-5"
-        style={{
-          background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)",
-        }}
+        className="mb-4 rounded-2xl p-4"
+        style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}
       >
-        {/* Back + Title row */}
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => router.push("/")}
-            className="rounded-xl p-2 transition-all active:scale-90"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "#ffffff" }}
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-lg font-bold text-white">Expenses</h1>
-          <div className="w-9" />
-        </div>
-
-        {/* Balance Banner */}
-        <div
-          className="rounded-2xl p-4"
-          style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-        >
-          <p
-            className="uppercase tracking-widest mb-1"
-            style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}
-          >
-            Opening Balance
-          </p>
-          {balanceErr ? (
-            <p style={{ color: "rgba(255,255,255,0.6)" }}>Balance unavailable</p>
-          ) : openingBalance === null ? (
-            <div
-              className="h-10 w-36 rounded-lg animate-pulse"
-              style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-            />
-          ) : openingBalance <= 0 ? (
-            <div>
-              <p className="text-4xl font-bold" style={{ color: "#ef4444" }}>
-                {fmt(openingBalance)}
-              </p>
-              <p className="text-xs mt-1" style={{ color: "#ef4444" }}>
-                No Funds Available
-              </p>
-            </div>
-          ) : (
-            <p className="text-4xl font-bold text-white">{fmt(openingBalance)}</p>
-          )}
-
-          {/* Live tracker */}
-          {openingBalance !== null && (
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-sm" style={{ color: "rgba(255,255,255,0.7)" }}>
-                Spent: {fmt(totalSpent)}
-              </span>
-              <span
-                className="text-sm font-bold"
-                style={{
-                  color:
-                    closingBalance !== null && closingBalance >= 0 ? "#11d469" : "#ef4444",
-                }}
-              >
-                Remaining:{" "}
-                {closingBalance !== null
-                  ? (closingBalance < 0 ? "-" : "") + fmt(closingBalance)
-                  : "--"}
-              </span>
-            </div>
-          )}
-        </div>
+        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "#9ca3af" }}>
+          Opening Balance
+        </p>
+        {balanceErr ? (
+          <p className="text-sm" style={{ color: "#6b7280" }}>Balance unavailable</p>
+        ) : openingBalance === null ? (
+          <div className="h-8 w-32 rounded-lg animate-pulse" style={{ backgroundColor: "#e8efec" }} />
+        ) : openingBalance <= 0 ? (
+          <p className="text-2xl font-bold" style={{ color: "#ef4444" }}>{fmt(openingBalance)}</p>
+        ) : (
+          <p className="text-2xl font-bold" style={{ color: "#1b4332" }}>{fmt(openingBalance)}</p>
+        )}
+        {openingBalance !== null && (
+          <div className="flex items-center justify-between mt-2 pt-2" style={{ borderTop: "1px solid #f0f0f0" }}>
+            <span className="text-sm" style={{ color: "#6b7280" }}>Spent: {fmt(totalSpent)}</span>
+            <span
+              className="text-sm font-bold"
+              style={{ color: closingBalance !== null && closingBalance >= 0 ? "#16a34a" : "#ef4444" }}
+            >
+              Remaining: {closingBalance !== null ? (closingBalance < 0 ? "-" : "") + fmt(closingBalance) : "--"}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content Area */}
-      <div
-        className="px-4 pt-4 pb-36"
-        style={{
-          backgroundColor: "#f4fbf8",
-          borderRadius: "28px 28px 0 0",
-          marginTop: "-12px",
-        }}
-      >
+      <div className="pb-36">
         {/* Section A: General Expenses */}
         <div className="mb-6">
           <div className="flex items-center justify-start mb-3">
@@ -919,7 +867,7 @@ export default function ExpensesDockerPage() {
 
       {/* Collapsible Summary Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0"
+        className="fixed bottom-0 left-0 lg:left-64 right-0"
         style={{
           backgroundColor: "rgba(1,45,29,0.97)",
           backdropFilter: "blur(16px)",

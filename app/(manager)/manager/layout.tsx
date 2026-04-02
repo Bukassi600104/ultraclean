@@ -1,39 +1,25 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
-import { cn } from "@/lib/utils";
-import {
-  Home,
-  TrendingUp,
-  Receipt,
-  Clock,
-} from "lucide-react";
+import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
+import { Menu } from "lucide-react";
 
-const tabs = [
-  {
-    href: "/",
-    label: "Home",
-    icon: Home,
-  },
-  {
-    href: "/sales",
-    label: "Sales",
-    icon: TrendingUp,
-  },
-  {
-    href: "/expenses",
-    label: "Expenses",
-    icon: Receipt,
-  },
-  {
-    href: "/records",
-    label: "Records",
-    icon: Clock,
-  },
-];
+// ─── Page title map ───────────────────────────────────────────────────────────
+
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Overview",
+  "/sales": "Record Sales",
+  "/expenses": "Record Expenses",
+  "/supplies": "Farm Supplies",
+  "/inventory": "Inventory",
+  "/records": "Past Records",
+  "/cash": "Cash Summary",
+};
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function ManagerLayout({
   children,
@@ -41,76 +27,70 @@ export default function ManagerLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isOnline, pendingCount, isSyncing } = useOfflineSync();
 
+  const normalised = pathname.replace(/^\/manager/, "") || "/";
+  const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
+
   return (
-    <div
-      className="flex min-h-screen flex-col"
-      style={{ backgroundColor: "#f4fbf8" }}
-    >
-      <OfflineBanner
-        isOnline={isOnline}
-        pendingCount={pendingCount}
-        isSyncing={isSyncing}
+    <div className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+      {/* Sidebar */}
+      <ManagerSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Content */}
-      <main className="flex-1 pb-24">{children}</main>
+      {/* Main area */}
+      <div className="flex flex-1 flex-col min-w-0">
 
-      {/* Bottom tab navigation */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 safe-area-bottom"
-        style={{
-          backgroundColor: "rgba(27,67,50,0.95)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-        }}
-      >
-        <div className="flex">
-          {tabs.map((tab) => {
-            const normalised = pathname.replace(/^\/manager/, "") || "/";
-            const isActive =
-              tab.href === "/"
-                ? normalised === "/" || normalised === ""
-                : normalised === tab.href || normalised.startsWith(tab.href + "/");
+        {/* Top bar */}
+        <header
+          className="sticky top-0 z-30 flex items-center gap-3 px-4 h-14"
+          style={{
+            backgroundColor: "#ffffff",
+            borderBottom: "1px solid rgba(27,67,50,0.09)",
+            boxShadow: "0 1px 6px rgba(27,67,50,0.06)",
+          }}
+        >
+          {/* Hamburger — mobile only */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden rounded-xl p-2 transition-all active:scale-90"
+            style={{ backgroundColor: "#f0fdf4", color: "#1b4332" }}
+            aria-label="Open menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
 
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium transition-colors"
-                )}
-              >
-                <div
-                  className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
-                  style={
-                    isActive
-                      ? { backgroundColor: "rgba(17,212,105,0.15)" }
-                      : {}
-                  }
-                >
-                  <tab.icon
-                    className="h-5 w-5 transition-colors"
-                    style={{
-                      color: isActive ? "#11d469" : "rgba(255,255,255,0.4)",
-                    }}
-                  />
-                </div>
-                <span
-                  className={isActive ? "font-bold" : ""}
-                  style={{
-                    color: isActive ? "#11d469" : "rgba(255,255,255,0.4)",
-                    fontSize: "11px",
-                  }}
-                >
-                  {tab.label}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+          <h1
+            className="font-bold text-base flex-1 truncate"
+            style={{ color: "#161d1b" }}
+          >
+            {pageTitle}
+          </h1>
+
+          {/* Primefield brand mark — visible on desktop when sidebar is shown */}
+          <span
+            className="hidden lg:block text-xs font-semibold"
+            style={{ color: "rgba(27,67,50,0.35)" }}
+          >
+            Primefield Farm
+          </span>
+        </header>
+
+        {/* Offline/sync banner — only renders when needed */}
+        <OfflineBanner
+          isOnline={isOnline}
+          pendingCount={pendingCount}
+          isSyncing={isSyncing}
+        />
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
