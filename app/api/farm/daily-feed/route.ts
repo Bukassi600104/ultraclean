@@ -35,15 +35,17 @@ export async function POST(request: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const body = await request.json();
-  const { date, feed_type, num_bags, notes } = body;
+  const { date, feed_type, num_bags, feed_source, notes } = body;
 
   if (!date || !feed_type || !num_bags || num_bags <= 0) {
     return NextResponse.json({ error: "date, feed_type and num_bags are required" }, { status: 400 });
   }
 
+  const source = feed_source === "foreign" ? "foreign" : "local";
+
   const { data, error } = await supabase
     .from("farm_daily_feed")
-    .insert({ date, feed_type, num_bags: Number(num_bags), notes: notes || null, created_by: profile.id })
+    .insert({ date, feed_type, num_bags: Number(num_bags), feed_source: source, notes: notes || null, created_by: profile.id })
     .select()
     .single();
 
