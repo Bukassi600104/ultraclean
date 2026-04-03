@@ -3,25 +3,22 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, AlertTriangle, Users, Package, Zap, HeartPulse, Truck, Wrench, Wallet } from "lucide-react";
+import { Check, AlertTriangle, Users, Package, Zap, HeartPulse, Truck, Wrench } from "lucide-react";
 
 // ─── Types / Config ───────────────────────────────────────────────────────────
 
-type Category = "labor" | "feed" | "utilities" | "veterinary" | "transport" | "equipment" | "from-sales";
+type Category = "labor" | "feed" | "utilities" | "veterinary" | "transport" | "equipment";
 
 interface FormValues {
+  date: string;
   amount: string;
+  item_name: string;  // equipment only
   paid_to: string;
   payment_method: string;
   notes: string;
   // feed-specific
   feed_type: string;
-  feed_source: string;
-  weight_unit: string;
-  weight_amount: string;
   num_bags: string;
-  // from-sales specific
-  actual_category: string;
 }
 
 const CATEGORY_CONFIG: Record<Category, {
@@ -37,7 +34,6 @@ const CATEGORY_CONFIG: Record<Category, {
   veterinary: { label: "Veterinary", color: "#ef4444", bgColor: "#fef2f2", icon: HeartPulse, description: "Vet services and medications" },
   transport: { label: "Transport", color: "#10b981", bgColor: "#f0fdf4", icon: Truck, description: "Delivery and transport costs" },
   equipment: { label: "Equipment", color: "#8b5cf6", bgColor: "#f5f3ff", icon: Wrench, description: "Tools and equipment" },
-  "from-sales": { label: "From Sales Cash", color: "#f97316", bgColor: "#fff7ed", icon: Wallet, description: "Expense paid from sales cash" },
 };
 
 const PAYMENT_METHODS = [
@@ -46,7 +42,12 @@ const PAYMENT_METHODS = [
   { value: "pos", label: "POS" },
 ];
 
-const EXPENSE_CATEGORIES: Category[] = ["labor", "feed", "utilities", "veterinary", "transport", "equipment"];
+const FEED_TYPES = [
+  { value: "fish", label: "Fish Feed" },
+  { value: "goat", label: "Goat Feed" },
+  { value: "chicken", label: "Chicken Feed" },
+  { value: "other", label: "Other Feed" },
+];
 
 function fmt(n: number) {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -66,16 +67,14 @@ export default function ExpenseCategoryPage() {
   const today = getTodayStr();
 
   const [form, setForm] = useState<FormValues>({
+    date: today,
     amount: "",
+    item_name: "",
     paid_to: "",
     payment_method: "cash",
     notes: "",
     feed_type: "fish",
-    feed_source: "local",
-    weight_unit: "tons",
-    weight_amount: "",
     num_bags: "",
-    actual_category: "labor",
   });
   const [isDayClosed, setIsDayClosed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,22 +90,18 @@ export default function ExpenseCategoryPage() {
       .catch(() => {});
   }, [today]);
 
-  // Auto-set weight_unit based on feed_source
-  useEffect(() => {
-    if (categoryKey === "feed") {
-      setForm((prev) => ({
-        ...prev,
-        weight_unit: prev.feed_source === "local" ? "tons" : "kg",
-      }));
-    }
-  }, [form.feed_source, categoryKey]);
-
   function updateField(field: keyof FormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
   async function handleSave() {
     if (!form.amount || Number(form.amount) <= 0) return toast.error("Enter a valid amount");
+    if (categoryKey === "feed" && (!form.num_bags || Number(form.num_bags) <= 0)) {
+      return toast.error("Enter number of bags");
+    }
+    if (categoryKey === "equipment" && !form.item_name.trim()) {
+      return toast.error("Enter item name");
+    }
 
     setSaving(true);
     try {
@@ -115,13 +110,14 @@ export default function ExpenseCategoryPage() {
       if (categoryKey === "feed") {
         // Feed goes to feed-purchases endpoint
         const payload = [{
-          date: today,
-          feed_type: form.feed_type as "fish" | "goat",
-          feed_source: form.feed_source as "local" | "foreign",
-          weight_unit: form.feed_source === "local" ? "tons" : "kg",
-          weight_amount: form.weight_amount ? Number(form.weight_amount) : 1,
-          num_bags: form.num_bags ? Number(form.num_bags) : 1,
+          date: form.date,
+          feed_type: form.feed_type,
+          feed_source: "local",
+          weight_unit: "tons",
+          weight_amount: 1,
+          num_bags: Number(form.num_bags),
           cost: Number(form.amount),
+          notes: form.notes.trim() || undefined,
         }];
 
         const res = await fetch("/api/farm/feed-purchases", {
@@ -137,28 +133,28 @@ export default function ExpenseCategoryPage() {
 
         savedLabel = `Feed (${form.feed_type})`;
       } else {
-        const expenseCategory = categoryKey === "from-sales" ? form.actual_category : categoryKey;
-        const payload = [{
-          date: today,
-          category: expenseCategory,
+        const payload: Record<string, unknown> = {
+          date: form.date,
+          category: categoryKey,
           amount: Number(form.amount),
           paid_to: form.paid_to.trim() || undefined,
           payment_method: form.payment_method,
-          expense_source: categoryKey === "from-sales" ? "sales_cash" : "bimbo_transfer",
           notes: form.notes.trim() || undefined,
-        }];
+        };
+
+        if (categoryKey === "equipment") {
+          payload.item_name = form.item_name.trim();
+        }
 
         const res = await fetch("/api/farm/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify([payload]),
         });
 
         if (!res.ok) throw new Error();
 
-        savedLabel = categoryKey === "from-sales"
-          ? `${CATEGORY_CONFIG[form.actual_category as Category]?.label ?? form.actual_category} (sales cash)`
-          : config.label;
+        savedLabel = config.label;
       }
 
       setSavedItems((prev) => [
@@ -167,16 +163,14 @@ export default function ExpenseCategoryPage() {
       ]);
 
       setForm((prev) => ({
+        date: prev.date,
         amount: "",
+        item_name: "",
         paid_to: "",
         payment_method: prev.payment_method,
         notes: "",
         feed_type: prev.feed_type,
-        feed_source: prev.feed_source,
-        weight_unit: prev.weight_unit,
-        weight_amount: "",
         num_bags: "",
-        actual_category: prev.actual_category,
       }));
 
       setShowSuccess(true);
@@ -244,83 +238,73 @@ export default function ExpenseCategoryPage() {
 
       {/* Form */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
-        {/* From-sales: pick the actual category */}
-        {categoryKey === "from-sales" && (
+
+        {/* Date field — always first */}
+        <div>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
+          <input
+            type="date"
+            max={today}
+            className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+            value={form.date}
+            onChange={(e) => updateField("date", e.target.value)}
+          />
+        </div>
+
+        {/* Equipment: item name first */}
+        {categoryKey === "equipment" && (
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Expense Category *</label>
-            <select
-              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
-              value={form.actual_category}
-              onChange={(e) => updateField("actual_category", e.target.value)}
-            >
-              {EXPENSE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_CONFIG[cat]?.label ?? cat}
-                </option>
-              ))}
-            </select>
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Item Name *</label>
+            <input
+              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+              placeholder="e.g. Water pump, Generator..."
+              value={form.item_name}
+              onChange={(e) => updateField("item_name", e.target.value)}
+            />
           </div>
         )}
 
         {/* Feed-specific fields */}
         {categoryKey === "feed" && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Feed Type</label>
-                <select
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
-                  value={form.feed_type}
-                  onChange={(e) => updateField("feed_type", e.target.value)}
-                >
-                  <option value="fish">Fish Feed</option>
-                  <option value="goat">Goat Feed</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Source</label>
-                <select
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
-                  value={form.feed_source}
-                  onChange={(e) => updateField("feed_source", e.target.value)}
-                >
-                  <option value="local">Local (tons)</option>
-                  <option value="foreign">Imported (kg)</option>
-                </select>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Feed Type</label>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                {FEED_TYPES.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => updateField("feed_type", f.value)}
+                    className="rounded-xl py-2.5 text-xs font-semibold border transition-all"
+                    style={{
+                      backgroundColor: form.feed_type === f.value ? config.color : "transparent",
+                      borderColor: form.feed_type === f.value ? config.color : "#e5e7eb",
+                      color: form.feed_type === f.value ? "#fff" : "#6b7280",
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Weight ({form.feed_source === "local" ? "tons" : "kg"})
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
-                  placeholder="0"
-                  value={form.weight_amount}
-                  onChange={(e) => updateField("weight_amount", e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">No. of Bags</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
-                  placeholder="0"
-                  value={form.num_bags}
-                  onChange={(e) => updateField("num_bags", e.target.value)}
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">No. of Bags *</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                placeholder="0"
+                value={form.num_bags}
+                onChange={(e) => updateField("num_bags", e.target.value)}
+              />
             </div>
           </>
         )}
 
         {/* Amount */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount (₦) *</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+            {categoryKey === "feed" ? "Total Cost (₦) *" : "Amount (₦) *"}
+          </label>
           <input
             type="number"
             inputMode="numeric"
@@ -336,12 +320,10 @@ export default function ExpenseCategoryPage() {
           )}
         </div>
 
-        {/* Paid To */}
-        {categoryKey !== "from-sales" && (
+        {/* Paid To — not for feed */}
+        {categoryKey !== "feed" && (
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-              {categoryKey === "feed" ? "Supplier Name" : "Paid To"}
-            </label>
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Paid To</label>
             <input
               className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
               placeholder="Enter name"
@@ -374,7 +356,7 @@ export default function ExpenseCategoryPage() {
 
         {/* Notes */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Notes (optional)</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
           <input
             className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
             placeholder="Any additional info..."
@@ -428,4 +410,3 @@ export default function ExpenseCategoryPage() {
     </div>
   );
 }
-

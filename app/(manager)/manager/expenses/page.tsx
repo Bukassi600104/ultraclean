@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   Receipt, Plus, Lock, Edit2, Trash2, X, Users, Package,
-  Zap, HeartPulse, Truck, Wrench, Wallet
+  Zap, HeartPulse, Truck, Wrench,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -20,10 +20,22 @@ interface Expense {
   amount: number;
   paid_to?: string;
   payment_method: string;
-  expense_source?: "bimbo_transfer" | "sales_cash";
   notes?: string;
   is_edited?: boolean;
+  _type?: "expense";
 }
+
+interface FeedPurchase {
+  id: string;
+  date: string;
+  feed_type: string;
+  num_bags: number;
+  cost: number;
+  notes?: string;
+  _type: "feed";
+}
+
+type ListItem = Expense | FeedPurchase;
 
 interface DailyRecord {
   date: string;
@@ -39,7 +51,6 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Reac
   veterinary: { label: "Veterinary", color: "#ef4444", icon: HeartPulse, href: "/expenses/veterinary" },
   transport: { label: "Transport", color: "#10b981", icon: Truck, href: "/expenses/transport" },
   equipment: { label: "Equipment", color: "#8b5cf6", icon: Wrench, href: "/expenses/equipment" },
-  "from-sales": { label: "From Sales Cash", color: "#f97316", icon: Wallet, href: "/expenses/from-sales" },
 };
 
 function fmt(n: number) {
@@ -76,7 +87,7 @@ function EditExpenseDialog({
     await onSave(expense.id, {
       amount: Number(amount),
       paid_to: paidTo,
-      payment_method: payMethod as Expense["payment_method"],
+      payment_method: payMethod,
       notes,
     });
     setSaving(false);
@@ -157,6 +168,7 @@ export default function ExpensesOverviewPage() {
   const router = useRouter();
   const today = getTodayStr();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
@@ -164,11 +176,13 @@ export default function ExpensesOverviewPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [expRes, recordRes] = await Promise.all([
+      const [expRes, feedRes, recordRes] = await Promise.all([
         fetch(`/api/farm/expenses?date=${today}&limit=100`).then((r) => r.json()),
+        fetch(`/api/farm/feed-purchases?date=${today}&limit=100`).then((r) => r.json()),
         fetch(`/api/farm/daily-record?date=${today}`).then((r) => r.json()),
       ]);
       setExpenses(expRes.data || []);
+      setFeedPurchases((feedRes.data || []).map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
       setDayRecord(recordRes.record || null);
     } catch {
       toast.error("Failed to load data");
@@ -179,23 +193,25 @@ export default function ExpensesOverviewPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Chart data
+  // Merge list — expenses first then feed purchases, sorted by created_at desc
+  const allItems: ListItem[] = [
+    ...expenses.map((e) => ({ ...e, _type: "expense" as const })),
+    ...feedPurchases,
+  ];
+
+  // Chart data — expenses by category only
   const chartData = Object.entries(CATEGORY_CONFIG)
     .map(([key, cfg]) => ({
       category: cfg.label,
       total: expenses
-        .filter((e) => key === "from-sales"
-          ? e.expense_source === "sales_cash"
-          : e.category === key && e.expense_source !== "sales_cash"
-        )
+        .filter((e) => e.category === key)
         .reduce((sum, e) => sum + (e.amount || 0), 0),
       color: cfg.color,
     }))
     .filter((d) => d.total > 0);
 
   const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const bimboExpenses = expenses.filter((e) => e.expense_source !== "sales_cash").reduce((sum, e) => sum + (e.amount || 0), 0);
-  const salesCashExpenses = expenses.filter((e) => e.expense_source === "sales_cash").reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalFeed = feedPurchases.reduce((sum, f) => sum + (f.cost || 0), 0);
   const isDayClosed = dayRecord?.status === "closed";
 
   const dateLabel = new Date().toLocaleDateString("en-NG", {
@@ -246,11 +262,10 @@ export default function ExpensesOverviewPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Total", value: fmt(totalExpenses), color: "#ef4444" },
-          { label: "From Bimbo", value: fmt(bimboExpenses), color: "#6366f1" },
-          { label: "From Sales", value: fmt(salesCashExpenses), color: "#f97316" },
+          { label: "Expenses", value: fmt(totalExpenses), color: "#ef4444" },
+          { label: "Feed Purchases", value: fmt(totalFeed), color: "#f59e0b" },
         ].map((card) => (
           <div key={card.label} className="rounded-2xl p-3 bg-white border border-gray-100">
             <p className="text-xs text-gray-500 mb-1">{card.label}</p>
@@ -304,13 +319,13 @@ export default function ExpensesOverviewPage() {
       {/* Records list */}
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
-          Today&apos;s Records ({expenses.length})
+          Today&apos;s Records ({allItems.length})
         </p>
         {loading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}
           </div>
-        ) : expenses.length === 0 ? (
+        ) : allItems.length === 0 ? (
           <div className="rounded-2xl bg-white border border-dashed border-gray-200 p-8 text-center">
             <Receipt className="h-8 w-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-400">No expenses recorded today</p>
@@ -327,10 +342,31 @@ export default function ExpensesOverviewPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {expenses.map((expense) => {
-              const cfg = getCategoryConfig(
-                expense.expense_source === "sales_cash" ? "from-sales" : expense.category
-              );
+            {allItems.map((item) => {
+              if (item._type === "feed") {
+                const feed = item as FeedPurchase;
+                return (
+                  <div key={`feed-${feed.id}`} className="bg-white rounded-2xl p-4 border border-gray-100">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
+                            Feed Purchase
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900 mt-1 capitalize">{feed.feed_type} feed</p>
+                        <p className="text-xs text-gray-400">{feed.num_bags} bag{feed.num_bags !== 1 ? "s" : ""}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-bold text-gray-900">{fmt(feed.cost)}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const expense = item as Expense;
+              const cfg = getCategoryConfig(expense.category);
               return (
                 <div key={expense.id} className="bg-white rounded-2xl p-4 border border-gray-100">
                   <div className="flex items-start justify-between gap-2">
@@ -342,11 +378,6 @@ export default function ExpensesOverviewPage() {
                         >
                           {cfg.label}
                         </span>
-                        {expense.expense_source === "sales_cash" && (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-600">
-                            From Sales
-                          </span>
-                        )}
                         {expense.is_edited && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
                             Edited

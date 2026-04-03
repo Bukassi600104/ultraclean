@@ -1,302 +1,147 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { farmInventoryTransactionSchema } from "@/lib/validations";
-import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { FarmForm } from "@/components/manager/FarmForm";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Fish, Beef, Drumstick, Package, ChevronRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { Skull, Package, PlusCircle, MinusCircle, ShoppingCart } from "lucide-react";
 
-interface FormValues {
+interface InventoryItem {
   product: string;
-  action: "add" | "remove" | "sale" | "mortality";
-  quantity: number;
-  date: string;
-  reason?: string;
-  notes?: string;
+  current_stock: number;
+  last_updated?: string;
 }
 
-const ACTION_OPTIONS = [
-  {
-    value: "add",
-    label: "Add Stock",
-    description: "New batch arrived",
-    icon: PlusCircle,
-    color: "#1B4332",
-    bg: "#F0FBF4",
-    border: "#b7e8c8",
-  },
-  {
-    value: "sale",
-    label: "Sale",
-    description: "Sold to a customer",
-    icon: ShoppingCart,
-    color: "#1e40af",
-    bg: "#eff6ff",
-    border: "#bfdbfe",
-  },
-  {
-    value: "remove",
-    label: "Remove",
-    description: "Other stock reduction",
-    icon: MinusCircle,
-    color: "#c2410c",
-    bg: "#fff7ed",
-    border: "#fed7aa",
-  },
-  {
-    value: "mortality",
-    label: "Report Deaths",
-    description: "Livestock died — report here",
-    icon: Skull,
-    color: "#991b1b",
-    bg: "#fff1f2",
-    border: "#fecdd3",
-  },
+interface SupplyItem {
+  id: string;
+  item_name: string;
+  category: string;
+  current_quantity: number;
+  unit: string;
+  restock_threshold?: number;
+}
+
+const LIVESTOCK = [
+  { key: "catfish", label: "Catfish", icon: Fish, color: "#3b82f6", bg: "#eff6ff" },
+  { key: "goat", label: "Goat", icon: Beef, color: "#f59e0b", bg: "#fffbeb" },
+  { key: "chicken", label: "Chicken", icon: Drumstick, color: "#f97316", bg: "#fff7ed" },
 ];
 
-export default function ManagerInventoryPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<string>("");
-  const { submitOrQueue } = useOfflineSync();
+export default function InventoryPage() {
+  const router = useRouter();
+  const [livestock, setLivestock] = useState<InventoryItem[]>([]);
+  const [supplies, setSupplies] = useState<SupplyItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const today = new Date().toISOString().split("T")[0];
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(farmInventoryTransactionSchema) as any,
-    defaultValues: { date: today },
-  });
-
-  async function onSubmit(data: FormValues) {
-    setIsLoading(true);
-    setIsSuccess(false);
-
-    const result = await submitOrQueue(
-      "/api/farm/inventory/transaction",
-      data as unknown as Record<string, unknown>
-    );
-
-    if (result.success) {
-      setIsSuccess(true);
-      toast.success(result.offline ? "Saved offline" : "Stock updated");
-      setTimeout(() => {
-        setIsSuccess(false);
-        setSelectedAction("");
-        reset({ date: today });
-      }, 1500);
-    } else {
-      toast.error("Failed to save");
-    }
-
-    setIsLoading(false);
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [invRes, supRes] = await Promise.all([
+        fetch("/api/farm/inventory").then((r) => r.json()),
+        fetch("/api/farm/supplies").then((r) => r.json()),
+      ]);
+      setLivestock(invRes.data || []);
+      setSupplies(supRes.data || []);
+    } catch { toast.error("Failed to load inventory"); }
+    finally { setLoading(false); }
   }
 
-  const isMortality = selectedAction === "mortality";
-  const activeOption = ACTION_OPTIONS.find((o) => o.value === selectedAction);
+  useEffect(() => { loadData(); }, []);
+
+  function getStock(product: string) {
+    return livestock.find((i) => i.product === product)?.current_stock ?? 0;
+  }
+
+  // Group supplies by category
+  const supplyGroups = supplies.reduce<Record<string, SupplyItem[]>>((acc, item) => {
+    const cat = item.category || "general";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(item);
+    return acc;
+  }, {});
 
   return (
-    <div className="mx-auto max-w-lg">
-      <h2 className="px-4 mb-4 text-xl font-bold" style={{ color: "#1B4332" }}>
-        Update Inventory
-      </h2>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-gray-900">Inventory</h1>
+        <button onClick={loadData} className="p-2 rounded-xl border border-gray-200 text-gray-500">
+          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
 
-      {/* Action picker cards */}
-      {!selectedAction && (
-        <div className="px-4 mb-4 space-y-3">
-          <p className="text-sm font-medium text-gray-500 mb-2">
-            What would you like to record?
-          </p>
-          {ACTION_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                setSelectedAction(opt.value);
-                setValue("action", opt.value as FormValues["action"]);
-              }}
-              className="w-full flex items-center gap-4 rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
-              style={{
-                backgroundColor: opt.bg,
-                border: `1.5px solid ${opt.border}`,
-              }}
-            >
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-                style={{ backgroundColor: opt.color + "22" }}
-              >
-                <opt.icon className="h-6 w-6" style={{ color: opt.color }} />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{opt.label}</p>
-                <p className="text-xs text-gray-500">{opt.description}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Quick actions */}
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => router.push("/stock")}
+          className="flex items-center justify-between rounded-2xl px-4 py-3 text-left"
+          style={{ backgroundColor: "#dcfce7", border: "1.5px solid #86efac" }}>
+          <span className="text-sm font-bold text-green-800">Add Stock</span>
+          <ChevronRight className="h-4 w-4 text-green-600" />
+        </button>
+        <button onClick={() => router.push("/mortality")}
+          className="flex items-center justify-between rounded-2xl px-4 py-3 text-left"
+          style={{ backgroundColor: "#fee2e2", border: "1.5px solid #fca5a5" }}>
+          <span className="text-sm font-bold text-red-800">Record Mortality</span>
+          <ChevronRight className="h-4 w-4 text-red-500" />
+        </button>
+      </div>
 
-      {/* Form — shown only after action is picked */}
-      {selectedAction && (
-        <>
-          {/* Active action banner */}
-          <div
-            className="mx-4 mb-4 flex items-center gap-3 rounded-xl px-4 py-3"
-            style={{
-              backgroundColor: activeOption?.bg,
-              border: `1.5px solid ${activeOption?.border}`,
-            }}
-          >
-            {activeOption && (
-              <activeOption.icon
-                className="h-5 w-5 shrink-0"
-                style={{ color: activeOption.color }}
-              />
-            )}
-            <div className="flex-1">
-              <p className="font-semibold text-sm" style={{ color: activeOption?.color }}>
-                {activeOption?.label}
-              </p>
-              {isMortality && (
-                <p className="text-xs text-red-600 mt-0.5">
-                  This will reduce stock and be reported to Bimbo.
-                </p>
-              )}
+      {/* Livestock stock */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Livestock Stock</p>
+        {loading ? (
+          <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {LIVESTOCK.map((animal) => {
+              const stock = getStock(animal.key);
+              return (
+                <div key={animal.key} className="rounded-2xl p-3 text-center" style={{ backgroundColor: animal.bg }}>
+                  <animal.icon className="h-5 w-5 mx-auto mb-1" style={{ color: animal.color }} />
+                  <p className="text-xs font-semibold text-gray-500">{animal.label}</p>
+                  <p className="text-xl font-bold" style={{ color: animal.color }}>{stock}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Farm supplies */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">Farm Supplies</p>
+        {loading ? (
+          <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}</div>
+        ) : supplies.length === 0 ? (
+          <div className="rounded-2xl bg-white border border-dashed border-gray-200 p-6 text-center">
+            <Package className="h-7 w-7 text-gray-300 mx-auto mb-1" />
+            <p className="text-sm text-gray-400">No supplies recorded yet</p>
+          </div>
+        ) : (
+          Object.entries(supplyGroups).map(([cat, items]) => (
+            <div key={cat} className="mb-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 capitalize">{cat}</p>
+              <div className="space-y-1.5">
+                {items.map((item) => {
+                  const isLow = item.restock_threshold != null && item.current_quantity <= item.restock_threshold;
+                  const isOut = item.current_quantity <= 0;
+                  return (
+                    <div key={item.id} className="bg-white rounded-xl p-3 border border-gray-100 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{item.item_name}</p>
+                        <p className="text-xs text-gray-400">{item.unit}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{item.current_quantity}</p>
+                        {isOut && <span className="text-xs font-semibold text-red-500">Out</span>}
+                        {!isOut && isLow && <span className="text-xs font-semibold text-amber-500">Low</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedAction("");
-                setValue("action", "" as FormValues["action"]);
-              }}
-              className="text-xs text-gray-400 underline"
-            >
-              Change
-            </button>
-          </div>
-
-          <div className="mx-4 rounded-2xl bg-white shadow-sm overflow-hidden mb-4">
-            <FarmForm
-              onSubmit={handleSubmit(onSubmit)}
-              isLoading={isLoading}
-              isSuccess={isSuccess}
-              submitLabel={
-                isMortality
-                  ? "Report Deaths"
-                  : selectedAction === "add"
-                  ? "Add Stock"
-                  : selectedAction === "sale"
-                  ? "Record Sale"
-                  : "Remove Stock"
-              }
-            >
-              <div className="space-y-2">
-                <Label>Product</Label>
-                <Select onValueChange={(v) => setValue("product", v)}>
-                  <SelectTrigger className="h-12 text-lg">
-                    <SelectValue placeholder="Select product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="catfish">Catfish</SelectItem>
-                    <SelectItem value="goat">Goat</SelectItem>
-                    <SelectItem value="chicken">Chicken</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.product && (
-                  <p className="text-xs text-destructive">{errors.product.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="date">
-                  {isMortality ? "Date of Death" : "Date"}
-                </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  className="h-12 text-lg"
-                  max={today}
-                  {...register("date")}
-                />
-                {errors.date && (
-                  <p className="text-xs text-destructive">{errors.date.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quantity">
-                  {isMortality ? "Number of Deaths" : "Quantity"}
-                </Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  inputMode="numeric"
-                  className="h-12 text-lg"
-                  placeholder={isMortality ? "How many died?" : "Enter quantity"}
-                  {...register("quantity")}
-                />
-                {errors.quantity && (
-                  <p className="text-xs text-destructive">{errors.quantity.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reason">
-                  {isMortality ? "Cause of Death" : "Reason"}
-                </Label>
-                <Input
-                  id="reason"
-                  className="h-12 text-lg"
-                  placeholder={
-                    isMortality
-                      ? "e.g. Disease, Injury, Unknown"
-                      : "e.g. New batch arrived"
-                  }
-                  {...register("reason")}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (optional)</Label>
-                <Textarea
-                  id="notes"
-                  className="text-base"
-                  rows={2}
-                  placeholder="Any additional details..."
-                  {...register("notes")}
-                />
-              </div>
-            </FarmForm>
-          </div>
-        </>
-      )}
-
-      {/* Empty state hint */}
-      {!selectedAction && (
-        <div className="px-4 mt-2 flex items-center gap-2 text-xs text-gray-400">
-          <Package className="h-4 w-4" />
-          <span>Select an action above to continue</span>
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

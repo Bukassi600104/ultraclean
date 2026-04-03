@@ -18,6 +18,7 @@ const UpdateSchema = z.object({
   paid_to: z.string().optional(),
   payment_method: z.enum(["cash", "transfer", "pos"]).optional(),
   expense_source: z.enum(["bimbo_transfer", "sales_cash"]).optional(),
+  item_name: z.string().optional(),
   notes: z.string().optional(),
 });
 

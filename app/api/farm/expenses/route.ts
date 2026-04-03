@@ -10,7 +10,8 @@ const expenseItemSchema = z.object({
   category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment"]),
   amount: z.number().positive("Amount must be positive"),
   paid_to: z.string().max(200).optional().nullable(),
-  payment_method: z.enum(["cash", "transfer"]).default("cash"),
+  payment_method: z.enum(["cash", "transfer", "pos"]).default("cash"),
+  item_name: z.string().max(200).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
 });
 

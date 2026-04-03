@@ -6,14 +6,14 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
-  product: z.enum(["catfish", "goat", "chicken", "other"]),
+  product: z.enum(["catfish", "goat", "chicken", "other", "crops"]),
   quantity: z.number().positive("Quantity must be positive"),
   unit_price: z.number().positive("Unit price must be positive"),
   weight_kg: z.number().positive().optional().nullable(),
   gender: z.enum(["male", "female"]).optional().nullable(),
   other_product_name: z.string().max(100).optional().nullable(),
   customer_name: z.string().max(200).optional().nullable(),
-  payment_method: z.enum(["cash", "transfer"]).default("cash"),
+  payment_method: z.enum(["cash", "transfer", "pos"]).default("cash"),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
