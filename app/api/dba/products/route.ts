@@ -4,6 +4,12 @@ import { dbaProductSchema } from "@/lib/validations";
 import { requireAdmin } from "@/lib/auth";
 
 export async function GET() {
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createServerClient();
   if (!supabase) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });

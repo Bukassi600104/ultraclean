@@ -21,6 +21,11 @@ export const contactFormSchema = z.object({
 
 export type ContactFormValues = z.infer<typeof contactFormSchema>;
 
+// API-only: extends the form with business field (not in the frontend form)
+export const submitLeadSchema = contactFormSchema.extend({
+  business: z.enum(["ultratidy", "dba", "primefield"]).optional().default("ultratidy"),
+});
+
 // ── Login ──
 export const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -30,14 +35,14 @@ export const loginSchema = z.object({
 // ── Leads (admin CRM) ──
 export const leadCreateSchema = z.object({
   business: z.enum(["ultratidy", "dba", "primefield"]),
-  source: z.string().optional(),
-  name: z.string().min(2, "Name is required"),
-  email: z.string().email("Valid email required"),
-  phone: z.string().min(7, "Phone is required"),
-  service: z.string().min(1, "Service is required"),
-  property_size: z.string().optional(),
-  date_needed: z.string().optional(),
-  notes: z.string().optional(),
+  source: z.string().max(100).optional(),
+  name: z.string().min(2, "Name is required").max(100),
+  email: z.string().email("Valid email required").max(254),
+  phone: z.string().min(7, "Phone is required").max(30),
+  service: z.string().min(1, "Service is required").max(100),
+  property_size: z.string().max(50).optional(),
+  date_needed: z.string().max(30).optional(),
+  notes: z.string().max(5000).optional(),
   status: z
     .enum(["new", "contacted", "quoted", "booked", "completed", "lost"])
     .optional(),
@@ -118,12 +123,12 @@ export const farmExpenseSchema = z.object({
 });
 
 export const farmInventoryTransactionSchema = z.object({
-  product: z.string().min(1, "Product is required"),
+  product: z.string().min(1, "Product is required").max(100),
   action: z.enum(["add", "remove", "sale", "mortality"]),
   quantity: z.preprocess((v) => Number(v), z.number().positive("Quantity must be positive")),
-  date: z.string().min(1, "Date is required"),
-  reason: z.string().optional(),
-  notes: z.string().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  reason: z.string().max(500).optional(),
+  notes: z.string().max(1000).optional(),
 });
 
 // ── Appointments ──

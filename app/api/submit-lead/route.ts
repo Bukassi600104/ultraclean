@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { contactFormSchema } from "@/lib/validations";
+import { submitLeadSchema } from "@/lib/validations";
 import { createServerClient } from "@/lib/supabase/server";
 import { sendLeadConfirmation, sendAdminNotification } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -26,17 +26,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Support both the full contact form and simpler lead forms (e.g. Primefield)
-  const business = body.business || "ultratidy";
-  const validBusinesses = ["ultratidy", "dba", "primefield"];
-  if (!validBusinesses.includes(business)) {
-    return NextResponse.json(
-      { error: "Invalid business value" },
-      { status: 400 }
-    );
-  }
-
-  const result = contactFormSchema.safeParse(body);
+  const result = submitLeadSchema.safeParse(body);
   if (!result.success) {
     const errors = result.error.flatten().fieldErrors;
     return NextResponse.json({ error: "Validation failed", errors }, { status: 400 });
@@ -52,7 +42,7 @@ export async function POST(request: NextRequest) {
     const { data: lead, error } = await supabase
       .from("leads")
       .insert({
-        business: business as "ultratidy" | "dba" | "primefield",
+        business: data.business,
         source: "website",
         name: data.name,
         email: data.email,

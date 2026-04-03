@@ -9,6 +9,7 @@ export interface Profile {
   name: string | null;
   email: string | null;
   created_at: string;
+  suspended?: boolean;
 }
 
 function createAuthClient() {
@@ -75,6 +76,9 @@ export async function requireManager() {
   const profile = await getCurrentUser();
   if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
     throw new Error("Unauthorized: manager access required");
+  }
+  if (profile.suspended === true) {
+    throw new Error("Unauthorized: account suspended");
   }
   return profile;
 }

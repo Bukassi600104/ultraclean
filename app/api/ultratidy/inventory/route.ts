@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
+const inventoryItemSchema = z.object({
+  item_name: z.string().min(1, "Item name is required").max(200),
+  category: z.string().max(100).optional().default("supplies"),
+  current_quantity: z.number().min(0).default(0),
+  unit: z.string().max(50).optional().default("units"),
+  reorder_level: z.number().min(0).optional().default(0),
+  notes: z.string().max(1000).optional().nullable(),
+});
+
 export async function GET() {
+  try { await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Unavailable" }, { status: 503 });
 
@@ -17,20 +30,23 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  let profile;
+  try { profile = await requireAdmin(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Unavailable" }, { status: 503 });
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  let body: unknown;
+  try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }); }
 
-  const body = await req.json();
-  const { item_name, category, current_quantity, unit, reorder_level } = body;
-
-  if (!item_name) return NextResponse.json({ error: "Item name is required" }, { status: 400 });
+  const parsed = inventoryItemSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
 
   const { data, error } = await supabase
     .from("ultratidy_inventory")
-    .insert({ item_name, category: category || "supplies", current_quantity: parseFloat(current_quantity) || 0, unit: unit || "units", reorder_level: parseFloat(reorder_level) || 0 })
+    .insert({ ...parsed.data, created_by: profile.id })
     .select()
     .single();
 

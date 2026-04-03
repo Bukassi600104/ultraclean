@@ -111,23 +111,15 @@ function LeadsPageContent() {
 
   function exportCSV() {
     if (!leads.length) return;
-    const headers = [
-      "Name",
-      "Email",
-      "Phone",
-      "Service",
-      "Status",
-      "Business",
-      "Date",
-    ];
+    const esc = (v: string | null | undefined) => {
+      const s = v ?? "";
+      return s.includes(",") || s.includes('"') || s.includes("\n")
+        ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = ["Name", "Email", "Phone", "Service", "Status", "Business", "Date"];
     const rows = leads.map((l) => [
-      l.name,
-      l.email,
-      l.phone,
-      l.service,
-      l.status,
-      l.business,
-      l.created_at,
+      esc(l.name), esc(l.email), esc(l.phone),
+      esc(l.service), esc(l.status), esc(l.business), esc(l.created_at),
     ]);
     const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
