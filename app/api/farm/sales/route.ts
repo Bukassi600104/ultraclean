@@ -14,6 +14,7 @@ const saleItemSchema = z.object({
   other_product_name: z.string().max(100).optional().nullable(),
   customer_name: z.string().max(200).optional().nullable(),
   payment_method: z.enum(["cash", "transfer", "pos"]).default("cash"),
+  notes: z.string().max(1000).optional().nullable(),
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
@@ -92,7 +93,6 @@ export async function POST(request: NextRequest) {
 
   const rows = parsed.data.map((item) => ({
     ...item,
-    total_amount: item.quantity * item.unit_price,
     created_by: profile.id,
   }));
 

@@ -5,24 +5,18 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const feedItemSchema = z
-  .object({
-    feed_type: z.enum(["fish", "goat"]),
-    feed_source: z.enum(["local", "foreign"]),
-    weight_unit: z.enum(["tons", "kg"]),
-    weight_amount: z.number().positive("Weight must be positive"),
-    num_bags: z.number().int().positive("Number of bags must be positive"),
-    cost: z.number().positive("Cost must be positive"),
-    date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  })
-  .refine(
-    (d) =>
-      (d.feed_source === "local" && d.weight_unit === "tons") ||
-      (d.feed_source === "foreign" && d.weight_unit === "kg"),
-    { message: "Local feed must use tons; foreign feed must use kg" }
-  );
+const feedItemSchema = z.object({
+  feed_type: z.enum(["fish", "goat", "chicken", "other"]),
+  feed_source: z.enum(["local", "foreign"]).default("local"),
+  weight_unit: z.enum(["tons", "kg"]).default("tons"),
+  weight_amount: z.number().positive("Weight must be positive").default(1),
+  num_bags: z.number().int().positive("Number of bags must be positive"),
+  cost: z.number().positive("Cost must be positive"),
+  notes: z.string().max(1000).optional().nullable(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+});
 
 const batchFeedSchema = z.array(feedItemSchema).min(1).max(50);
 
