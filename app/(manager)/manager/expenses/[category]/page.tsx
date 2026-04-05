@@ -19,6 +19,7 @@ interface FormValues {
   // feed-specific
   feed_type: string;
   num_bags: string;
+  cost_per_bag: string;
 }
 
 const CATEGORY_CONFIG: Record<Category, {
@@ -75,6 +76,7 @@ export default function ExpenseCategoryPage() {
     notes: "",
     feed_type: "fish",
     num_bags: "",
+    cost_per_bag: "",
   });
   const [isDayClosed, setIsDayClosed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -95,9 +97,11 @@ export default function ExpenseCategoryPage() {
   }
 
   async function handleSave() {
-    if (!form.amount || Number(form.amount) <= 0) return toast.error("Enter a valid amount");
-    if (categoryKey === "feed" && (!form.num_bags || Number(form.num_bags) <= 0)) {
-      return toast.error("Enter number of bags");
+    if (categoryKey === "feed") {
+      if (!form.num_bags || Number(form.num_bags) <= 0) return toast.error("Enter number of bags");
+      if (!form.cost_per_bag || Number(form.cost_per_bag) <= 0) return toast.error("Enter cost per bag");
+    } else {
+      if (!form.amount || Number(form.amount) <= 0) return toast.error("Enter a valid amount");
     }
     if (categoryKey === "equipment" && !form.item_name.trim()) {
       return toast.error("Enter item name");
@@ -108,6 +112,7 @@ export default function ExpenseCategoryPage() {
       let savedLabel: string;
 
       if (categoryKey === "feed") {
+        const totalCost = Number(form.num_bags) * Number(form.cost_per_bag);
         // Feed goes to feed-purchases endpoint
         const payload = [{
           date: form.date,
@@ -116,7 +121,7 @@ export default function ExpenseCategoryPage() {
           weight_unit: "tons",
           weight_amount: 1,
           num_bags: Number(form.num_bags),
-          cost: Number(form.amount),
+          cost: totalCost,
           notes: form.notes.trim() || undefined,
         }];
 
@@ -131,7 +136,27 @@ export default function ExpenseCategoryPage() {
           throw new Error(err.error || "Failed to save");
         }
 
-        savedLabel = `Feed (${form.feed_type})`;
+        setSavedItems((prev) => [
+          ...prev,
+          { label: `Feed (${form.feed_type})`, amount: totalCost },
+        ]);
+
+        setForm((prev) => ({
+          date: prev.date,
+          amount: "",
+          item_name: "",
+          paid_to: "",
+          payment_method: prev.payment_method,
+          notes: "",
+          feed_type: prev.feed_type,
+          num_bags: "",
+          cost_per_bag: "",
+        }));
+
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
+        toast.success("Feed purchase recorded!");
+        return;
       } else {
         const payload: Record<string, unknown> = {
           date: form.date,
@@ -171,6 +196,7 @@ export default function ExpenseCategoryPage() {
         notes: "",
         feed_type: prev.feed_type,
         num_bags: "",
+        cost_per_bag: "",
       }));
 
       setShowSuccess(true);
@@ -297,28 +323,53 @@ export default function ExpenseCategoryPage() {
                 onChange={(e) => updateField("num_bags", e.target.value)}
               />
             </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Cost per Bag (₦) *</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                placeholder="0"
+                value={form.cost_per_bag}
+                onChange={(e) => updateField("cost_per_bag", e.target.value)}
+              />
+            </div>
+            {/* Auto-calculated total */}
+            {Number(form.num_bags) > 0 && Number(form.cost_per_bag) > 0 && (
+              <div
+                className="rounded-xl px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: config.color + "15", border: `1px solid ${config.color}40` }}
+              >
+                <p className="text-sm font-semibold" style={{ color: config.color }}>
+                  Total ({form.num_bags} bags × {fmt(Number(form.cost_per_bag))})
+                </p>
+                <p className="text-lg font-bold" style={{ color: config.color }}>
+                  {fmt(Number(form.num_bags) * Number(form.cost_per_bag))}
+                </p>
+              </div>
+            )}
           </>
         )}
 
-        {/* Amount */}
-        <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-            {categoryKey === "feed" ? "Total Cost (₦) *" : "Amount (₦) *"}
-          </label>
-          <input
-            type="number"
-            inputMode="numeric"
-            className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
-            placeholder="0"
-            value={form.amount}
-            onChange={(e) => updateField("amount", e.target.value)}
-          />
-          {Number(form.amount) > 0 && (
-            <p className="mt-1 text-xs font-semibold" style={{ color: config.color }}>
-              {fmt(Number(form.amount))}
-            </p>
-          )}
-        </div>
+        {/* Amount — non-feed categories only */}
+        {categoryKey !== "feed" && (
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount (₦) *</label>
+            <input
+              type="number"
+              inputMode="numeric"
+              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+              placeholder="0"
+              value={form.amount}
+              onChange={(e) => updateField("amount", e.target.value)}
+            />
+            {Number(form.amount) > 0 && (
+              <p className="mt-1 text-xs font-semibold" style={{ color: config.color }}>
+                {fmt(Number(form.amount))}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Paid To — not for feed */}
         {categoryKey !== "feed" && (

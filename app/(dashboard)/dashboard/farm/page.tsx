@@ -224,8 +224,8 @@ export default function FarmOverviewPage() {
           ) : (
             <>
               <SummaryCard title="Total Revenue" value={`₦${revenue.toLocaleString()}`} icon={TrendingUp} />
-              <SummaryCard title="Total Expenses" value={`₦${expenses.toLocaleString()}`} icon={TrendingDown} />
-              <SummaryCard title="Net Profit" value={`₦${(revenue - expenses).toLocaleString()}`} icon={DollarSign} />
+              <SummaryCard title="Total Expenses" value={`₦${totalSpent.toLocaleString()}`} icon={TrendingDown} />
+              <SummaryCard title="Net Profit" value={`₦${(revenue - totalSpent).toLocaleString()}`} icon={DollarSign} />
               <SummaryCard title="Products Tracked" value={inventory.length} icon={Package} />
               <SummaryCard title="Total Mortality" value={totalDeaths} icon={Skull} iconClassName="text-red-500" />
             </>
