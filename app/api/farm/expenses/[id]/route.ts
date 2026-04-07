@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 
 export const runtime = "nodejs";
-
-async function requireManager(supabase: NonNullable<ReturnType<typeof createServerClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (!profile || !["admin", "manager"].includes(profile.role)) return null;
-  return user;
-}
 
 const UpdateSchema = z.object({
   category: z.enum(["feed", "labor", "utilities", "veterinary", "transport", "equipment"]).optional(),
@@ -23,10 +16,9 @@ const UpdateSchema = z.object({
 });
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try { await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  const user = await requireManager(supabase);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const today = new Date().toISOString().split("T")[0];
   const { data: record } = await supabase
@@ -54,10 +46,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try { await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-  const user = await requireManager(supabase);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const today = new Date().toISOString().split("T")[0];
   const { data: record } = await supabase

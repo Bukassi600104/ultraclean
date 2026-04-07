@@ -11,7 +11,7 @@ const expenseSchema = z.object({
   description: z.string().min(1, "Description is required").max(500),
   amount: z.number().positive("Amount must be positive"),
   paid_to: z.string().max(200).optional().nullable(),
-  payment_method: z.enum(["cash", "transfer", "pos"]).optional().default("cash"),
+  payment_method: z.enum(["cash", "e-transfer", "cheque", "credit_card"]).optional().default("cash"),
   notes: z.string().max(2000).optional().nullable(),
 });
 

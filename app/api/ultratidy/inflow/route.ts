@@ -10,7 +10,7 @@ const inflowSchema = z.object({
   client_name: z.string().min(1, "Client name is required").max(200),
   service: z.enum(["residential", "commercial", "deep", "move_in_out", "post_construction", "airbnb", "other"]),
   amount: z.number().positive("Amount must be positive"),
-  payment_method: z.enum(["cash", "transfer", "pos"]).optional().default("cash"),
+  payment_method: z.enum(["cash", "e-transfer", "cheque", "credit_card"]).optional().default("cash"),
   notes: z.string().max(2000).optional().nullable(),
 });
 
