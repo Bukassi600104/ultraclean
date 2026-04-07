@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { requireManager } from "@/lib/auth";
 
 // POST — record a supply transaction (purchase / use / adjustment)
 export async function POST(request: NextRequest) {
+  let profile;
+  try {
+    profile = await requireManager();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
   const { item_id, action, quantity, notes } = body;
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
       action,
       quantity_change,
       notes: notes?.trim() || null,
-      created_by: user.id,
+      created_by: profile.id,
     })
     .select()
     .single();
