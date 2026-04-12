@@ -80,7 +80,10 @@ export default function ManagerHomePage() {
   }, []);
 
   const balancePositive = openingBalance !== null && openingBalance >= 0;
-  const today = new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" });
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -91,7 +94,7 @@ export default function ManagerHomePage() {
         style={{ background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)" }}
       >
         <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
-          {today}
+          {dateLabel}
         </p>
         <p className="font-semibold text-white text-base mb-4">
           Welcome back, {profile?.name?.split(" ")[0] ?? "Manager"}

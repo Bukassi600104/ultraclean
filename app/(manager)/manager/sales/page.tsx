@@ -147,6 +147,10 @@ export default function SalesPage() {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
   const [editSale, setEditSale] = useState<Sale | null>(null);
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -208,7 +212,6 @@ export default function SalesPage() {
     } catch { toast.error("Failed to delete"); }
   }
 
-  const dateLabel = new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" });
 
   return (
     <div className="space-y-5">

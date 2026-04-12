@@ -9,6 +9,15 @@ export default function ManagerCashPage() {
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(new Date().toLocaleDateString("en-NG", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }));
+  }, []);
 
   const loadToday = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) setIsRefreshing(true);
@@ -163,12 +172,7 @@ export default function ManagerCashPage() {
       </div>
 
       <p className="mt-6 text-center text-sm" style={{ color: "#2D6A4F" }}>
-        {new Date().toLocaleDateString("en-NG", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
+        {dateLabel}
       </p>
     </div>
   );

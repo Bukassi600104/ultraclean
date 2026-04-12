@@ -172,6 +172,10 @@ export default function ExpensesOverviewPage() {
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [dateLabel, setDateLabel] = useState("");
+  useEffect(() => {
+    setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -214,9 +218,6 @@ export default function ExpensesOverviewPage() {
   const totalFeed = feedPurchases.reduce((sum, f) => sum + (f.cost || 0), 0);
   const isDayClosed = dayRecord?.status === "closed";
 
-  const dateLabel = new Date().toLocaleDateString("en-NG", {
-    weekday: "long", day: "numeric", month: "long",
-  });
 
   async function handleEditSave(id: string, updates: Partial<Expense>) {
     try {
