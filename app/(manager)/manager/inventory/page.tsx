@@ -39,8 +39,8 @@ export default function InventoryPage() {
         fetch("/api/farm/inventory").then((r) => r.json()),
         fetch("/api/farm/supplies").then((r) => r.json()),
       ]);
-      setLivestock(invRes.data || []);
-      setSupplies(supRes.data || []);
+      setLivestock(Array.isArray(invRes) ? invRes : []);
+      setSupplies(Array.isArray(supRes) ? supRes : []);
     } catch { toast.error("Failed to load inventory"); }
     finally { setLoading(false); }
   }
