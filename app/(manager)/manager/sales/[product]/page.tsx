@@ -85,10 +85,10 @@ export default function SaleProductPage() {
   const router = useRouter();
   const productKey: Product = (product as Product) in PRODUCT_CONFIG ? (product as Product) : "crops";
   const config = PRODUCT_CONFIG[productKey];
-  const today = getTodayStr();
+  const [today, setToday] = useState("");
 
   const [form, setForm] = useState<FormValues>({
-    date: today,
+    date: "",
     quantity: "",
     kg: "",
     amount_per_kg: "",
@@ -104,6 +104,13 @@ export default function SaleProductPage() {
   const [savedItems, setSavedItems] = useState<{ label: string; total: number }[]>([]);
 
   useEffect(() => {
+    const t = getTodayStr();
+    setToday(t);
+    setForm((prev) => ({ ...prev, date: t }));
+  }, []);
+
+  useEffect(() => {
+    if (!today) return;
     fetch(`/api/farm/daily-record?date=${today}`)
       .then((r) => r.json())
       .then((d) => { if (d.record?.status === "closed") setIsDayClosed(true); })

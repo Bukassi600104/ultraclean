@@ -65,10 +65,10 @@ export default function ExpenseCategoryPage() {
   const router = useRouter();
   const categoryKey = (category as Category) in CATEGORY_CONFIG ? (category as Category) : "labor";
   const config = CATEGORY_CONFIG[categoryKey];
-  const today = getTodayStr();
+  const [today, setToday] = useState("");
 
   const [form, setForm] = useState<FormValues>({
-    date: today,
+    date: "",
     amount: "",
     item_name: "",
     paid_to: "",
@@ -84,6 +84,13 @@ export default function ExpenseCategoryPage() {
   const [savedItems, setSavedItems] = useState<{ label: string; amount: number }[]>([]);
 
   useEffect(() => {
+    const t = getTodayStr();
+    setToday(t);
+    setForm((prev) => ({ ...prev, date: t }));
+  }, []);
+
+  useEffect(() => {
+    if (!today) return;
     fetch(`/api/farm/daily-record?date=${today}`)
       .then((r) => r.json())
       .then((d) => {

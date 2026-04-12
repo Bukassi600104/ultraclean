@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { PlusSquare, Check } from "lucide-react";
 
@@ -11,8 +11,13 @@ const ANIMALS = [
 ];
 
 export default function StockPage() {
-  const today = new Date().toISOString().split("T")[0];
-  const [date, setDate] = useState(today);
+  const [today, setToday] = useState("");
+  const [date, setDate] = useState("");
+  useEffect(() => {
+    const t = new Date().toISOString().split("T")[0];
+    setToday(t);
+    setDate(t);
+  }, []);
   const [product, setProduct] = useState("catfish");
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");

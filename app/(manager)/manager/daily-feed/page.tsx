@@ -27,8 +27,13 @@ function fmtDate(date: string) {
 }
 
 export default function DailyFeedPage() {
-  const today = new Date().toISOString().split("T")[0];
-  const [date, setDate] = useState(today);
+  const [today, setToday] = useState("");
+  const [date, setDate] = useState("");
+  useEffect(() => {
+    const t = new Date().toISOString().split("T")[0];
+    setToday(t);
+    setDate(t);
+  }, []);
   const [feedType, setFeedType] = useState("fish");
   const [localBags, setLocalBags] = useState("");
   const [foreignBags, setForeignBags] = useState("");

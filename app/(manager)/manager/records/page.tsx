@@ -519,7 +519,10 @@ export default function RecordsPage() {
   const [mainTab, setMainTab] = useState<MainTab>("sales");
   const [expenseSub, setExpenseSub] = useState<ExpenseSub>("general");
   const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [toDate, setToDate] = useState("");
+  useEffect(() => {
+    setToDate(new Date().toISOString().split("T")[0]);
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto">
