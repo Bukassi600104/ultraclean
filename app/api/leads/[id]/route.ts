@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { leadUpdateSchema } from "@/lib/validations";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }

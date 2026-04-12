@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { sendBookingConfirmation, sendThankYouReview } from "@/lib/email";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin();

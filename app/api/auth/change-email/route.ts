@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
+export const runtime = "nodejs";
+
 const changeEmailSchema = z.object({
   newEmail: z.string().email("Please enter a valid email address"),
   currentPassword: z.string().min(1, "Current password is required"),

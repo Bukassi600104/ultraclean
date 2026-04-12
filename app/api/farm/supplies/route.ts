@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
+export const runtime = "nodejs";
+
 // GET — list all supply items
 export async function GET() {
   const supabase = createServerClient();

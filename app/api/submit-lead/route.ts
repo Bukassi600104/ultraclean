@@ -4,6 +4,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { sendLeadConfirmation, sendAdminNotification } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+export const runtime = "nodejs";
+
 export async function POST(request: NextRequest) {
   // Rate limiting
   const ip = request.headers.get("x-forwarded-for") || "anonymous";

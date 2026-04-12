@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { farmInventoryTransactionSchema } from "@/lib/validations";
 import { requireAdmin, requireManager } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 // GET — admin: list transactions, optionally filtered by action
 export async function GET(request: NextRequest) {
   try {

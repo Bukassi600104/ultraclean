@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { getCourseSettings, saveCourseSettings } from "@/lib/course-settings";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const settings = await getCourseSettings();
   return NextResponse.json(settings);

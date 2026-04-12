@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { managerCreateSchema } from "@/lib/validations";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     await requireAdmin();
@@ -20,7 +22,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, name, email, role, created_at, suspended")
     .eq("role", "manager")
     .order("created_at", { ascending: false });
 

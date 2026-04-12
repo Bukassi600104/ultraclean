@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 // PUT — update restock threshold (admin only) or item details
 export async function PUT(
   request: NextRequest,

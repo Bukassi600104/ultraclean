@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 // POST — record a supply transaction (purchase / use / adjustment)
 export async function POST(request: NextRequest) {
   let profile;

@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { appointmentUpdateSchema } from "@/lib/validations";
 
+export const runtime = "nodejs";
+
 // GET — single appointment
 export async function GET(
   _request: NextRequest,

@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { changePasswordSchema } from "@/lib/validations";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   try {
     const profile = await getCurrentUser();

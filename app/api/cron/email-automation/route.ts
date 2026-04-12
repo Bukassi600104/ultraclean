@@ -6,6 +6,8 @@ import {
   sendReEngagement,
 } from "@/lib/email";
 
+export const runtime = "nodejs";
+
 export async function GET(request: NextRequest) {
   // Verify cron secret — hard-fail if env var is not configured
   const cronSecret = process.env.CRON_SECRET;

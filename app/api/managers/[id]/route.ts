@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { managerUpdateSchema } from "@/lib/validations";
 
+export const runtime = "nodejs";
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }

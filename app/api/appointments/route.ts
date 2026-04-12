@@ -8,6 +8,8 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 // POST — public: create a new appointment
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "anonymous";

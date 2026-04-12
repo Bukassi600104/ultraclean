@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { leadCreateSchema } from "@/lib/validations";
 import { requireAdmin } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 const ALLOWED_SORT_COLUMNS = [
   "created_at",
   "updated_at",
