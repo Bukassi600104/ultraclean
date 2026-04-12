@@ -8,10 +8,9 @@ export const runtime = "nodejs";
 const inventoryUpdateSchema = z.object({
   item_name: z.string().min(1).max(200).optional(),
   category: z.string().max(100).optional(),
-  current_quantity: z.number().min(0).optional(),
+  current_quantity: z.coerce.number().min(0).optional(),
   unit: z.string().max(50).optional(),
-  reorder_level: z.number().min(0).optional(),
-  notes: z.string().max(1000).nullable().optional(),
+  reorder_level: z.coerce.number().min(0).optional(),
 });
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {

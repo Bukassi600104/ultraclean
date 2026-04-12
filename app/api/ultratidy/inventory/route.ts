@@ -8,10 +8,9 @@ export const runtime = "nodejs";
 const inventoryItemSchema = z.object({
   item_name: z.string().min(1, "Item name is required").max(200),
   category: z.string().max(100).optional().default("supplies"),
-  current_quantity: z.number().min(0).default(0),
+  current_quantity: z.coerce.number().min(0).default(0),
   unit: z.string().max(50).optional().default("units"),
-  reorder_level: z.number().min(0).optional().default(0),
-  notes: z.string().max(1000).optional().nullable(),
+  reorder_level: z.coerce.number().min(0).optional().default(0),
 });
 
 export async function GET() {
@@ -46,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("ultratidy_inventory")
-    .insert({ ...parsed.data, created_by: profile.id })
+    .insert(parsed.data)
     .select()
     .single();
 
