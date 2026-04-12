@@ -119,9 +119,12 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse;
     }
 
+    // Redirect (not rewrite) so the browser URL changes to /dashboard/*
+    // A rewrite causes usePathname() to disagree between server (/dashboard)
+    // and client (original URL), producing a React hydration mismatch.
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    return NextResponse.redirect(url);
   }
 
   if (isPrimefieldDomain) {
