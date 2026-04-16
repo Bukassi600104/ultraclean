@@ -8,6 +8,8 @@ const ANIMALS = [
   { value: "catfish", label: "Catfish" },
   { value: "goat", label: "Goat" },
   { value: "chicken", label: "Chicken" },
+  { value: "pig", label: "Pig" },
+  { value: "turkey", label: "Turkey" },
 ];
 
 export default function MortalityPage() {
@@ -65,7 +67,7 @@ export default function MortalityPage() {
 
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Animal Type</label>
-          <div className="mt-1.5 grid grid-cols-3 gap-2">
+          <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-5">
             {ANIMALS.map((a) => (
               <button key={a.value} onClick={() => setProduct(a.value)}
                 className="rounded-xl py-2.5 text-xs font-semibold border transition-all"

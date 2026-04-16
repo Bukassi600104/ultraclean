@@ -99,7 +99,7 @@ export const dbaSaleSchema = z.object({
 export const farmSaleSchema = z.object({
   date: z.string(),
   customer_name: z.string().min(1, "Customer name is required"),
-  product: z.enum(["catfish", "goat", "chicken", "other"]),
+  product: z.enum(["catfish", "goat", "chicken", "pig", "turkey", "other"]),
   quantity: z.preprocess((v) => Number(v), z.number().positive("Quantity must be positive")),
   unit_price: z.preprocess((v) => Number(v), z.number().positive("Unit price must be positive")),
   payment_method: z.string(),

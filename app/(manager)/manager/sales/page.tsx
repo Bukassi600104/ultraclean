@@ -28,6 +28,8 @@ const PRODUCTS = [
   { key: "catfish", label: "Catfish", color: "#3b82f6", bg: "#eff6ff" },
   { key: "goat", label: "Goat", color: "#f59e0b", bg: "#fffbeb" },
   { key: "chicken", label: "Chicken", color: "#f97316", bg: "#fff7ed" },
+  { key: "pig", label: "Pig", color: "#ec4899", bg: "#fdf2f8" },
+  { key: "turkey", label: "Turkey", color: "#7c3aed", bg: "#f5f3ff" },
   { key: "crops", label: "Crops", color: "#10b981", bg: "#f0fdf4" },
 ];
 

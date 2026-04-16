@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, X } from "lucide-react";
 
-type Product = "catfish" | "goat" | "chicken" | "crops";
+type Product = "catfish" | "goat" | "chicken" | "pig" | "turkey" | "crops";
 
 const PRODUCT_CONFIG: Record<Product, {
   label: string;
@@ -15,6 +15,8 @@ const PRODUCT_CONFIG: Record<Product, {
   catfish: { label: "Catfish", color: "#3b82f6", bgColor: "#eff6ff" },
   goat: { label: "Goat", color: "#f59e0b", bgColor: "#fffbeb" },
   chicken: { label: "Chicken", color: "#f97316", bgColor: "#fff7ed" },
+  pig: { label: "Pig", color: "#ec4899", bgColor: "#fdf2f8" },
+  turkey: { label: "Turkey", color: "#7c3aed", bgColor: "#f5f3ff" },
   crops: { label: "Crops", color: "#10b981", bgColor: "#f0fdf4" },
 };
 
@@ -163,7 +165,7 @@ export default function SaleProductPage() {
       rows.push({ label: "Weight (kg)", value: form.kg + " kg" });
       rows.push({ label: "Price per kg", value: fmt(Number(form.amount_per_kg)) });
     } else {
-      const qtyLabel = productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : "Quantity";
+      const qtyLabel = productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : productKey === "pig" ? "No. of Pigs" : productKey === "turkey" ? "No. of Turkeys" : "Quantity";
       rows.push({ label: qtyLabel, value: form.quantity });
       rows.push({ label: "Price per unit", value: fmt(Number(form.unit_price)) });
     }
@@ -305,7 +307,7 @@ export default function SaleProductPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : "Quantity *"}
+                {productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
               </label>
               <input type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
@@ -313,7 +315,7 @@ export default function SaleProductPage() {
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : "Price per Unit (₦) *"}
+                {productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
               </label>
               <input type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"

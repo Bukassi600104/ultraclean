@@ -79,6 +79,8 @@ export default function FarmSalesPage() {
               <SelectItem value="catfish">Catfish</SelectItem>
               <SelectItem value="goat">Goat</SelectItem>
               <SelectItem value="chicken">Chicken</SelectItem>
+              <SelectItem value="pig">Pig</SelectItem>
+              <SelectItem value="turkey">Turkey</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>

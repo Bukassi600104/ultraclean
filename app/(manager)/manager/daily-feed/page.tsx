@@ -8,6 +8,8 @@ const FEED_TYPES = [
   { value: "fish", label: "Fish Feed" },
   { value: "goat", label: "Goat Feed" },
   { value: "chicken", label: "Chicken Feed" },
+  { value: "pig", label: "Pig Feed" },
+  { value: "turkey", label: "Turkey Feed" },
   { value: "other", label: "Other Feed" },
 ];
 

@@ -6,7 +6,7 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
-  product: z.enum(["catfish", "goat", "chicken", "other", "crops"]),
+  product: z.enum(["catfish", "goat", "chicken", "pig", "turkey", "other", "crops"]),
   quantity: z.number().positive("Quantity must be positive"),
   unit_price: z.number().positive("Unit price must be positive"),
   weight_kg: z.number().positive().optional().nullable(),
