@@ -180,6 +180,9 @@ export default function ExpenseCategoryPage() {
           feed_type: prev.feed_type,
           num_bags: "",
           cost_per_bag: "",
+          produce_type: prev.produce_type,
+          produce_quantity: "",
+          produce_unit_price: "",
         }));
 
         setShowSuccess(true);
@@ -266,6 +269,9 @@ export default function ExpenseCategoryPage() {
         feed_type: prev.feed_type,
         num_bags: "",
         cost_per_bag: "",
+        produce_type: prev.produce_type,
+        produce_quantity: "",
+        produce_unit_price: "",
       }));
 
       setShowSuccess(true);
