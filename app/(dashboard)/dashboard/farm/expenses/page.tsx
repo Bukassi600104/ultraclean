@@ -165,6 +165,7 @@ export default function FarmExpensesPage() {
               <SelectItem value="veterinary">Veterinary</SelectItem>
               <SelectItem value="transport">Transport</SelectItem>
               <SelectItem value="equipment">Equipment</SelectItem>
+              <SelectItem value="produce">Farm Produce</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -223,7 +224,9 @@ export default function FarmExpensesPage() {
                         </TableCell>
                         <TableCell className="capitalize">{e.category}</TableCell>
                         <TableCell className="text-sm text-gray-600">
-                          {e.paid_to || "—"}
+                          {e.category === "produce"
+                            ? (e.item_name || e.paid_to || "—")
+                            : (e.paid_to || "—")}
                         </TableCell>
                         <TableCell className="font-medium">
                           ₦{e.amount.toLocaleString()}

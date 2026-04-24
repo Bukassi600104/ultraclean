@@ -107,9 +107,11 @@ export interface FarmExpense {
     | "utilities"
     | "veterinary"
     | "transport"
-    | "equipment";
+    | "equipment"
+    | "produce";
   amount: number;
   paid_to: string | null;
+  item_name: string | null;
   payment_method: string;
   notes: string | null;
   created_by: string | null;

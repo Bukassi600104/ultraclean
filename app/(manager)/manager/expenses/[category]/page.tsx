@@ -3,16 +3,16 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, AlertTriangle, Users, Package, Zap, HeartPulse, Truck, Wrench } from "lucide-react";
+import { Check, AlertTriangle, Users, Package, Zap, HeartPulse, Truck, Wrench, Sprout } from "lucide-react";
 
 // ─── Types / Config ───────────────────────────────────────────────────────────
 
-type Category = "labor" | "feed" | "utilities" | "veterinary" | "transport" | "equipment";
+type Category = "labor" | "feed" | "utilities" | "veterinary" | "transport" | "equipment" | "produce";
 
 interface FormValues {
   date: string;
   amount: string;
-  item_name: string;  // equipment only
+  item_name: string;
   paid_to: string;
   payment_method: string;
   notes: string;
@@ -20,6 +20,10 @@ interface FormValues {
   feed_type: string;
   num_bags: string;
   cost_per_bag: string;
+  // produce-specific
+  produce_type: string;
+  produce_quantity: string;
+  produce_unit_price: string;
 }
 
 const CATEGORY_CONFIG: Record<Category, {
@@ -35,6 +39,7 @@ const CATEGORY_CONFIG: Record<Category, {
   veterinary: { label: "Veterinary", color: "#ef4444", bgColor: "#fef2f2", icon: HeartPulse, description: "Vet services and medications" },
   transport: { label: "Transport", color: "#10b981", bgColor: "#f0fdf4", icon: Truck, description: "Delivery and transport costs" },
   equipment: { label: "Equipment", color: "#8b5cf6", bgColor: "#f5f3ff", icon: Wrench, description: "Tools and equipment" },
+  produce: { label: "Farm Produce", color: "#16a34a", bgColor: "#f0fdf4", icon: Sprout, description: "Purchase of livestock, fingerlings, or farm stock" },
 };
 
 const PAYMENT_METHODS = [
@@ -50,6 +55,15 @@ const FEED_TYPES = [
   { value: "pig", label: "Pig Feed" },
   { value: "turkey", label: "Turkey Feed" },
   { value: "other", label: "Other Feed" },
+];
+
+const PRODUCE_TYPES = [
+  { value: "Catfish Fingerlings", label: "Catfish Fingerlings" },
+  { value: "Day-Old Chicks", label: "Day-Old Chicks" },
+  { value: "Goat Kids", label: "Goat Kids" },
+  { value: "Piglets", label: "Piglets" },
+  { value: "Poults (Turkey)", label: "Poults (Turkey)" },
+  { value: "Other Produce", label: "Other Produce" },
 ];
 
 function fmt(n: number) {
@@ -79,6 +93,9 @@ export default function ExpenseCategoryPage() {
     feed_type: "fish",
     num_bags: "",
     cost_per_bag: "",
+    produce_type: "Catfish Fingerlings",
+    produce_quantity: "",
+    produce_unit_price: "",
   });
   const [isDayClosed, setIsDayClosed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +126,9 @@ export default function ExpenseCategoryPage() {
     if (categoryKey === "feed") {
       if (!form.num_bags || Number(form.num_bags) <= 0) return toast.error("Enter number of bags");
       if (!form.cost_per_bag || Number(form.cost_per_bag) <= 0) return toast.error("Enter cost per bag");
+    } else if (categoryKey === "produce") {
+      if (!form.produce_quantity || Number(form.produce_quantity) <= 0) return toast.error("Enter quantity");
+      if (!form.produce_unit_price || Number(form.produce_unit_price) <= 0) return toast.error("Enter unit price");
     } else {
       if (!form.amount || Number(form.amount) <= 0) return toast.error("Enter a valid amount");
     }
@@ -165,6 +185,46 @@ export default function ExpenseCategoryPage() {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
         toast.success("Feed purchase recorded!");
+        return;
+      } else if (categoryKey === "produce") {
+        const totalCost = Number(form.produce_quantity) * Number(form.produce_unit_price);
+        const payload = [{
+          date: form.date,
+          category: "produce",
+          amount: totalCost,
+          item_name: form.produce_type,
+          paid_to: form.paid_to.trim() || undefined,
+          payment_method: form.payment_method,
+          notes: `${form.produce_quantity} units @ ₦${Number(form.produce_unit_price).toLocaleString("en-NG")}${form.notes.trim() ? ` — ${form.notes.trim()}` : ""}`,
+        }];
+
+        const res = await fetch("/api/farm/expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to save");
+        }
+
+        setSavedItems((prev) => [
+          ...prev,
+          { label: form.produce_type, amount: totalCost },
+        ]);
+
+        setForm((prev) => ({
+          ...prev,
+          produce_quantity: "",
+          produce_unit_price: "",
+          paid_to: "",
+          notes: "",
+        }));
+
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
+        toast.success("Produce purchase recorded!");
         return;
       } else {
         const payload: Record<string, unknown> = {
@@ -360,8 +420,68 @@ export default function ExpenseCategoryPage() {
           </>
         )}
 
-        {/* Amount — non-feed categories only */}
-        {categoryKey !== "feed" && (
+        {/* Produce-specific fields */}
+        {categoryKey === "produce" && (
+          <>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Produce Type</label>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
+                {PRODUCE_TYPES.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => updateField("produce_type", p.value)}
+                    className="rounded-xl py-2.5 text-xs font-semibold border transition-all"
+                    style={{
+                      backgroundColor: form.produce_type === p.value ? config.color : "transparent",
+                      borderColor: form.produce_type === p.value ? config.color : "#e5e7eb",
+                      color: form.produce_type === p.value ? "#fff" : "#6b7280",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity *</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                placeholder="0"
+                value={form.produce_quantity}
+                onChange={(e) => updateField("produce_quantity", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Unit Price (₦) *</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                placeholder="0"
+                value={form.produce_unit_price}
+                onChange={(e) => updateField("produce_unit_price", e.target.value)}
+              />
+            </div>
+            {Number(form.produce_quantity) > 0 && Number(form.produce_unit_price) > 0 && (
+              <div
+                className="rounded-xl px-4 py-3 flex items-center justify-between"
+                style={{ backgroundColor: config.color + "15", border: `1px solid ${config.color}40` }}
+              >
+                <p className="text-sm font-semibold" style={{ color: config.color }}>
+                  Total ({form.produce_quantity} units × {fmt(Number(form.produce_unit_price))})
+                </p>
+                <p className="text-lg font-bold" style={{ color: config.color }}>
+                  {fmt(Number(form.produce_quantity) * Number(form.produce_unit_price))}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Amount — non-feed, non-produce categories only */}
+        {categoryKey !== "feed" && categoryKey !== "produce" && (
           <div>
             <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount (₦) *</label>
             <input

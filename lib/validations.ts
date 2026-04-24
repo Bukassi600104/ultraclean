@@ -115,6 +115,7 @@ export const farmExpenseSchema = z.object({
     "veterinary",
     "transport",
     "equipment",
+    "produce",
   ]),
   amount: z.preprocess((v) => Number(v), z.number().positive("Amount must be positive")),
   paid_to: z.string().optional(),

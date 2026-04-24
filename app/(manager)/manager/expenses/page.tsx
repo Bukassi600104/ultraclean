@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import {
   Receipt, Plus, Lock, Edit2, Trash2, X, Users, Package,
-  Zap, HeartPulse, Truck, Wrench,
+  Zap, HeartPulse, Truck, Wrench, Sprout,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -51,6 +51,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Reac
   veterinary: { label: "Veterinary", color: "#ef4444", icon: HeartPulse, href: "/expenses/veterinary" },
   transport: { label: "Transport", color: "#10b981", icon: Truck, href: "/expenses/transport" },
   equipment: { label: "Equipment", color: "#8b5cf6", icon: Wrench, href: "/expenses/equipment" },
+  produce: { label: "Farm Produce", color: "#16a34a", icon: Sprout, href: "/expenses/produce" },
 };
 
 function fmt(n: number) {

@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const expenseItemSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment"]),
+  category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]),
   amount: z.number().positive("Amount must be positive"),
   paid_to: z.string().max(200).optional().nullable(),
   payment_method: z.enum(["cash", "transfer", "pos"]).default("cash"),

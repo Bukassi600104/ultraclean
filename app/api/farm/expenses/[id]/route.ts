@@ -6,7 +6,7 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const UpdateSchema = z.object({
-  category: z.enum(["feed", "labor", "utilities", "veterinary", "transport", "equipment"]).optional(),
+  category: z.enum(["feed", "labor", "utilities", "veterinary", "transport", "equipment", "produce"]).optional(),
   amount: z.number().positive().optional(),
   paid_to: z.string().optional(),
   payment_method: z.enum(["cash", "transfer", "pos"]).optional(),
