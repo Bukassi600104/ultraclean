@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 const transactionSchema = z.object({
   item_id: z.string().uuid("Invalid item ID"),
   item_name: z.string().min(1).max(200),
-  action: z.enum(["add", "remove", "adjust"]),
+  action: z.enum(["add", "remove", "adjust", "use", "dispose"]),
   quantity: z.number().positive("Quantity must be positive"),
   notes: z.string().max(1000).optional().nullable(),
 });

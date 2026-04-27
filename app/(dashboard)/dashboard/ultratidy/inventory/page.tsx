@@ -216,7 +216,7 @@ export default function UltraTidyInventoryPage() {
                       <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">No transactions yet.</td></tr>
                     ) : txs.map((tx) => {
                       const isIncrease = tx.action === "add" || tx.action === "adjust";
-                      const actionColors: Record<string, string> = { add: "bg-green-100 text-green-700", use: "bg-blue-100 text-blue-700", dispose: "bg-orange-100 text-orange-700", adjust: "bg-purple-100 text-purple-700" };
+                      const actionColors: Record<string, string> = { add: "bg-green-100 text-green-700", remove: "bg-red-100 text-red-700", use: "bg-blue-100 text-blue-700", dispose: "bg-orange-100 text-orange-700", adjust: "bg-purple-100 text-purple-700" };
                       return (
                         <tr key={tx.id} className="hover:bg-muted/20">
                           <td className="px-4 py-3 text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString("en-CA", { day: "2-digit", month: "short", year: "numeric" })}</td>
