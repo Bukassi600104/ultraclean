@@ -2,9 +2,9 @@
 
 ## Status and preservation boundary
 
-Prepared locally for review. **No production migration, push, deployment, account change, historical recalculation or inventory backfill has been performed.** Applying SQL, releasing the application, and resuming farm writes require explicit release authorization.
+Released to the existing production application on October 3, 2026, following explicit user authorization for the complete frontend/backend update. Migrations 012 and 013 are applied; the compatible Vercel deployment is promoted to the live domains. No historical recalculation, inventory backfill or account change was performed.
 
-The configured project is `gsxqrjywtugeuexrjcln`, also referenced by the existing image configuration. Its relationship to the Vercel production environment must be confirmed before SQL is applied. A restorable full production backup has not been verified; this remains a release gate, not a completed check.
+The Vercel production environment was checked directly and uses `gsxqrjywtugeuexrjcln`. Complete PostgreSQL custom-format archives are stored privately outside the repository. The application, auth and storage portion was restored successfully into isolated PostgreSQL 17; all 56 tables retained their legacy values through migration rehearsal. Supabase-managed realtime/vault infrastructure was archived but was not emulated in the local restore.
 
 Read-only catalog and fingerprint capture is available through `node scripts/farm-v2-baseline.mjs <private-output-path>`. The capture contains schema definitions, policies, triggers, aggregate totals and whole-row fingerprints; it excludes credentials and raw records. The development capture is stored outside the checkout in the operating system temporary directory. Re-capture and retain it in an approved private location before release; it is **not** a restorable backup.
 
@@ -32,7 +32,7 @@ Affected interfaces are confined to farm APIs, manager farm pages, dashboard far
 
 ## Migration 012: exact effects
 
-Apply **only** `supabase/migrations/012_primefield_v2.sql` once, against the confirmed, freshly audited live schema. Do not run `scripts/run-migrations.mjs` without a specific reviewed migration: its default replays all files. Do not run the original seed/full migration.
+Migrations `012_primefield_v2.sql` and `013_primefield_v2_write_boundary.sql` have already been applied to the confirmed production database. **Do not replay them.** For another environment, rehearse and apply 012 followed by 013 exactly once. Do not run `scripts/run-migrations.mjs` without specific reviewed migrations: its default replays all files. Do not run the original seed/full migration.
 
 | Change | Existing-row effect | Legacy NULL/backfill | Rollback |
 |---|---|---|---|
@@ -98,7 +98,7 @@ The SQL suite uses PostgreSQL in WASM with a sanitized schema fixture and synthe
 
 The farm checks are local isolated verification. Existing real accounts, a full restored production dataset and multi-connection concurrency have not been exercised by these tests.
 
-## Authorized release sequence — pending approval
+## Coordinated release procedure
 
 1. Confirm Vercel production uses the audited Supabase project; verify domain/environment mapping without exposing keys.
 2. Obtain a full backup including relevant schema/data, verify it restores into an isolated Supabase/PostgreSQL project, and compare legacy row counts, totals, accounts, closed dates and inventory quantities.
@@ -109,12 +109,19 @@ The farm checks are local isolated verification. Existing real accounts, a full 
 
 If release fails, keep farm writes paused. Prefer fixing the compatible application forward. Do not restore the old generated expression, delete new audit/movement records, reopen dates, or discard V2 transactions. A backup restore after live activity would lose subsequent work and is not an automatic rollback; it requires a separately reviewed recovery plan and explicit authorization.
 
-## Remaining release gates
+## Production release evidence — October 3, 2026
 
-- Verified full backup restore and migration rehearsal using the complete production dataset.
-- Confirmation of the Vercel production project/database mapping.
-- Authenticated staging checks for existing users and genuine multi-session concurrency.
-- Staging/deployed Primefield host routing verification following the local HTTP 308 probe.
-- Coordinated maintenance pause and explicit production migration/deployment approval.
+- Verified project `prj_9WsH2D8DLOtXVo3lHPLSve4R3Og4`, team `team_pcJ1PdLxDNJVnfGcsk1SUb8u`, and its production Supabase environment mapping.
+- Complete pre-release PostgreSQL archive and a fresh archive with ownership/ACL captured while farm writes were paused, in the private user backup directory `.codex/backups/primefield-v2-release-2026-10-03`.
+- Restored 56 application/auth/storage tables and rehearsed migration 012; all original column fingerprints remained unchanged. Supabase-managed extensions, realtime and vault infrastructure are outside this local restore rehearsal.
+- Real multi-connection PostgreSQL tests exercised existing restored admin/manager profiles, concurrent close/write ordering, concurrent retries, one inventory deduction, closed-day corrections and direct-database denial. All synthetic business writes were isolated locally.
+- Migration 013 removes direct service-role farm write grants while preserving reads and trusted SECURITY DEFINER RPC execution. This closes bypasses through still-accessible old deployments. No legacy values change; retain this boundary during any application rollback.
+- 67 isolated PostgreSQL assertions now pass (four additional write-boundary checks); the earlier 38 route, 11 calculation and 19 mobile-component checks remain applicable.
+- Vercel production build passed. Deployment `dpl_EQSyWWTGQAJYw3AzGRo2VFmm7uZh` was built before domain promotion, then promoted after migration 012 and schema checks.
+- All five live application domains return their expected pages; the farm login's 19 script assets match the verified V2 build. Protected pages redirect unauthenticated visitors correctly.
+- Production REST reads recognize the new schema; invalid actors and anonymous RPC calls are denied. The trusted service-role RPC reaches the maintenance guard, while legacy direct writes are denied before table access.
+- The actual server finance service over production REST agrees with independent PostgreSQL owner, sales-cash and operational totals at currency precision.
+- All 56 production tables retained their original column fingerprints after both migrations. No production test sales, expenses, corrections or transfers were saved.
+- The temporary database farm-write pause covered all ten original farm tables and was removed only after database, deployment, domain and preservation checks passed. The permanent write boundary remains active.
 
-These gates are intentionally unresolved locally. No production migration or deployment should be inferred from passing local checks.
+Existing-user interactive login and browser submission testing were not automated against production; no password, account or historical record was changed to obtain a test session. The restore/concurrency tests and live read/permission checks do not claim that coverage. Users should refresh existing tabs to receive V2 before continuing work.

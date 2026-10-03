@@ -26,7 +26,21 @@ Managers request corrections after save; Bimbo applies audited corrections, incl
 - Public Playwright suite: 80/81 pass initially; first homepage cold-load timing exceeded 8 seconds. Targeted rerun passed (2.4 seconds). No public code changed.
 - Lint and the final production build pass.
 - Final live comparison: all 11 table fingerprints and row counts match the initial read-only baseline.
-- No production mutations, push or deployment. Full backup restore, production environment mapping, authenticated staging and real multi-connection concurrency checks remain release gates.
+- Local implementation initially left production untouched. The complete live frontend/backend release was subsequently authorized on October 3, 2026; see the production evidence below and the release document.
+
+### Authorized production release — October 3, 2026
+
+- [x] Confirm the existing Vercel production project and Supabase environment mapping.
+- [x] Save private complete database archives and restore the 56 application/auth/storage tables locally.
+- [x] Rehearse migration and verify legacy values, existing restored profiles and genuine multi-connection write/close/retry behavior.
+- [x] Build the compatible production deployment before assigning live domains.
+- [x] Pause farm writes, capture a fresh backup/baseline, and apply forward-only migrations 012 and 013.
+- [x] Block old service-role direct farm writes while preserving trusted V2 RPCs and reads; 67 isolated SQL assertions pass.
+- [x] Promote V2; verify live domain pages/assets, REST schema/permissions, financial aggregation and all 56 legacy table fingerprints.
+- [x] Remove the temporary farm-write pause after successful checks; keep the permanent write boundary.
+- [ ] Push the released source and release evidence to main, then verify the resulting deployment.
+
+Interactive existing-user browser login/submission was not automated in production. Supabase-managed realtime/vault infrastructure was archived but not emulated during the local application/auth/storage restore.
 
 See docs/PRIMEFIELD-V2-RELEASE.md for schema drift, migration effects, test reproduction, release sequence and rollback restrictions.
 

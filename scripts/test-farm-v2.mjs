@@ -103,5 +103,15 @@ try {
   await reject(() => db.exec("delete from farm_sales"),"42501");
   await reject(() => write(manager,"sale","create",salePayload),"42501");
   await db.exec("reset role");
+  // Rehearse the legacy service-role REST bypass with real grants, then close it.
+  await db.exec("grant insert,update,delete on farm_expenses to service_role");
+  await db.exec(await readFile(new URL("../supabase/migrations/013_primefield_v2_write_boundary.sql", import.meta.url), "utf8"));
+  await db.exec("set role service_role");
+  await reject(() => db.exec("delete from farm_expenses"), "42501");
+  await reject(() => db.exec("update farm_expenses set amount=1"), "42501");
+  const guardedExpense = await write(manager,"expense","create",{date:"2099-12-29",category:"labor",amount:1});
+  equal(guardedExpense.amount,1);
+  assert.equal(guardedExpense.created_by,manager); checks++;
+  await db.exec("reset role");
   console.log(`PASS: ${checks} isolated PostgreSQL assertions; legacy preservation, pricing, inventory, closed days, permissions, retries, supply archive, corrections and atomicity.`);
 } catch (error) { console.error(`FAIL [${error.code || "assert"}]: ${error.message}`); if (error.where) console.error(error.where); if (error.code === "ERR_ASSERTION") console.error(error.stack); process.exitCode = 1; } finally { await db.close(); }
