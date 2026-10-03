@@ -2,21 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { LIVESTOCK_PRODUCTS, farmDateToday } from "@/lib/farm-products";
+import { InventoryActivity } from "@/components/manager/InventoryActivity";
+import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { Skull, Check } from "lucide-react";
 
-const ANIMALS = [
-  { value: "catfish", label: "Catfish" },
-  { value: "goat", label: "Goat" },
-  { value: "chicken", label: "Chicken" },
-  { value: "pig", label: "Pig" },
-  { value: "turkey", label: "Turkey" },
-];
+const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label: product.label }));
 
 export default function MortalityPage() {
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
-    const t = new Date().toISOString().split("T")[0];
+    const t = farmDateToday();
     setToday(t);
     setDate(t);
   }, []);
@@ -26,6 +23,8 @@ export default function MortalityPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   async function handleSave() {
     if (!quantity || Number(quantity) <= 0) return toast.error("Enter number of deaths");
@@ -35,14 +34,17 @@ export default function MortalityPage() {
       const res = await fetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product, action: "mortality", quantity: Number(quantity), date, reason: cause.trim() || "Unknown", notes: notes.trim() || undefined }),
+        body: JSON.stringify({ request_id: requestId, product, action: "mortality", quantity: Number(quantity), date, reason: cause.trim() || "Unknown", notes: notes.trim() || undefined }),
       });
-      if (!res.ok) throw new Error();
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to save");
+      setSavedId(result.id || result.data?.id || null);
+      setRequestId(crypto.randomUUID());
       setQuantity(""); setCause(""); setNotes("");
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       toast.success("Mortality recorded.");
-    } catch { toast.error("Failed to save"); }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Failed to save"); }
     finally { setSaving(false); }
   }
 
@@ -67,7 +69,7 @@ export default function MortalityPage() {
 
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Animal Type</label>
-          <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-3">
             {ANIMALS.map((a) => (
               <button key={a.value} onClick={() => setProduct(a.value)}
                 className="rounded-xl py-2.5 text-xs font-semibold border transition-all"
@@ -102,11 +104,13 @@ export default function MortalityPage() {
         </div>
       </div>
 
+      {savedId && <FarmCorrectionRequest recordType="inventory_transaction" recordId={savedId} label="Request correction to saved record" />}
       <button onClick={handleSave} disabled={saving}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 font-bold text-sm text-white disabled:opacity-60"
         style={{ backgroundColor: saving ? "#9ca3af" : "#dc2626" }}>
         {showSuccess ? <><Check className="h-5 w-5" />Recorded!</> : saving ? "Saving..." : "Record Mortality"}
       </button>
+      <InventoryActivity action="mortality" refreshKey={savedId} />
     </div>
   );
 }

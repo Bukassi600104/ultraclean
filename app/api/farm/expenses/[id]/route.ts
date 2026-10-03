@@ -1,66 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import { z } from "zod";
-
 export const runtime = "nodejs";
-
-const UpdateSchema = z.object({
-  category: z.enum(["feed", "labor", "utilities", "veterinary", "transport", "equipment", "produce"]).optional(),
-  amount: z.number().positive().optional(),
-  paid_to: z.string().optional(),
-  payment_method: z.enum(["cash", "transfer", "pos"]).optional(),
-  expense_source: z.enum(["bimbo_transfer", "sales_cash"]).optional(),
-  item_name: z.string().optional(),
-  notes: z.string().optional(),
+const schema = z.object({
+  category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]).optional(),
+  amount: z.number().positive().optional(), paid_to: z.string().max(200).nullable().optional(),
+  expense_source: z.enum(["bimbo_transfer", "sales_cash"]).optional(), item_name: z.string().max(200).nullable().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  payment_method: z.enum(["cash", "transfer", "pos"]).optional(), notes: z.string().max(1000).nullable().optional(),
+  reason: z.string().trim().min(1).max(1000), expected_revision: z.number().int().nonnegative(),
 });
-
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  try { await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const supabase = createServerClient();
-  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-
-  const today = new Date().toISOString().split("T")[0];
-  const { data: record } = await supabase
-    .from("farm_daily_records")
-    .select("status")
-    .eq("date", today)
-    .maybeSingle();
-  if (record?.status === "closed") {
-    return NextResponse.json({ error: "Day is closed. Records cannot be edited." }, { status: 403 });
-  }
-
-  const body = await request.json();
-  const parsed = UpdateSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: parsed.error.format() }, { status: 400 });
-
-  const { data, error } = await supabase
-    .from("farm_expenses")
-    .update({ ...parsed.data, is_edited: true })
-    .eq("id", params.id)
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ expense: data });
+async function mutate(request: NextRequest, id: string, operation: "update" | "void") {
+  let profile;
+  try { profile = await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  if (profile.role !== "admin") return NextResponse.json({ error: "Saved records require a correction request to Bimbo." }, { status: 403 });
+  const body = await request.json().catch(() => null);
+  const parsed = (operation === "update" ? schema : schema.pick({ reason: true, expected_revision: true })).safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const { reason, ...payload } = parsed.data;
+  const { data, error } = await farmWrite(profile, "expense", operation, payload, { id, reason, requestId: request.headers.get("X-Request-ID") || undefined });
+  if (error) return farmErrorResponse(error);
+  return NextResponse.json(operation === "void" ? { success: true } : { expense: data });
 }
-
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  try { await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  const supabase = createServerClient();
-  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-
-  const today = new Date().toISOString().split("T")[0];
-  const { data: record } = await supabase
-    .from("farm_daily_records")
-    .select("status")
-    .eq("date", today)
-    .maybeSingle();
-  if (record?.status === "closed") {
-    return NextResponse.json({ error: "Day is closed. Records cannot be deleted." }, { status: 403 });
-  }
-
-  const { error } = await supabase.from("farm_expenses").delete().eq("id", params.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
-}
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "update"); }
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "void"); }

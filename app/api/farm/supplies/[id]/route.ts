@@ -1,41 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import { z } from "zod";
 
 export const runtime = "nodejs";
+const updateSchema = z.object({
+  item_name: z.string().trim().min(1).optional(),
+  category: z.enum(["feed", "medication", "fuel", "equipment", "other"]).optional(),
+  unit: z.string().trim().min(1).optional(),
+  notes: z.string().trim().nullable().optional(),
+  restock_threshold: z.number().finite().nonnegative().nullable().optional(),
+  quantity_change: z.number().finite().optional(),
+  expected_revision: z.number().int().nonnegative(),
+  reason: z.string().trim().min(1),
+});
 
-// PUT — update restock threshold (admin only) or item details
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  let profile;
+  try { profile = await requireManager(); }
+  catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  if (profile.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  const body = await request.json().catch(() => null);
+  const parsed = updateSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Valid details and a correction reason are required" }, { status: 400 });
+  const { reason, ...payload } = parsed.data;
+  const { data, error } = await farmWrite(profile, "supply", "update", payload, { id: params.id, reason, requestId: body.request_id });
+  if (error) return farmErrorResponse(error);
+  return NextResponse.json(data);
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  let profile;
+  try { profile = await requireManager(); }
+  catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  if (profile.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body.reason !== "string" || !body.reason.trim()) {
+    return NextResponse.json({ error: "Removal reason is required" }, { status: 400 });
   }
-
-  const supabase = createServerClient();
-  if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
-
-  const body = await request.json();
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-
-  if (body.restock_threshold !== undefined) {
-    updates.restock_threshold = body.restock_threshold === "" ? null : Number(body.restock_threshold);
-  }
-  if (body.item_name !== undefined) updates.item_name = body.item_name.trim();
-  if (body.category !== undefined) updates.category = body.category;
-  if (body.unit !== undefined) updates.unit = body.unit.trim();
-  if (body.notes !== undefined) updates.notes = body.notes?.trim() || null;
-
-  const { data, error } = await supabase
-    .from("farm_supply_inventory")
-    .update(updates)
-    .eq("id", params.id)
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data, error } = await farmWrite(profile, "supply", "archive", { expected_revision: body.expected_revision }, { id: params.id, reason: body.reason.trim(), requestId: body.request_id });
+  if (error) return farmErrorResponse(error);
   return NextResponse.json(data);
 }

@@ -1,4 +1,7 @@
 "use client";
+import { FarmActivityPanel, FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
+import { farmDateToday } from "@/lib/farm-products";
+import { activeMortality } from "@/lib/farm-inventory";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -50,6 +53,7 @@ const EXPENSE_COLORS = [
 ];
 
 interface Transfer {
+  revision?: number;
   id: string;
   date: string;
   amount: number;
@@ -58,11 +62,16 @@ interface Transfer {
 }
 
 function fmt(n: number) {
-  return `₦${Math.abs(n).toLocaleString()}`;
+  return `₦${n.toLocaleString()}`;
 }
 
 export default function FarmOverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [financialError, setFinancialError] = useState(false);
+  const [ownerBalance, setOwnerBalance] = useState(0);
+  const [ownerSpent, setOwnerSpent] = useState(0);
+  const [fundTotal, setFundTotal] = useState(0);
+  const [mortalityByProduct, setMortalityByProduct] = useState<Record<string, number>>({});
   const [revenue, setRevenue] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [feedExpenses, setFeedExpenses] = useState(0);
@@ -76,7 +85,7 @@ export default function FarmOverviewPage() {
   const [transfersLoading, setTransfersLoading] = useState(true);
   const [showAddTransfer, setShowAddTransfer] = useState(false);
   const [transferForm, setTransferForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: farmDateToday(),
     amount: "",
     notes: "",
   });
@@ -85,56 +94,22 @@ export default function FarmOverviewPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [salesRes, expensesRes, inventoryRes, mortRes, feedRes] = await Promise.all([
-          fetch("/api/farm/sales?limit=100"),
-          fetch("/api/farm/expenses?limit=100"),
-          fetch("/api/farm/inventory"),
-          fetch("/api/farm/inventory/transaction?action=mortality"),
-          fetch("/api/farm/feed-purchases?limit=100"),
+        const today = farmDateToday();
+        const [financeRes, inventoryRes, mortRes] = await Promise.all([
+          fetch(`/api/farm/balance?date=${today}`), fetch("/api/farm/inventory"),
+          fetch("/api/farm/inventory/transaction"),
         ]);
-
-        const salesData = await salesRes.json();
-        const expensesData = await expensesRes.json();
-        const inv = await inventoryRes.json();
-        const mortData = await mortRes.json();
-        const feedData = feedRes.ok ? await feedRes.json() : { data: [] };
-
-        const sales = salesData.data || [];
-        const exps = expensesData.data || [];
-        const feeds: { cost: number }[] = feedData.data || [];
-
-        const totalRev = sales.reduce(
-          (sum: number, s: { total_amount: number }) => sum + (s.total_amount || 0),
-          0
-        );
-        const totalExp = exps.reduce(
-          (sum: number, e: { amount: number }) => sum + (e.amount || 0),
-          0
-        );
-        const totalFeed = feeds.reduce((sum, f) => sum + (f.cost || 0), 0);
-
-        const productMap: Record<string, number> = {};
-        sales.forEach((s: { product: string; total_amount: number }) => {
-          productMap[s.product] = (productMap[s.product] || 0) + (s.total_amount || 0);
-        });
-
-        const catMap: Record<string, number> = {};
-        exps.forEach((e: { category: string; amount: number }) => {
-          catMap[e.category] = (catMap[e.category] || 0) + e.amount;
-        });
-
-        const mortTransactions: FarmInventoryTransaction[] = mortData.data || [];
-        const deaths = mortTransactions.reduce((sum, m) => sum + m.quantity, 0);
-
-        setRevenue(totalRev);
-        setExpenses(totalExp);
-        setFeedExpenses(totalFeed);
+        if (!financeRes.ok || !inventoryRes.ok || !mortRes.ok) throw new Error("Farm figures unavailable");
+        const [finance, inv, mortData] = await Promise.all([financeRes.json(), inventoryRes.json(), mortRes.json()]);
+        setRevenue(finance.revenue); setExpenses(finance.general_expenses); setFeedExpenses(finance.feed_expenses);
+        setOwnerBalance(finance.closing_balance); setFundTotal(finance.total_transferred); setOwnerSpent(finance.total_spent_before + finance.total_spent_today);
         setInventory(Array.isArray(inv) ? inv : []);
-        setTotalDeaths(deaths);
-        setSalesByProduct(Object.entries(productMap).map(([name, value]) => ({ name, value })));
-        setExpensesByCategory(Object.entries(catMap).map(([name, value]) => ({ name, value })));
+        const deaths: Record<string, number> = {};
+        activeMortality(mortData.data || []).forEach((record: FarmInventoryTransaction) => { deaths[record.product] = (deaths[record.product] || 0) + Number(record.quantity); });
+        setMortalityByProduct(deaths); setTotalDeaths(Object.values(deaths).reduce((n, value) => n + value, 0));
+        setSalesByProduct(finance.sales_by_product); setExpensesByCategory(finance.expenses_by_category);
       } catch {
-        // ignore
+        setFinancialError(true);
       } finally {
         setIsLoading(false);
       }
@@ -146,14 +121,34 @@ export default function FarmOverviewPage() {
     fetchTransfers();
   }, []);
 
+  async function refreshFinance() {
+    try {
+      const responses = await Promise.all([
+        fetch(`/api/farm/balance?date=${farmDateToday()}`),
+        fetch("/api/farm/inventory"), fetch("/api/farm/inventory/transaction"),
+      ]);
+      if (responses.some(response => !response.ok)) throw new Error("Farm figures unavailable");
+      const [finance, inv, movements] = await Promise.all(responses.map(response => response.json()));
+      setOwnerBalance(finance.closing_balance); setFundTotal(finance.total_transferred);
+      setOwnerSpent(finance.total_spent_before + finance.total_spent_today);
+      setRevenue(finance.revenue); setExpenses(finance.general_expenses); setFeedExpenses(finance.feed_expenses);
+      setSalesByProduct(finance.sales_by_product); setExpensesByCategory(finance.expenses_by_category);
+      setInventory(Array.isArray(inv) ? inv : []);
+      const deaths: Record<string, number> = {};
+      activeMortality(movements.data || []).forEach((record: FarmInventoryTransaction) => { deaths[record.product] = (deaths[record.product] || 0) + Number(record.quantity); });
+      setMortalityByProduct(deaths); setTotalDeaths(Object.values(deaths).reduce((sum, value) => sum + value, 0));
+      setFinancialError(false);
+    } catch { setFinancialError(true); }
+  }
   async function fetchTransfers() {
     setTransfersLoading(true);
     try {
       const res = await fetch("/api/farm/fund-transfers?limit=50");
       const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Unable to load transfers");
       setTransfers(d.data || []);
     } catch {
-      // ignore
+      toast.error("Unable to load transfers");
     } finally {
       setTransfersLoading(false);
     }
@@ -188,9 +183,10 @@ export default function FarmOverviewPage() {
       }
 
       toast.success("Transfer recorded");
-      setTransferForm({ date: new Date().toISOString().split("T")[0], amount: "", notes: "" });
+      setTransferForm({ date: farmDateToday(), amount: "", notes: "" });
       setShowAddTransfer(false);
       fetchTransfers();
+      refreshFinance();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add transfer");
     } finally {
@@ -198,40 +194,31 @@ export default function FarmOverviewPage() {
     }
   }
 
-  const totalTransferred = transfers.reduce((s, t) => s + t.amount, 0);
+  const totalTransferred = fundTotal;
   const totalSpent = expenses + feedExpenses;
-  const currentBalance = totalTransferred - totalSpent;
-
-  // Compute running balances for transfer history
-  const transfersWithRunning = transfers.map((t) => {
-    // Running balance = sum of transfers up to this index (newest first, so reverse)
-    const ordered = [...transfers].reverse(); // oldest first
-    const idx = ordered.findIndex((x) => x.id === t.id);
-    const running = ordered
-      .slice(0, idx + 1)
-      .reduce((s, x) => s + x.amount, 0) - totalSpent;
-    return { ...t, running };
-  });
+  const currentBalance = ownerBalance;
 
   return (
     <>
       <DashboardHeader title="Farm Overview" />
       <div className="p-4 lg:p-8 space-y-6">
+        {financialError && <p role="alert" className="text-red-600">Farm figures could not be loaded. Refresh before relying on these totals.</p>}
         {/* Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-[110px]" />)
           ) : (
             <>
-              <SummaryCard title="Total Revenue" value={`₦${revenue.toLocaleString()}`} icon={TrendingUp} />
-              <SummaryCard title="Total Expenses" value={`₦${totalSpent.toLocaleString()}`} icon={TrendingDown} />
-              <SummaryCard title="Net Profit" value={`₦${(revenue - totalSpent).toLocaleString()}`} icon={DollarSign} />
-              <SummaryCard title="Products Tracked" value={inventory.length} icon={Package} />
+              <SummaryCard title="Total Revenue" value={financialError ? "Unavailable" : `₦${revenue.toLocaleString()}`} icon={TrendingUp} />
+              <SummaryCard title="Total Expenses" value={financialError ? "Unavailable" : `₦${totalSpent.toLocaleString()}`} icon={TrendingDown} />
+              <SummaryCard title="Net Profit" value={financialError ? "Unavailable" : `₦${(revenue - totalSpent).toLocaleString()}`} icon={DollarSign} />
+              <SummaryCard title="Inventory Types" value={inventory.length} icon={Package} />
               <SummaryCard title="Total Mortality" value={totalDeaths} icon={Skull} iconClassName="text-red-500" />
             </>
           )}
         </div>
 
+        {Object.keys(mortalityByProduct).length > 0 && <p className="text-sm text-gray-600">Mortality by product: {Object.entries(mortalityByProduct).map(([name, count]) => `${name}: ${count}`).join(" · ")}</p>}
         {/* Quick nav */}
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" asChild>
@@ -265,42 +252,43 @@ export default function FarmOverviewPage() {
             {/* Balance summary */}
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div className="rounded-xl p-4 bg-muted/50 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Current Balance</p>
+                <p className="text-xs text-muted-foreground mb-1">Owner Funds Available</p>
                 <p
                   className="text-2xl font-bold"
                   style={{ color: currentBalance >= 0 ? "#16a34a" : "#dc2626" }}
                 >
-                  {currentBalance < 0 ? "-" : ""}
-                  {fmt(currentBalance)}
+
+                  {financialError ? "Unavailable" : fmt(currentBalance)}
                 </p>
               </div>
               <div className="rounded-xl p-4 bg-muted/50 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Total Sent</p>
-                <p className="text-2xl font-bold text-foreground">{fmt(totalTransferred)}</p>
+                <p className="text-2xl font-bold text-foreground">{financialError ? "Unavailable" : fmt(totalTransferred)}</p>
               </div>
               <div className="rounded-xl p-4 bg-muted/50 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Total Spent</p>
-                <p className="text-2xl font-bold text-red-600">{fmt(totalSpent)}</p>
+                <p className="text-xs text-muted-foreground mb-1">Owner Funds Spent</p>
+                <p className="text-2xl font-bold text-red-600">{financialError ? "Unavailable" : fmt(ownerSpent)}</p>
               </div>
             </div>
 
+            <p className="text-xs text-muted-foreground mb-2">Recent transfers. Balances include all active records.</p>
             {/* Transfer history */}
             {transfersLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
               </div>
-            ) : transfersWithRunning.length ? (
+            ) : transfers.length ? (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Notes</TableHead>
-                    <TableHead>Running Balance</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transfersWithRunning.map((t) => (
+                  {transfers.map((t) => (
                     <TableRow key={t.id}>
                       <TableCell className="text-sm">
                         {new Date(t.date + "T00:00:00").toLocaleDateString("en-NG", {
@@ -315,13 +303,7 @@ export default function FarmOverviewPage() {
                       <TableCell className="text-sm text-muted-foreground">
                         {t.notes || "—"}
                       </TableCell>
-                      <TableCell
-                        className="font-medium"
-                        style={{ color: t.running >= 0 ? "#16a34a" : "#dc2626" }}
-                      >
-                        {t.running < 0 ? "-" : ""}
-                        {fmt(t.running)}
-                      </TableCell>
+                      <TableCell><FarmAdminCorrection recordType="fund" record={t} onSaved={() => { fetchTransfers(); refreshFinance(); }} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -430,6 +412,7 @@ export default function FarmOverviewPage() {
         </Card>
       </div>
 
+      <FarmActivityPanel onSaved={() => { void refreshFinance(); void fetchTransfers(); }} />
       {/* Add Transfer Dialog */}
       <Dialog open={showAddTransfer} onOpenChange={setShowAddTransfer}>
         <DialogContent>

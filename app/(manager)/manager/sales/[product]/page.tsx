@@ -3,22 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import { AlertTriangle, X } from "lucide-react";
 
-type Product = "catfish" | "goat" | "chicken" | "pig" | "turkey" | "crops";
-
-const PRODUCT_CONFIG: Record<Product, {
-  label: string;
-  color: string;
-  bgColor: string;
-}> = {
-  catfish: { label: "Catfish", color: "#3b82f6", bgColor: "#eff6ff" },
-  goat: { label: "Goat", color: "#f59e0b", bgColor: "#fffbeb" },
-  chicken: { label: "Chicken", color: "#f97316", bgColor: "#fff7ed" },
-  pig: { label: "Pig", color: "#ec4899", bgColor: "#fdf2f8" },
-  turkey: { label: "Turkey", color: "#7c3aed", bgColor: "#f5f3ff" },
-  crops: { label: "Crops", color: "#10b981", bgColor: "#f0fdf4" },
-};
+type Product = FarmProduct;
 
 interface FormValues {
   date: string;
@@ -33,7 +21,7 @@ interface FormValues {
 }
 
 function fmt(n: number) { return `₦${Math.round(n).toLocaleString("en-NG")}`; }
-function getTodayStr() { return new Date().toISOString().split("T")[0]; }
+function getTodayStr() { return farmDateToday(); }
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 
@@ -85,8 +73,9 @@ function ConfirmDialog({
 export default function SaleProductPage() {
   const { product } = useParams<{ product: string }>();
   const router = useRouter();
-  const productKey: Product = (product as Product) in PRODUCT_CONFIG ? (product as Product) : "crops";
-  const config = PRODUCT_CONFIG[productKey];
+  const selectedProduct = FARM_PRODUCTS.find((item) => item.key === product);
+  const productKey: Product = selectedProduct?.key ?? "crops";
+  const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
 
   const [form, setForm] = useState<FormValues>({
@@ -103,6 +92,7 @@ export default function SaleProductPage() {
   const [isDayClosed, setIsDayClosed] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [savedItems, setSavedItems] = useState<{ label: string; total: number }[]>([]);
 
   useEffect(() => {
@@ -112,12 +102,12 @@ export default function SaleProductPage() {
   }, []);
 
   useEffect(() => {
-    if (!today) return;
-    fetch(`/api/farm/daily-record?date=${today}`)
+    if (!form.date) return;
+    fetch(`/api/farm/daily-record?date=${form.date}`)
       .then((r) => r.json())
-      .then((d) => { if (d.record?.status === "closed") setIsDayClosed(true); })
+      .then((d) => { setIsDayClosed(d.record?.status === "closed"); })
       .catch(() => {});
-  }, [today]);
+  }, [form.date]);
 
   function updateField(field: keyof FormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -165,7 +155,7 @@ export default function SaleProductPage() {
       rows.push({ label: "Weight (kg)", value: form.kg + " kg" });
       rows.push({ label: "Price per kg", value: fmt(Number(form.amount_per_kg)) });
     } else {
-      const qtyLabel = productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : productKey === "pig" ? "No. of Pigs" : productKey === "turkey" ? "No. of Turkeys" : "Quantity";
+      const qtyLabel = productKey === "cattle" ? "No. of Cattle" : productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : productKey === "pig" ? "No. of Pigs" : productKey === "turkey" ? "No. of Turkeys" : "Quantity";
       rows.push({ label: qtyLabel, value: form.quantity });
       rows.push({ label: "Price per unit", value: fmt(Number(form.unit_price)) });
     }
@@ -181,6 +171,8 @@ export default function SaleProductPage() {
       const payload: Record<string, unknown> = {
         date: form.date,
         product: productKey,
+        pricing_basis: config.pricingBasis,
+        request_id: requestId,
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: form.customer_name.trim() || undefined,
@@ -204,10 +196,14 @@ export default function SaleProductPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(JSON.stringify(err));
+        throw new Error(err.error || "Failed to save");
       }
 
-      setSavedItems((prev) => [...prev, { label: config.label, total: computedTotal }]);
+      const result = await res.json();
+      const persistedSale = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (!persistedSale || !Number.isFinite(Number(persistedSale.total_amount))) throw new Error("Sale response did not include saved total");
+      setSavedItems((prev) => [...prev, { label: config.label, total: Number(persistedSale.total_amount) }]);
+      setRequestId(crypto.randomUUID());
       setForm((prev) => ({
         date: prev.date,
         quantity: "", kg: "", amount_per_kg: "", unit_price: "",
@@ -218,11 +214,13 @@ export default function SaleProductPage() {
       toast.success("Sale recorded!");
     } catch (e) {
       console.error(e);
-      toast.error("Failed to save. Please try again.");
+      toast.error(e instanceof Error ? e.message : "Failed to save. Please try again.");
     } finally {
       setSaving(false);
     }
   }
+
+  if (!selectedProduct || productKey === "other") return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
 
   if (isDayClosed) {
     return (
@@ -244,7 +242,7 @@ export default function SaleProductPage() {
   return (
     <div className="max-w-lg space-y-4">
       {/* Header */}
-      <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: config.bgColor, borderLeft: `4px solid ${config.color}` }}>
+      <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: config.bg, borderLeft: `4px solid ${config.color}` }}>
         <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: config.color }}>Recording Sale</p>
         <p className="text-xl font-bold text-gray-900">{config.label}</p>
       </div>
@@ -307,7 +305,7 @@ export default function SaleProductPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
+                {productKey === "cattle" ? "No. of Cattle *" : productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
               </label>
               <input type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
@@ -315,7 +313,7 @@ export default function SaleProductPage() {
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                {productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
+                {productKey === "cattle" ? "Price per Head (₦) *" : productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
               </label>
               <input type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
@@ -326,7 +324,7 @@ export default function SaleProductPage() {
 
         {/* Live total */}
         {computedTotal > 0 && (
-          <div className="rounded-xl px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: config.bgColor }}>
+          <div className="rounded-xl px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: config.bg }}>
             <p className="text-xs font-semibold" style={{ color: config.color }}>Total Amount</p>
             <p className="text-lg font-bold" style={{ color: config.color }}>{fmt(computedTotal)}</p>
           </div>

@@ -1,8 +1,11 @@
+import { farmDateToday } from "@/lib/farm-products";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { requireAdmin, requireManager } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 import { Resend } from "resend";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import { getFarmFinance } from "@/lib/farm-finance";
 
 export const runtime = "nodejs";
 
@@ -40,6 +43,7 @@ export async function GET(request: NextRequest) {
   const { data, count, error } = await supabase
     .from("farm_fund_transfers")
     .select("*", { count: "exact" })
+    .is("voided_at", null)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
@@ -55,7 +59,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let profile;
   try {
-    profile = await requireAdmin();
+    profile = await requireManager();
   } catch {
     return NextResponse.json({ error: "Unauthorized: admin only" }, { status: 401 });
   }
@@ -72,6 +76,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
+  if (profile.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   const parsed = transferSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
@@ -80,44 +85,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
-    .from("farm_fund_transfers")
-    .insert({ ...parsed.data, created_by: profile.id })
-    .select()
-    .single();
-
-  if (error) {
-    console.error("fund_transfers POST error:", error);
-    return NextResponse.json({ error: "Failed to save transfer" }, { status: 500 });
-  }
+  const { data, error } = await farmWrite(profile, "fund", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || undefined });
+  if (error) return farmErrorResponse(error);
 
   // After insert, check balance and send alert if <= 0
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const today = farmDateToday();
 
-    const [transfersRes, expensesRes, feedRes] = await Promise.all([
-      supabase.from("farm_fund_transfers").select("amount").lte("date", today),
-      supabase.from("farm_expenses").select("amount").lte("date", today),
-      supabase.from("farm_feed_purchases").select("cost").lte("date", today),
-    ]);
-
-    const totalTransferred = (transfersRes.data || []).reduce(
-      (s: number, r: { amount: number }) => s + (r.amount || 0),
-      0
-    );
-    const totalExpenses = (expensesRes.data || []).reduce(
-      (s: number, r: { amount: number }) => s + (r.amount || 0),
-      0
-    );
-    const totalFeed = (feedRes.data || []).reduce(
-      (s: number, r: { cost: number }) => s + (r.cost || 0),
-      0
-    );
-    const currentBalance = totalTransferred - totalExpenses - totalFeed;
+    const { closing_balance: currentBalance } = await getFarmFinance({ date: today });
 
     if (currentBalance <= 0 && process.env.ADMIN_EMAIL && process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
-      const balStr = escHtml(`₦${Math.abs(currentBalance).toLocaleString()}`);
+      const balStr = escHtml(`₦${currentBalance.toLocaleString()}`);
       await resend.emails.send({
         from: "UltraTidy <hello@ultratidycleaning.com>",
         to: process.env.ADMIN_EMAIL,

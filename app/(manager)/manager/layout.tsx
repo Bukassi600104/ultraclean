@@ -13,6 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/sales": "Record Sales",
   "/sales/catfish": "Catfish Sales",
+  "/sales/cattle": "Cattle Sales",
   "/sales/goat": "Goat Sales",
   "/sales/chicken": "Chicken Sales",
   "/sales/crops": "Crops Sales",
@@ -42,7 +43,7 @@ export default function ManagerLayout({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isOnline, pendingCount, isSyncing } = useOfflineSync();
+  const { isOnline, pendingCount, isSyncing, conflicts } = useOfflineSync();
 
   const normalised = pathname.replace(/^\/manager/, "") || "/";
   const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
@@ -99,6 +100,11 @@ export default function ManagerLayout({
           pendingCount={pendingCount}
           isSyncing={isSyncing}
         />
+        {conflicts.length > 0 && <details className="mx-4 my-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
+          <summary className="cursor-pointer font-semibold">{conflicts.length} saved {conflicts.length === 1 ? "entry needs" : "entries need"} review</summary>
+          <p className="mt-2">These entries remain on this device. Their dates have not been changed. Ask Bimbo to resolve closed-day or record conflicts before resubmitting.</p>
+          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{item.endpoint.replace("/api/farm/", "").replace(/\//g, " ")} · {String(item.data.date ?? item.createdAt)}</p><p className="text-amber-900">{item.conflict}</p><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => !key.endsWith("id") && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline capitalize">{key.replace(/_/g, " ")}: </dt><dd className="inline">{String(value)}</dd></div>)}</dl></div>)}
+        </details>}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">

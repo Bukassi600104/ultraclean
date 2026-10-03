@@ -1,4 +1,5 @@
 "use client";
+import { farmDateToday } from "@/lib/farm-products";
 
 import { useState, useEffect, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,9 +10,11 @@ export default function ManagerCashPage() {
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
     setDateLabel(new Date().toLocaleDateString("en-NG", {
+      timeZone: "Africa/Lagos",
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -23,38 +26,16 @@ export default function ManagerCashPage() {
     if (isManualRefresh) setIsRefreshing(true);
     else setIsLoading(true);
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = farmDateToday();
+    setError(false);
     try {
-      const [salesRes, expensesRes] = await Promise.all([
-        fetch(`/api/farm/sales?limit=100`),
-        fetch(`/api/farm/expenses?limit=100`),
-      ]);
-
-      const salesData = await salesRes.json();
-      const expensesData = await expensesRes.json();
-
-      const sales = (salesData.data || []).filter(
-        (s: { date: string }) => s.date === today
-      );
-      const expenses = (expensesData.data || []).filter(
-        (e: { date: string }) => e.date === today
-      );
-
-      setTodaySales(
-        sales.reduce(
-          (sum: number, s: { total_amount: number }) =>
-            sum + (s.total_amount || 0),
-          0
-        )
-      );
-      setTodayExpenses(
-        expenses.reduce(
-          (sum: number, e: { amount: number }) => sum + (e.amount || 0),
-          0
-        )
-      );
+      const response = await fetch(`/api/farm/balance?date=${today}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Balance unavailable");
+      setTodaySales(data.total_sales_today);
+      setTodayExpenses(data.today_total_expenses);
     } catch {
-      // ignore
+      setError(true);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -73,7 +54,7 @@ export default function ManagerCashPage() {
       {/* Page header with refresh */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-xl font-bold" style={{ color: "#1B4332" }}>
-          Today&apos;s Cash
+          Today&apos;s Farm Finances
         </h2>
         <button
           onClick={() => loadToday(true)}
@@ -89,12 +70,13 @@ export default function ManagerCashPage() {
         </button>
       </div>
 
+      {error && <p role="alert" className="text-red-600">Could not load financial figures. Please refresh.</p>}
       <div className="space-y-4">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-2xl" />
           ))
-        ) : (
+        ) : !error && (
           <>
             {/* Sales card */}
             <div
@@ -148,7 +130,7 @@ export default function ManagerCashPage() {
                   className="text-sm font-medium"
                   style={{ color: isPositive ? "#2D6A4F" : "#dc2626" }}
                 >
-                  Net Cash Today
+                  Net Operating Result Today
                 </p>
                 <div
                   className="flex h-9 w-9 items-center justify-center rounded-full"

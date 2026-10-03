@@ -36,6 +36,8 @@ interface SupplyItem {
   restock_threshold: number | null;
   notes: string | null;
   updated_at: string;
+  revision?: number;
+  archived_at?: string | null;
 }
 
 interface HistoryEntry {
@@ -44,6 +46,7 @@ interface HistoryEntry {
   quantity_change: number;
   notes: string | null;
   created_at: string;
+  created_by_name?: string | null;
   farm_supply_inventory: { item_name: string; unit: string; category: string } | null;
 }
 
@@ -78,6 +81,9 @@ export default function FarmSuppliesPage() {
   // Threshold dialog
   const [editItem, setEditItem] = useState<SupplyItem | null>(null);
   const [thresholdVal, setThresholdVal] = useState("");
+  const [details, setDetails] = useState({ item_name: "", category: "other", unit: "", notes: "", quantity_change: "", reason: "" });
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [writeIds, setWriteIds] = useState({ update: "", archive: "" });
   const [isSaving, setIsSaving] = useState(false);
 
   // History filter
@@ -103,8 +109,8 @@ export default function FarmSuppliesPage() {
 
   useEffect(() => {
     loadItems();
-    loadHistory();
-  }, [loadItems, loadHistory]);
+    if (historyOpen) loadHistory();
+  }, [loadItems, loadHistory, historyOpen]);
 
   async function saveThreshold() {
     if (!editItem) return;
@@ -113,11 +119,11 @@ export default function FarmSuppliesPage() {
       const res = await fetch(`/api/farm/supplies/${editItem.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restock_threshold: thresholdVal }),
+        body: JSON.stringify({ ...details, request_id: writeIds.update, expected_revision: editItem.revision ?? 0, restock_threshold: thresholdVal === "" ? null : Number(thresholdVal), quantity_change: details.quantity_change === "" ? undefined : Number(details.quantity_change) }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed");
-      toast.success("Threshold updated");
+      toast.success("Supply corrected");
       setEditItem(null);
       loadItems();
     } catch (err) {
@@ -127,6 +133,17 @@ export default function FarmSuppliesPage() {
     }
   }
 
+  async function archiveItem() {
+    if (!editItem) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/farm/supplies/${editItem.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: details.reason, request_id: writeIds.archive, expected_revision: editItem.revision ?? 0 }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed");
+      toast.success("Supply removed; history retained"); setEditItem(null); loadItems();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
+    finally { setIsSaving(false); }
+  }
   const lowCount = items.filter(isLow).length;
   const outCount = items.filter(isOut).length;
 
@@ -173,7 +190,7 @@ export default function FarmSuppliesPage() {
               All Supply Items
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Click the settings icon to set a restock alert threshold for any item.
+              Edit details or record a signed quantity correction. Removal preserves history.
             </p>
           </CardHeader>
           <CardContent className="p-0">
@@ -241,10 +258,12 @@ export default function FarmSuppliesPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            title="Set restock threshold"
+                            title="Edit supply"
                             onClick={() => {
                               setEditItem(item);
+                              setWriteIds({ update: crypto.randomUUID(), archive: crypto.randomUUID() });
                               setThresholdVal(item.restock_threshold?.toString() ?? "");
+                              setDetails({ item_name: item.item_name, category: item.category, unit: item.unit, notes: item.notes || "", quantity_change: "", reason: "" });
                             }}
                           >
                             <Settings2 className="h-4 w-4" />
@@ -259,12 +278,12 @@ export default function FarmSuppliesPage() {
           </CardContent>
         </Card>
 
-        {/* Transaction history */}
-        <Card>
+        <Button variant="outline" onClick={() => setHistoryOpen((open) => !open)}><History className="h-4 w-4 mr-2" />{historyOpen ? "Hide History" : "View History"}</Button>
+        {historyOpen && <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <History className="h-4 w-4" />
-              Transaction History
+              Supply Activity
             </CardTitle>
             <select
               value={filterItemId}
@@ -295,6 +314,7 @@ export default function FarmSuppliesPage() {
                     <TableHead>Item</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>Change</TableHead>
+                    <TableHead>Recorded By</TableHead>
                     <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -307,7 +327,7 @@ export default function FarmSuppliesPage() {
                         })}
                         {" "}
                         {new Date(h.created_at).toLocaleTimeString("en-NG", {
-                          hour: "2-digit", minute: "2-digit",
+                          hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Africa/Lagos",
                         })}
                       </TableCell>
                       <TableCell className="font-medium">
@@ -334,6 +354,7 @@ export default function FarmSuppliesPage() {
                           {h.farm_supply_inventory?.unit ?? ""}
                         </span>
                       </TableCell>
+                      <TableCell className="text-sm">{h.created_by_name || "Unknown (legacy record)"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {h.notes || "—"}
                       </TableCell>
@@ -343,21 +364,26 @@ export default function FarmSuppliesPage() {
               </Table>
             )}
           </CardContent>
-        </Card>
+        </Card>}
       </div>
 
       {/* Threshold dialog */}
       <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Set Restock Threshold</DialogTitle>
+            <DialogTitle>Edit Supply</DialogTitle>
           </DialogHeader>
           {editItem && (
             <div className="space-y-4 pt-2">
               <p className="text-sm text-muted-foreground">
-                Set the minimum quantity for <strong>{editItem.item_name}</strong>.
-                The manager will be warned when stock falls to or below this level.
+                Correct <strong>{editItem.item_name}</strong>. Saved changes include your reason and preserve activity history.
               </p>
+              {(["item_name", "category", "unit", "notes", "quantity_change", "reason"] as const).map((field) => (
+                <div key={field}><Label>{({ item_name: "Item name", category: "Category", unit: "Unit", notes: "Notes", quantity_change: "Quantity adjustment (+ / -)", reason: "Correction / removal reason" })[field]}</Label>
+                  {field === "category" ? <select className="w-full border rounded-md p-2" value={details.category} onChange={(e) => setDetails((d) => ({ ...d, category: e.target.value }))}>{Object.entries(CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select> : <Input type={field === "quantity_change" ? "number" : "text"} value={details[field]} onChange={(e) => setDetails((d) => ({ ...d, [field]: e.target.value }))} />}
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">Units are protected once movement history exists. Quantity corrections add a movement.</p>
               <div className="space-y-2">
                 <Label>Threshold ({editItem.unit})</Label>
                 <Input
@@ -384,11 +410,13 @@ export default function FarmSuppliesPage() {
                 <Button
                   className="flex-1"
                   onClick={saveThreshold}
-                  disabled={isSaving}
+                  disabled={isSaving || !details.reason.trim()}
                 >
-                  {isSaving ? "Saving..." : "Save Threshold"}
+                  {isSaving ? "Saving..." : "Save Correction"}
                 </Button>
               </div>
+              <Button variant="destructive" className="w-full" onClick={archiveItem} disabled={isSaving || !details.reason.trim()}>Remove from active supplies</Button>
+              <p className="text-xs text-muted-foreground">Removal retains all transaction history.</p>
             </div>
           )}
         </DialogContent>

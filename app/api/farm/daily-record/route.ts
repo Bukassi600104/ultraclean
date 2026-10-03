@@ -1,6 +1,8 @@
+import { farmDateToday } from "@/lib/farm-products";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 
 export const runtime = "nodejs";
 
@@ -18,9 +20,9 @@ export async function GET(request: NextRequest) {
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const date = searchParams.get("date") || farmDateToday();
 
-  if (!DATE_RE.test(date)) {
+  if (typeof date !== "string" || !DATE_RE.test(date)) {
     return NextResponse.json({ error: "Invalid date format (YYYY-MM-DD)" }, { status: 400 });
   }
 
@@ -54,20 +56,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   const date = (body as Record<string, unknown>).date as string | undefined
-    || new Date().toISOString().split("T")[0];
+    || farmDateToday();
 
-  if (!DATE_RE.test(date)) {
+  if (typeof date !== "string" || !DATE_RE.test(date)) {
     return NextResponse.json({ error: "Invalid date format (YYYY-MM-DD)" }, { status: 400 });
   }
 
-  // Upsert — open record for the day if not exists
-  const { data, error } = await supabase
-    .from("farm_daily_records")
-    .upsert({ date, status: "open", manager_id: profile.id }, { onConflict: "date" })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const { data, error } = await farmWrite(profile, "day", "open", { date }, { requestId: request.headers.get("X-Request-ID") || undefined });
+  if (error) return farmErrorResponse(error);
   return NextResponse.json({ record: data });
 }

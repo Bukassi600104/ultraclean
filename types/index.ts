@@ -1,3 +1,4 @@
+import type { FarmProduct, FarmPricingBasis } from "@/lib/farm-products";
 export interface Service {
   id: string;
   name: string;
@@ -88,7 +89,12 @@ export interface FarmSale {
   id: string;
   date: string;
   customer_name: string;
-  product: "catfish" | "goat" | "chicken" | "other";
+  product: FarmProduct;
+  weight_kg?: number | null;
+  pricing_basis?: FarmPricingBasis | null;
+  gender?: "male" | "female" | null;
+  other_product_name?: string | null;
+  is_edited?: boolean;
   quantity: number;
   unit_price: number;
   total_amount: number;
@@ -135,6 +141,9 @@ export interface FarmInventoryTransaction {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+  sale_id?: string | null;
+  correction_of?: string | null;
+  correction_role?: "reversal" | "replacement" | null;
 }
 
 export interface Appointment {

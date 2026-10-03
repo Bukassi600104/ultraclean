@@ -18,12 +18,14 @@ import Link from "next/link";
 import { ArrowLeft, Skull, TrendingDown, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";
+import { activeMortality } from "@/lib/farm-inventory";
+import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
+import { toast } from "sonner";
 
 interface MortalitySummary {
   product: string;
   total_deaths: number;
   current_stock: number;
-  mortality_rate: number;
 }
 
 const ACTION_BADGE: Record<
@@ -42,21 +44,22 @@ export default function FarmInventoryPage() {
   const [allTransactions, setAllTransactions] = useState<FarmInventoryTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     async function load() {
       try {
-        const [invRes, mortRes, allRes] = await Promise.all([
+        const [invRes, allRes] = await Promise.all([
           fetch("/api/farm/inventory"),
-          fetch("/api/farm/inventory/transaction?action=mortality"),
           fetch("/api/farm/inventory/transaction"),
         ]);
         const invData = await invRes.json();
-        const mortData = await mortRes.json();
         const allData = await allRes.json();
+        if (!invRes.ok || !allRes.ok) throw new Error("Inventory unavailable");
         setInventory(Array.isArray(invData) ? invData : []);
-        setMortalityLog(mortData.data || []);
+        setMortalityLog(activeMortality(allData.data || []));
         setAllTransactions(allData.data || []);
       } catch {
+        toast.error("Unable to load inventory history");
         setInventory([]);
         setMortalityLog([]);
         setAllTransactions([]);
@@ -65,20 +68,17 @@ export default function FarmInventoryPage() {
       }
     }
     load();
-  }, []);
+  }, [refresh]);
 
-  // Calculate mortality rate per product
+  // Report recorded deaths; current stock is not a reliable historical cohort size.
   const mortalitySummary: MortalitySummary[] = inventory.map((inv) => {
     const deaths = mortalityLog
       .filter((m) => m.product === inv.product)
       .reduce((sum, m) => sum + m.quantity, 0);
-    const total = inv.current_stock + deaths;
-    const rate = total > 0 ? Math.round((deaths / total) * 100) : 0;
     return {
       product: inv.product,
       total_deaths: deaths,
       current_stock: inv.current_stock,
-      mortality_rate: rate,
     };
   });
 
@@ -127,6 +127,7 @@ export default function FarmInventoryPage() {
                         <TableHead>Current Stock</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Last Updated</TableHead>
+                        <TableHead>Correction</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -157,6 +158,7 @@ export default function FarmInventoryPage() {
                           <TableCell className="text-sm text-gray-500">
                             {new Date(item.last_updated).toLocaleDateString()}
                           </TableCell>
+                          <TableCell><FarmAdminCorrection recordType="inventory" record={item} onSaved={() => setRefresh(value => value + 1)} /></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -247,6 +249,7 @@ export default function FarmInventoryPage() {
                             <TableCell className="hidden md:table-cell text-sm text-gray-400">
                               {tx.notes || "—"}
                             </TableCell>
+                            <TableCell>{!tx.sale_id && tx.correction_role !== "reversal" && !allTransactions.some(row => row.correction_of === tx.id && row.correction_role === "reversal") && <FarmAdminCorrection recordType="inventory_transaction" record={tx} onSaved={() => setRefresh(value => value + 1)} />}</TableCell>
                           </TableRow>
                         );
                       })}
@@ -278,10 +281,10 @@ export default function FarmInventoryPage() {
                               {s.product}
                             </p>
                             <p className="text-3xl font-bold text-red-600">
-                              {s.mortality_rate}%
+                              {s.total_deaths}
                             </p>
                             <p className="text-xs text-gray-400 mt-1">
-                              mortality rate
+                              recorded deaths
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-1">

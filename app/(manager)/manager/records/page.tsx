@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 
 function fmt(n: number): string {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -17,6 +18,7 @@ interface SaleRecord {
   unit_price: number;
   total_amount: number;
   weight_kg?: number;
+  pricing_basis?: "per_kg" | "per_head" | "per_unit" | null;
   gender?: string;
   other_product_name?: string;
   customer_name?: string;
@@ -229,7 +231,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
               Qty: {s.quantity}
             </span>
             <span className="text-xs" style={{ color: "#6b7280" }}>
-              {fmt(s.unit_price)}/unit
+              {s.pricing_basis ? `${fmt(s.unit_price)}/${s.pricing_basis === "per_kg" ? "kg" : s.pricing_basis === "per_head" ? "head" : "unit"}` : "Historical total retained"}
             </span>
             {s.weight_kg && (
               <span className="text-xs" style={{ color: "#6b7280" }}>
@@ -248,6 +250,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
               {s.payment_method}
             </span>
           </div>
+          <FarmCorrectionRequest recordType="sale" recordId={s.id} />
         </div>
       ))}
       <div ref={loaderRef} className="h-8" />

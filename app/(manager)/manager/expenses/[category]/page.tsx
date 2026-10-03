@@ -1,6 +1,7 @@
 "use client";
+import { farmDateToday } from "@/lib/farm-products";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, AlertTriangle, Users, Package, Zap, HeartPulse, Truck, Wrench, Sprout } from "lucide-react";
@@ -15,6 +16,7 @@ interface FormValues {
   item_name: string;
   paid_to: string;
   payment_method: string;
+  expense_source: string;
   notes: string;
   // feed-specific
   feed_type: string;
@@ -54,6 +56,7 @@ const FEED_TYPES = [
   { value: "chicken", label: "Chicken Feed" },
   { value: "pig", label: "Pig Feed" },
   { value: "turkey", label: "Turkey Feed" },
+  { value: "cattle", label: "Cattle Feed" },
   { value: "other", label: "Other Feed" },
 ];
 
@@ -63,6 +66,7 @@ const PRODUCE_TYPES = [
   { value: "Goat Kids", label: "Goat Kids" },
   { value: "Piglets", label: "Piglets" },
   { value: "Poults (Turkey)", label: "Poults (Turkey)" },
+  { value: "Cattle", label: "Cattle" },
   { value: "Other Produce", label: "Other Produce" },
 ];
 
@@ -71,7 +75,7 @@ function fmt(n: number) {
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+  return farmDateToday();
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -89,6 +93,7 @@ export default function ExpenseCategoryPage() {
     item_name: "",
     paid_to: "",
     payment_method: "cash",
+    expense_source: "bimbo_transfer",
     notes: "",
     feed_type: "fish",
     num_bags: "",
@@ -99,6 +104,7 @@ export default function ExpenseCategoryPage() {
   });
   const [isDayClosed, setIsDayClosed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const requestId = useRef<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedItems, setSavedItems] = useState<{ label: string; amount: number }[]>([]);
 
@@ -136,6 +142,7 @@ export default function ExpenseCategoryPage() {
       return toast.error("Enter item name");
     }
 
+    requestId.current ??= crypto.randomUUID();
     setSaving(true);
     try {
       let savedLabel: string;
@@ -156,7 +163,7 @@ export default function ExpenseCategoryPage() {
 
         const res = await fetch("/api/farm/feed-purchases", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify(payload),
         });
 
@@ -165,6 +172,7 @@ export default function ExpenseCategoryPage() {
           throw new Error(err.error || "Failed to save");
         }
 
+        requestId.current = null;
         setSavedItems((prev) => [
           ...prev,
           { label: `Feed (${form.feed_type})`, amount: totalCost },
@@ -176,6 +184,7 @@ export default function ExpenseCategoryPage() {
           item_name: "",
           paid_to: "",
           payment_method: prev.payment_method,
+          expense_source: prev.expense_source,
           notes: "",
           feed_type: prev.feed_type,
           num_bags: "",
@@ -198,12 +207,13 @@ export default function ExpenseCategoryPage() {
           item_name: form.produce_type,
           paid_to: form.paid_to.trim() || undefined,
           payment_method: form.payment_method,
+          expense_source: form.expense_source,
           notes: `${form.produce_quantity} units @ ₦${Number(form.produce_unit_price).toLocaleString("en-NG")}${form.notes.trim() ? ` — ${form.notes.trim()}` : ""}`,
         }];
 
         const res = await fetch("/api/farm/expenses", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify(payload),
         });
 
@@ -212,6 +222,7 @@ export default function ExpenseCategoryPage() {
           throw new Error(err.error || "Failed to save");
         }
 
+        requestId.current = null;
         setSavedItems((prev) => [
           ...prev,
           { label: form.produce_type, amount: totalCost },
@@ -236,6 +247,7 @@ export default function ExpenseCategoryPage() {
           amount: Number(form.amount),
           paid_to: form.paid_to.trim() || undefined,
           payment_method: form.payment_method,
+          expense_source: form.expense_source,
           notes: form.notes.trim() || undefined,
         };
 
@@ -245,15 +257,19 @@ export default function ExpenseCategoryPage() {
 
         const res = await fetch("/api/farm/expenses", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify([payload]),
         });
 
-        if (!res.ok) throw new Error();
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({}));
+          throw new Error(error.error || "Failed to save expense");
+        }
 
         savedLabel = config.label;
       }
 
+      requestId.current = null;
       setSavedItems((prev) => [
         ...prev,
         { label: savedLabel, amount: Number(form.amount) },
@@ -265,6 +281,7 @@ export default function ExpenseCategoryPage() {
         item_name: "",
         paid_to: "",
         payment_method: prev.payment_method,
+          expense_source: prev.expense_source,
         notes: "",
         feed_type: prev.feed_type,
         num_bags: "",
@@ -519,6 +536,12 @@ export default function ExpenseCategoryPage() {
           </div>
         )}
 
+        {categoryKey !== "feed" ? <div className="space-y-2">
+          <label htmlFor="expense-source" className="text-xs font-bold uppercase text-gray-500">Paid From</label>
+          <select id="expense-source" value={form.expense_source} onChange={(event) => updateField("expense_source", event.target.value)} className="w-full rounded-xl border p-3">
+            <option value="bimbo_transfer">Bimbo’s funds</option><option value="sales_cash">Farm sales proceeds</option>
+          </select>
+        </div> : <p className="text-sm text-gray-500">Feed purchases are paid from Bimbo’s funds.</p>}
         {/* Payment method */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Payment Method</label>

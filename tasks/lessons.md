@@ -6,6 +6,15 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 
 ## Pattern Log
 
+### Primefield V2 production preservation
+- Checked-in farm migrations are incomplete; inspect the live catalog before specifying forward migrations.
+- Preserve legacy generated sales values with DROP EXPRESSION, never dropping/recreating the amount column or guessing a historical basis.
+- Service-role API clients bypass RLS; farm endpoints need explicit authorization and transactional write guards.
+- Day opening must never upsert status=open over an existing closed date. Correction guards use the target record date.
+- Supply FK cascade deletion would erase activity: archive items instead. Quantity corrections must check availability before the movement is inserted.
+- Inventory and supply triggers run on INSERT only. Corrections use compensating movements and audit writes in the same transaction.
+- All release operations remain unapproved until full backup restore, production mapping, staging verification and explicit approval are complete.
+
 ### Supabase direct DB connection unreachable from dev machine
 - `db.[ref].supabase.co:5432` does not resolve from this machine (ENOTFOUND)
 - The `run-migrations.mjs` script will always fail for DB-level changes (realtime, RLS, etc.)

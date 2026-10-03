@@ -32,6 +32,7 @@ interface HistoryEntry {
   quantity_change: number;
   notes: string | null;
   created_at: string;
+  created_by_name?: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -88,8 +89,11 @@ function ActionSheet({
   onClose: () => void;
   onRefresh: () => void;
 }) {
-  const [view, setView] = useState<"menu" | "use" | "purchase" | "history">("menu");
+  const [view, setView] = useState<"menu" | "use" | "purchase" | "history" | "correction" | "remove">("menu");
   const [qty, setQty] = useState("");
+  const [requestId] = useState(() => crypto.randomUUID());
+  const [requestedChange, setRequestedChange] = useState("");
+  const [correctionReason, setCorrectionReason] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -119,7 +123,7 @@ function ActionSheet({
       const res = await fetch("/api/farm/supplies/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item_id: item.id, action, quantity, notes }),
+        body: JSON.stringify({ item_id: item.id, action, quantity, notes, request_id: requestId }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed");
@@ -133,6 +137,16 @@ function ActionSheet({
     }
   }
 
+  async function submitCorrection() {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/farm/corrections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ record_type: "supply", record_id: item.id, requested_change: view === "remove" ? { action: "archive" } : { description: requestedChange }, reason: correctionReason }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to request correction");
+      toast.success("Request sent to Bimbo for review"); onClose();
+    } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
+    finally { setIsSubmitting(false); }
+  }
   const low = isLow(item);
   const out = isOut(item);
 
@@ -225,9 +239,19 @@ function ActionSheet({
               </span>
               <History className="h-5 w-5" style={{ color: "#6b7280" }} />
             </button>
+            <button className="w-full rounded-2xl border p-4 text-left font-bold" onClick={() => setView("correction")}>Request Edit</button>
+            <button className="w-full rounded-2xl border p-4 text-left font-bold text-red-700" onClick={() => setView("remove")}>Request Removal</button>
           </div>
         )}
 
+        {(view === "correction" || view === "remove") && (
+          <div className="px-5 pb-8 space-y-4">
+            <p className="text-sm text-gray-600">Bimbo reviews saved-record corrections. Existing quantities and history remain intact until approved.</p>
+            {view === "correction" && <div><label className="block text-sm font-semibold">Requested change</label><textarea className="w-full border rounded-xl p-3" value={requestedChange} onChange={(e) => setRequestedChange(e.target.value)} placeholder="Explain the correct details or quantity" /></div>}
+            <div><label className="block text-sm font-semibold">Reason</label><textarea className="w-full border rounded-xl p-3" value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} /></div>
+            <button className="w-full rounded-xl p-4 font-bold bg-green-400 disabled:opacity-50" onClick={submitCorrection} disabled={isSubmitting || !correctionReason.trim() || (view === "correction" && !requestedChange.trim())}>{isSubmitting ? "Sending..." : "Send Request"}</button>
+          </div>
+        )}
         {/* ── USE / PURCHASE FORM ── */}
         {(view === "use" || view === "purchase") && (
           <div className="px-5 pb-8 space-y-4">
@@ -327,13 +351,14 @@ function ActionSheet({
                         {h.quantity_change > 0 ? "+" : ""}{fmt(h.quantity_change)} {item.unit}
                       </span>
                     </div>
+                    <p className="text-xs mt-1 text-gray-500">Recorded by {h.created_by_name || "Unknown (legacy record)"}</p>
                     {h.notes && (
                       <p className="text-xs mt-0.5 ml-4" style={{ color: "#6b7280" }}>{h.notes}</p>
                     )}
                     <p className="text-xs mt-0.5 ml-4" style={{ color: "#9ca3af" }}>
                       {new Date(h.created_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })}
                       {" · "}
-                      {new Date(h.created_at).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(h.created_at).toLocaleTimeString("en-NG", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Africa/Lagos" })}
                     </p>
                   </div>
                 ))}
@@ -358,6 +383,7 @@ function AddItemSheet({
   onClose: () => void;
   onAdded: () => void;
 }) {
+  const [requestId] = useState(() => crypto.randomUUID());
   const [form, setForm] = useState({
     item_name: "",
     category: "other",
@@ -376,7 +402,7 @@ function AddItemSheet({
       const res = await fetch("/api/farm/supplies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, request_id: requestId }),
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed");

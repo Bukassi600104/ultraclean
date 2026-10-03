@@ -1,4 +1,5 @@
 "use client";
+import { farmDateToday } from "@/lib/farm-products";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -19,25 +20,18 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
-  return `₦${Math.round(Math.abs(n)).toLocaleString("en-NG")}`;
+  return `₦${Math.round(n).toLocaleString("en-NG")}`;
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+  return farmDateToday();
 }
 
 function getWeekRange() {
-  const now = new Date();
-  const day = now.getDay();
-  const start = new Date(now);
-  start.setDate(now.getDate() - day);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  return {
-    from: start.toISOString().split("T")[0],
-    to: end.toISOString().split("T")[0],
-  };
+  const today = farmDateToday();
+  const start = new Date(`${today}T12:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+  return { from: start.toISOString().split("T")[0], to: today };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -46,6 +40,7 @@ export default function ManagerHomePage() {
   const { profile } = useAuth();
   const [openingBalance, setOpeningBalance] = useState<number | null>(null);
   const [balanceErr, setBalanceErr] = useState(false);
+  const [weekError, setWeekError] = useState(false);
   const [weekSales, setWeekSales] = useState<number | null>(null);
   const [weekExpenses, setWeekExpenses] = useState<number | null>(null);
   const [balanceVisible, setBalanceVisible] = useState(true);
@@ -56,33 +51,22 @@ export default function ManagerHomePage() {
     fetch(`/api/farm/balance?date=${today}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.opening_balance !== undefined) setOpeningBalance(d.opening_balance);
+        if (d.closing_balance !== undefined) setOpeningBalance(d.closing_balance);
         else setBalanceErr(true);
       })
       .catch(() => setBalanceErr(true));
 
     const { from, to } = getWeekRange();
-    Promise.all([
-      fetch(`/api/farm/sales?limit=100`).then((r) => r.json()),
-      fetch(`/api/farm/expenses?limit=100`).then((r) => r.json()),
-    ])
-      .then(([salesData, expData]) => {
-        const sales: { date: string; total_amount: number }[] = salesData.data || [];
-        const exps: { date: string; amount: number }[] = expData.data || [];
-        setWeekSales(
-          sales.filter((s) => s.date >= from && s.date <= to).reduce((sum, s) => sum + (s.total_amount || 0), 0)
-        );
-        setWeekExpenses(
-          exps.filter((e) => e.date >= from && e.date <= to).reduce((sum, e) => sum + (e.amount || 0), 0)
-        );
-      })
-      .catch(() => { setWeekSales(0); setWeekExpenses(0); });
+    fetch(`/api/farm/balance?date=${today}&from=${from}&to=${to}`)
+      .then(async (response) => { if (!response.ok) throw new Error("Finance unavailable"); return response.json(); })
+      .then((data) => { setWeekSales(data.revenue); setWeekExpenses(data.total_expenses); })
+      .catch(() => { setWeekError(true); });
   }, []);
 
   const balancePositive = openingBalance !== null && openingBalance >= 0;
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
-    setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
+    setDateLabel(new Date().toLocaleDateString("en-NG", { timeZone: "Africa/Lagos", weekday: "long", day: "numeric", month: "long" }));
   }, []);
 
   return (
@@ -101,7 +85,7 @@ export default function ManagerHomePage() {
         </p>
 
         <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>
-          Today&apos;s Opening Balance
+          Owner Funds Available
         </p>
         <div className="flex items-center gap-3">
           {balanceErr ? (
@@ -133,7 +117,7 @@ export default function ManagerHomePage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}>
           <p className="text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>This Week Sales</p>
-          {weekSales === null ? (
+          {weekError ? <p className="text-sm text-red-600">Unavailable</p> : weekSales === null ? (
             <div className="h-7 w-28 rounded-lg animate-pulse" style={{ backgroundColor: "#e8efec" }} />
           ) : (
             <p className="text-xl font-bold" style={{ color: "#11d469" }}>{fmt(weekSales)}</p>
@@ -141,7 +125,7 @@ export default function ManagerHomePage() {
         </div>
         <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}>
           <p className="text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>This Week Expenses</p>
-          {weekExpenses === null ? (
+          {weekError ? <p className="text-sm text-red-600">Unavailable</p> : weekExpenses === null ? (
             <div className="h-7 w-28 rounded-lg animate-pulse" style={{ backgroundColor: "#e8efec" }} />
           ) : (
             <p className="text-xl font-bold" style={{ color: "#F5C842" }}>{fmt(weekExpenses)}</p>
@@ -199,7 +183,7 @@ export default function ManagerHomePage() {
           >
             <div className="flex items-center gap-3">
               <BarChart3 className="h-5 w-5" style={{ color: "#7e22ce" }} />
-              <span className="font-bold text-sm" style={{ color: "#581c87" }}>Update Inventory</span>
+              <span className="font-bold text-sm" style={{ color: "#581c87" }}>View Inventory</span>
             </div>
             <ChevronRight className="h-5 w-5" style={{ color: "#a855f7" }} />
           </Link>
@@ -223,7 +207,7 @@ export default function ManagerHomePage() {
           >
             <div className="flex items-center gap-3">
               <Wallet className="h-5 w-5" style={{ color: "#166534" }} />
-              <span className="font-semibold text-sm" style={{ color: "#166534" }}>Today&apos;s Cash Summary</span>
+              <span className="font-semibold text-sm" style={{ color: "#166534" }}>Today&apos;s Finances Summary</span>
             </div>
             <ChevronRight className="h-5 w-5" style={{ color: "#16a34a" }} />
           </Link>

@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
+import path from "node:path";
+import os from "node:os";
+
+// Run only in isolated WASM PostgreSQL. No environment file or network database is read.
+const runtime = process.env.FARM_V2_PGLITE_PATH || path.join(os.tmpdir(), "primefield-v2-test-runtime/node_modules/@electric-sql/pglite/dist/index.js");
+const { PGlite } = await import(pathToFileURL(runtime));
+const db = new PGlite();
+const admin = "00000000-0000-4000-8000-000000000001";
+const manager = "00000000-0000-4000-8000-000000000002";
+const suspended = "00000000-0000-4000-8000-000000000003";
+const oldDay = "2026-01-01";
+const openDay = "2026-10-03";
+let checks = 0;
+async function scalar(sql, values = []) { return Object.values((await db.query(sql, values)).rows[0])[0]; }
+async function write(actor, kind, operation, payload, { id = null, reason = null, requestId = null } = {}) {
+  return scalar("select public.farm_v2_write($1::uuid,$2,$3,$4::jsonb,$5::uuid,$6,$7::uuid)", [actor, kind, operation, JSON.stringify(payload), id, reason, requestId]);
+}
+async function reject(call, code) { await assert.rejects(call, (error) => { assert.equal(error.code, code, error.message); return true; }); checks++; }
+function equal(actual, expected) { assert.equal(Number(actual), expected); checks++; }
+try {
+  await db.exec(await readFile(new URL("../tests/fixtures/farm-v2-schema.sql", import.meta.url), "utf8"));
+  await db.query("insert into auth.users(id) values($1),($2),($3)", [admin, manager, suspended]);
+  await db.query("insert into profiles(id,role,name,suspended) values($1,'admin','Test Admin',false),($2,'manager','Test Manager',false),($3,'manager','Suspended Test',true)", [admin, manager, suspended]);
+  await db.exec("insert into farm_inventory(product,current_stock) values('catfish',100),('goat',10),('cattle',5);");
+  await db.query("insert into farm_sales(date,customer_name,product,quantity,unit_price,weight_kg,created_by) values($1,'Legacy Test','catfish',2,100,3,$2)", [oldDay,manager]);
+  const legacyId = await scalar("select id from farm_sales where customer_name='Legacy Test'");
+  await db.query("insert into farm_daily_records(date,status,manager_id,closed_at) values($1,'closed',$2,now())", [oldDay,manager]);
+  const original = await scalar("select to_jsonb(s) from farm_sales s where id=$1", [legacyId]);
+  await db.exec(await readFile(new URL("../supabase/migrations/012_primefield_v2.sql", import.meta.url), "utf8"));
+  equal(await scalar("select total_amount from farm_sales where id=$1", [legacyId]), 200);
+  assert.equal(await scalar("select pricing_basis from farm_sales where id=$1", [legacyId]), null); checks++;
+  assert.equal(await scalar("select status from farm_daily_records where date=$1",[oldDay]),'closed'); checks++;
+  assert.equal(await scalar("select created_by from farm_sales where id=$1",[legacyId]),original.created_by); checks++;
+  const retry = "00000000-0000-4000-8000-000000000101";
+  const salePayload = { date: openDay, customer_name:"V2 Test",product:"catfish",quantity:40,weight_kg:72,unit_price:3000,pricing_basis:"per_kg",payment_method:"cash" };
+  const sale = await write(manager,"sale","create",salePayload,{requestId:retry});
+  equal(sale.total_amount,216000); equal(await scalar("select current_stock from farm_inventory where product='catfish'"),60);
+  assert.equal((await write(manager,"sale","create",salePayload,{requestId:retry})).id,sale.id); checks++;
+  equal(await scalar("select count(*) from farm_inventory_transactions where sale_id=$1",[sale.id]),1);
+  await reject(() => write(manager,"sale","create",{...salePayload,quantity:41},{requestId:retry}),"23514");
+  const goat = await write(manager,"sale","create",{date:openDay,customer_name:"Head Test",product:"goat",quantity:3,unit_price:80000,pricing_basis:"per_head"}); equal(goat.total_amount,240000); equal(await scalar("select current_stock from farm_inventory where product='goat'"),7);
+  await reject(() => write(manager,"sale","update",{quantity:39,expected_revision:0},{id:sale.id,reason:"Correction"}),"42501");
+  await reject(() => write(manager,"sale","create",{...salePayload,date:oldDay}),"23514");
+  await reject(() => write(suspended,"sale","create",salePayload),"42501");
+  const corrected = await write(admin,"sale","update",{quantity:35,weight_kg:70,expected_revision:0},{id:sale.id,reason:"Verified correction"}); equal(corrected.total_amount,210000); equal(await scalar("select current_stock from farm_inventory where product='catfish'"),65);
+  await reject(() => write(admin,"sale","update",{expected_revision:0},{id:sale.id,reason:"Stale"}),"40001");
+  await reject(() => write(admin,"sale","update",{expected_revision:null},{id:sale.id,reason:"Missing revision"}),"22023");
+  await reject(() => write(admin,"sale","update",{pricing_basis:null,expected_revision:1},{id:sale.id,reason:"Cannot remove V2 basis"}),"22023");
+  await reject(() => write(manager,"inventory_transaction","create",{date:openDay,product:"catfish",action:"remove",quantity:1}),"42501");
+  await reject(() => write(manager,"sale","create",{...salePayload,quantity:1000}),"23514");
+  const inventory = await scalar("select to_jsonb(t) from farm_inventory t where product='catfish'");
+  await reject(() => write(admin,"inventory","update",{target_quantity:70,expected_current_stock:60},{id:inventory.id,reason:"Stale physical count"}),"40001");
+  await write(admin,"sale","update",{notes:"Verified legacy note",expected_revision:0},{id:legacyId,reason:"Legacy metadata correction"}); equal(await scalar("select total_amount from farm_sales where id=$1",[legacyId]),200);
+  const fund = await write(admin,"fund","create",{date:openDay,amount:500000});
+  await reject(() => write(manager,"fund","create",{date:openDay,amount:1}),"42501");
+  await reject(() => write(manager,"fund","void",{expected_revision:0},{id:fund.id,reason:"Denied"}),"42501");
+  const fundUpdate = await write(admin,"fund","update",{amount:450000,expected_revision:0},{id:fund.id,reason:"Amount verified"}); equal(fundUpdate.amount,450000);
+  const voided = await write(admin,"fund","void",{expected_revision:1},{id:fund.id,reason:"Duplicate transfer"}); assert.ok(voided.voided_at); checks++;
+  equal(await scalar("select count(*) from farm_fund_transfers where id=$1",[fund.id]),1);
+  equal(await scalar("select coalesce(sum(amount),0) from farm_fund_transfers where voided_at is null"),0);
+  const supply = await write(manager,"supply","create",{item_name:"Test Feed",category:"feed",unit:"bags",current_quantity:10}); equal(supply.current_quantity,10); equal(await scalar("select count(*) from farm_supply_transactions where item_id=$1",[supply.id]),1);
+  await write(manager,"supply_transaction","create",{item_id:supply.id,action:"use",quantity_change:-3,date:openDay}); equal(await scalar("select current_quantity from farm_supply_inventory where id=$1",[supply.id]),7);
+  await reject(() => write(manager,"supply_transaction","create",{item_id:supply.id,action:"use",quantity_change:-8,date:openDay}),"23514");
+  await reject(() => write(manager,"supply_transaction","create",{item_id:supply.id,action:"adjustment",quantity_change:1,date:openDay}),"42501");
+  const beforeAudit = await scalar("select count(*) from farm_activity");
+  await reject(() => write(admin,"supply","update",{quantity_change:-100,expected_revision:1},{id:supply.id,reason:"Invalid correction"}),"23514");
+  equal(await scalar("select current_quantity from farm_supply_inventory where id=$1",[supply.id]),7); equal(await scalar("select count(*) from farm_activity"),Number(beforeAudit));
+  const supplyUpdate = await write(admin,"supply","update",{quantity_change:-2,expected_revision:1},{id:supply.id,reason:"Verified physical count"}); equal(supplyUpdate.current_quantity,5);
+  await reject(() => write(admin,"supply","update",{unit:"kg",expected_revision:2},{id:supply.id,reason:"Unit change denied"}),"23514");
+  const txCount = await scalar("select count(*) from farm_supply_transactions where item_id=$1",[supply.id]);
+  await write(admin,"supply","archive",{expected_revision:2},{id:supply.id,reason:"Remove duplicate item"}); equal(await scalar("select count(*) from farm_supply_transactions where item_id=$1",[supply.id]),Number(txCount));
+  await reject(() => write(manager,"supply_transaction","create",{item_id:supply.id,action:"purchase",quantity_change:1,date:openDay}),"23514");
+  const req = await write(manager,"request","request",{record_type:"sale",record_id:sale.id,requested_change:{notes:"Correct customer note"},reason:"Entered incorrectly"});
+  await reject(() => write(manager,"request","apply",{changes:{notes:"Corrected",expected_revision:1}},{id:req.id,reason:"Reviewed"}),"42501");
+  const applied = await write(admin,"request","apply",{changes:{notes:"Corrected",expected_revision:1}},{id:req.id,reason:"Reviewed against original"}); assert.equal(applied.status,"applied"); checks++;
+  await reject(() => db.exec("update farm_activity set reason='tampered'"),"42501");
+  const cattle = await write(manager,"inventory_transaction","create",{date:openDay,product:"cattle",action:"mortality",quantity:1});
+  equal(await scalar("select current_stock from farm_inventory where product='cattle'"),4); assert.equal(cattle.created_by,manager); checks++;
+  const saleCount = await scalar("select count(*) from farm_sales");
+  const fishBefore = await scalar("select current_stock from farm_inventory where product='catfish'");
+  await reject(() => write(manager,"sale","create",[salePayload,{...salePayload,weight_kg:0}]),"22023");
+  equal(await scalar("select count(*) from farm_sales"),Number(saleCount)); equal(await scalar("select current_stock from farm_inventory where product='catfish'"),Number(fishBefore));
+  await reject(() => write(manager,"expense","create",{date:openDay,category:"feed",amount:100,expense_source:"bimbo_transfer"}),"22023");
+  const expense = await write(manager,"expense","create",{date:openDay,category:"labor",amount:100,expense_source:"sales_cash"}); assert.equal(expense.expense_source,"sales_cash"); checks++;
+  const feed = await write(manager,"feed","create",{date:openDay,feed_type:"chicken",feed_source:"local",weight_unit:"kg",weight_amount:25,num_bags:1,cost:1000}); equal(feed.cost,1000);
+  const correctedFeed = await write(admin,"feed","update",{cost:1100,expected_revision:0},{id:feed.id,reason:"Receipt checked"}); equal(correctedFeed.cost,1100);
+  await reject(() => write(admin,"feed","update",{cost:1200,expected_revision:0},{id:feed.id,reason:"Stale receipt"}),"40001");
+  await write(manager,"day","close",{date:openDay});
+  const closure = await scalar("select to_jsonb(t) from farm_daily_records t where date=$1",[openDay]);
+  const repeatedClosure = await write(manager,"day","close",{date:openDay});
+  assert.equal(repeatedClosure.closed_at,closure.closed_at); checks++;
+  await reject(() => write(manager,"feed","create",{date:openDay,feed_type:"fish",weight_amount:25,num_bags:1,cost:10}),"23514");
+  await reject(() => write(manager,"daily_feed","create",{date:openDay,feed_type:"fish",num_bags:1}),"23514");
+  await reject(() => write(manager,"inventory_transaction","create",{date:openDay,product:"catfish",action:"add",quantity:1}),"23514");
+  await reject(() => write(manager,"expense","create",{date:openDay,category:"labor",amount:1}),"23514");
+  await write(manager,"day","open",{date:openDay}); assert.equal(await scalar("select status from farm_daily_records where date=$1",[openDay]),"closed"); checks++;
+  await write(admin,"expense","update",{amount:120,expected_revision:0},{id:expense.id,reason:"Verified closed-day correction"});
+  assert.equal(await scalar("select status from farm_daily_records where date=$1",[openDay]),"closed"); checks++;
+  await db.exec("set role authenticated");
+  await reject(() => db.exec("delete from farm_sales"),"42501");
+  await reject(() => write(manager,"sale","create",salePayload),"42501");
+  await db.exec("reset role");
+  console.log(`PASS: ${checks} isolated PostgreSQL assertions; legacy preservation, pricing, inventory, closed days, permissions, retries, supply archive, corrections and atomicity.`);
+} catch (error) { console.error(`FAIL [${error.code || "assert"}]: ${error.message}`); if (error.where) console.error(error.where); if (error.code === "ERR_ASSERTION") console.error(error.stack); process.exitCode = 1; } finally { await db.close(); }

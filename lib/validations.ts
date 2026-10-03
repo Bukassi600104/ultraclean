@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FARM_PRODUCT_KEYS } from "@/lib/farm-products";
 
 // ── Public contact form ──
 export const contactFormSchema = z.object({
@@ -99,7 +100,9 @@ export const dbaSaleSchema = z.object({
 export const farmSaleSchema = z.object({
   date: z.string(),
   customer_name: z.string().min(1, "Customer name is required"),
-  product: z.enum(["catfish", "goat", "chicken", "pig", "turkey", "other"]),
+  product: z.enum(FARM_PRODUCT_KEYS),
+  weight_kg: z.preprocess((v) => v === "" || v == null ? null : Number(v), z.number().positive().nullable()).optional(),
+  pricing_basis: z.enum(["per_kg", "per_head", "per_unit"]).optional(),
   quantity: z.preprocess((v) => Number(v), z.number().positive("Quantity must be positive")),
   unit_price: z.preprocess((v) => Number(v), z.number().positive("Unit price must be positive")),
   payment_method: z.string(),
@@ -126,6 +129,7 @@ export const farmExpenseSchema = z.object({
 export const farmInventoryTransactionSchema = z.object({
   product: z.string().min(1, "Product is required").max(100),
   action: z.enum(["add", "remove", "sale", "mortality"]),
+  request_id: z.string().uuid().optional(),
   quantity: z.preprocess((v) => Number(v), z.number().positive("Quantity must be positive")),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   reason: z.string().max(500).optional(),

@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { farmInventoryTransactionSchema } from "@/lib/validations";
-import { requireAdmin, requireManager } from "@/lib/auth";
+import { requireManager } from "@/lib/auth";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 
 export const runtime = "nodejs";
 
-// GET — admin: list transactions, optionally filtered by action
+// Managers may inspect their operational movements to request corrections.
 export async function GET(request: NextRequest) {
+  let profile;
   try {
-    await requireAdmin();
+    profile = await requireManager();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -26,11 +28,24 @@ export async function GET(request: NextRequest) {
     .select("*")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
+  if (profile.role === "manager") query = query.limit(200);
 
   if (action) {
     query = query.eq("action", action);
   }
 
+  if (profile.role === "admin") {
+    const rows = [];
+    for (let offset = 0; ; offset += 500) {
+      let pageQuery = supabase.from("farm_inventory_transactions").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).order("id").range(offset, offset + 499);
+      if (action) pageQuery = pageQuery.eq("action", action);
+      const { data, error } = await pageQuery;
+      if (error) return farmErrorResponse(error);
+      rows.push(...(data ?? []));
+      if (!data || data.length < 500) break;
+    }
+    return NextResponse.json({ data: rows });
+  }
   const { data, error } = await query;
 
   if (error) {
@@ -42,8 +57,9 @@ export async function GET(request: NextRequest) {
 
 // POST — manager: record a new inventory transaction
 export async function POST(request: NextRequest) {
+  let profile;
   try {
-    await requireManager();
+    profile = await requireManager();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -69,14 +85,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
-    .from("farm_inventory_transactions")
-    .insert(parsed.data)
-    .select()
-    .single();
+  if (profile.role === "manager" && !["add", "mortality"].includes(parsed.data.action)) {
+    return NextResponse.json({ error: "Request an inventory correction through Bimbo" }, { status: 403 });
+  }
+  const { data, error } = await farmWrite(profile, "inventory_transaction", "create", parsed.data, { requestId: parsed.data.request_id });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return farmErrorResponse(error);
   }
 
   return NextResponse.json(data, { status: 201 });

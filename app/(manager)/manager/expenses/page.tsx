@@ -1,4 +1,6 @@
 "use client";
+import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
+import { farmDateToday } from "@/lib/farm-products";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
 import {
-  Receipt, Plus, Lock, Edit2, Trash2, X, Users, Package,
+  Receipt, Plus, Lock, Users, Package,
   Zap, HeartPulse, Truck, Wrench, Sprout,
 } from "lucide-react";
 
@@ -59,108 +61,11 @@ function fmt(n: number) {
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+  return farmDateToday();
 }
 
 function getCategoryConfig(category: string) {
   return CATEGORY_CONFIG[category] ?? { label: category, color: "#6b7280", icon: Receipt, href: `/expenses/${category}` };
-}
-
-// ─── Edit Expense Dialog ──────────────────────────────────────────────────────
-
-function EditExpenseDialog({
-  expense,
-  onSave,
-  onCancel,
-}: {
-  expense: Expense;
-  onSave: (id: string, updates: Partial<Expense>) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [amount, setAmount] = useState(String(expense.amount));
-  const [paidTo, setPaidTo] = useState(expense.paid_to ?? "");
-  const [payMethod, setPayMethod] = useState(expense.payment_method);
-  const [notes, setNotes] = useState(expense.notes ?? "");
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    await onSave(expense.id, {
-      amount: Number(amount),
-      paid_to: paidTo,
-      payment_method: payMethod,
-      notes,
-    });
-    setSaving(false);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-sm shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-bold text-gray-900">Edit — {getCategoryConfig(expense.category).label}</p>
-          <button onClick={onCancel} className="p-1.5 rounded-full bg-gray-100">
-            <X className="h-4 w-4 text-gray-500" />
-          </button>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount (₦)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Paid To</label>
-            <input
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              value={paidTo}
-              onChange={(e) => setPaidTo(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment Method</label>
-            <select
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              value={payMethod}
-              onChange={(e) => setPayMethod(e.target.value)}
-            >
-              <option value="cash">Cash</option>
-              <option value="transfer">Transfer</option>
-              <option value="pos">POS</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</label>
-            <input
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button onClick={onCancel} className="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-200 text-gray-600">
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-            style={{ backgroundColor: "#1b4332" }}
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -172,20 +77,22 @@ export default function ExpensesOverviewPage() {
   const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [summary, setSummary] = useState<{ general_expenses: number; feed_expenses: number; expenses_by_category: { name: string; value: number }[] } | null>(null);
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
-    setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
+    setDateLabel(new Date().toLocaleDateString("en-NG", { timeZone: "Africa/Lagos", weekday: "long", day: "numeric", month: "long" }));
   }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [expRes, feedRes, recordRes] = await Promise.all([
+      const [expRes, feedRes, recordRes, financeRes] = await Promise.all([
         fetch(`/api/farm/expenses?date=${today}&limit=100`).then((r) => r.json()),
         fetch(`/api/farm/feed-purchases?date=${today}&limit=100`).then((r) => r.json()),
         fetch(`/api/farm/daily-record?date=${today}`).then((r) => r.json()),
+        fetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
       ]);
+      setSummary(financeRes);
       setExpenses(expRes.data || []);
       setFeedPurchases((feedRes.data || []).map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
       setDayRecord(recordRes.record || null);
@@ -205,47 +112,11 @@ export default function ExpensesOverviewPage() {
   ];
 
   // Chart data — expenses by category only
-  const chartData = Object.entries(CATEGORY_CONFIG)
-    .map(([key, cfg]) => ({
-      category: cfg.label,
-      total: expenses
-        .filter((e) => e.category === key)
-        .reduce((sum, e) => sum + (e.amount || 0), 0),
-      color: cfg.color,
-    }))
-    .filter((d) => d.total > 0);
-
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalFeed = feedPurchases.reduce((sum, f) => sum + (f.cost || 0), 0);
+  const chartData = (summary?.expenses_by_category ?? []).map((row) => ({ category: getCategoryConfig(row.name).label, total: row.value, color: getCategoryConfig(row.name).color }));
+  const totalExpenses = summary?.general_expenses ?? 0;
+  const totalFeed = summary?.feed_expenses ?? 0;
   const isDayClosed = dayRecord?.status === "closed";
 
-
-  async function handleEditSave(id: string, updates: Partial<Expense>) {
-    try {
-      const res = await fetch(`/api/farm/expenses/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Expense updated");
-      setEditExpense(null);
-      await loadData();
-    } catch {
-      toast.error("Failed to update expense");
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      const res = await fetch(`/api/farm/expenses/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      toast.success("Expense removed");
-      await loadData();
-    } catch {
-      toast.error("Failed to delete expense");
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -361,6 +232,7 @@ export default function ExpensesOverviewPage() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-gray-900">{fmt(feed.cost)}</p>
+                        <FarmCorrectionRequest recordType="feed" recordId={feed.id} />
                       </div>
                     </div>
                   </div>
@@ -393,22 +265,7 @@ export default function ExpensesOverviewPage() {
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="font-bold text-gray-900">{fmt(expense.amount)}</p>
-                      {!isDayClosed && (
-                        <div className="flex gap-1 mt-1 justify-end">
-                          <button
-                            onClick={() => setEditExpense(expense)}
-                            className="p-1.5 rounded-lg bg-blue-50 text-blue-600"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(expense.id)}
-                            className="p-1.5 rounded-lg bg-red-50 text-red-500"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
+                      <FarmCorrectionRequest recordType="expense" recordId={expense.id} />
                     </div>
                   </div>
                 </div>
@@ -418,13 +275,7 @@ export default function ExpensesOverviewPage() {
         )}
       </div>
 
-      {editExpense && (
-        <EditExpenseDialog
-          expense={editExpense}
-          onSave={handleEditSave}
-          onCancel={() => setEditExpense(null)}
-        />
-      )}
+
     </div>
   );
 }

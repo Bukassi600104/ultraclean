@@ -1,4 +1,5 @@
 "use client";
+import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -31,6 +32,7 @@ export default function FarmSalesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [product, setProduct] = useState("all");
   const [page, setPage] = useState(1);
+  const [version, setVersion] = useState(0);
   const limit = 20;
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function FarmSalesPage() {
       }
     }
     load();
-  }, [page, product]);
+  }, [page, product, version]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -81,6 +83,8 @@ export default function FarmSalesPage() {
               <SelectItem value="chicken">Chicken</SelectItem>
               <SelectItem value="pig">Pig</SelectItem>
               <SelectItem value="turkey">Turkey</SelectItem>
+              <SelectItem value="cattle">Cattle</SelectItem>
+              <SelectItem value="crops">Crops</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
@@ -103,7 +107,7 @@ export default function FarmSalesPage() {
                     <TableHead>Product</TableHead>
                     <TableHead className="hidden sm:table-cell">Qty</TableHead>
                     <TableHead className="hidden sm:table-cell">Price</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead>Total</TableHead><TableHead>Actions</TableHead>
                     <TableHead className="hidden sm:table-cell"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -119,11 +123,12 @@ export default function FarmSalesPage() {
                         {s.quantity}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        ₦{s.unit_price.toLocaleString()}
+                        ₦{s.unit_price.toLocaleString()} {(s as FarmSale & { pricing_basis?: string }).pricing_basis?.replace("per_", "/")}
                       </TableCell>
                       <TableCell className="font-medium">
                         ₦{s.total_amount.toLocaleString()}
                       </TableCell>
+                      <TableCell><FarmAdminCorrection recordType="sale" record={s} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {(s as FarmSale & { is_edited?: boolean }).is_edited && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">

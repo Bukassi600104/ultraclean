@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 
 export const runtime = "nodejs";
 
 const expenseItemSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]),
+  expense_source: z.enum(["bimbo_transfer", "sales_cash"]).default("bimbo_transfer"),
   amount: z.number().positive("Amount must be positive"),
   paid_to: z.string().max(200).optional().nullable(),
   payment_method: z.enum(["cash", "transfer", "pos"]).default("cash"),
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("farm_expenses")
-    .select("*", { count: "exact" });
+    .select("*", { count: "exact" }).is("voided_at", null);
 
   if (category) query = query.eq("category", category);
   if (date) query = query.eq("date", date);
@@ -79,50 +81,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  // Support both array (batch) and single object
   const isBatch = Array.isArray(body);
-
-  if (isBatch) {
-    const parsed = batchExpenseSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
-
-    const rows = parsed.data.map((item) => ({ ...item, created_by: profile.id }));
-    const { data, error } = await supabase
-      .from("farm_expenses")
-      .insert(rows)
-      .select();
-
-    if (error) {
-      console.error("farm_expenses POST batch error:", error);
-      return NextResponse.json({ error: "Failed to save records" }, { status: 500 });
-    }
-
-    return NextResponse.json({ data }, { status: 201 });
-  } else {
-    const parsed = expenseItemSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("farm_expenses")
-      .insert({ ...parsed.data, created_by: profile.id })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("farm_expenses POST error:", error);
-      return NextResponse.json({ error: "Failed to save record" }, { status: 500 });
-    }
-
-    return NextResponse.json(data, { status: 201 });
-  }
+  const parsed = (isBatch ? batchExpenseSchema : expenseItemSchema).safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const { data, error } = await farmWrite(profile, "expense", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || (Array.isArray(body) ? body[0]?.request_id : (body as { request_id?: string })?.request_id) || undefined });
+  if (error) return farmErrorResponse(error);
+  return NextResponse.json(isBatch ? { data } : data, { status: 201 });
 }

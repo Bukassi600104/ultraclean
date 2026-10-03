@@ -1,4 +1,5 @@
 "use client";
+import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -47,6 +48,7 @@ export default function FarmExpensesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
+  const [version, setVersion] = useState(0);
   const limit = 20;
 
   useEffect(() => {
@@ -112,7 +114,7 @@ export default function FarmExpensesPage() {
       }
     }
     load();
-  }, [page, category]);
+  }, [page, category, version]);
 
   // Merge and sort by date desc
   const rows: DisplayRow[] = [
@@ -185,7 +187,7 @@ export default function FarmExpensesPage() {
                     <TableHead>Date</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Details</TableHead>
-                    <TableHead>Amount</TableHead>
+                    <TableHead>Amount</TableHead><TableHead>Actions</TableHead>
                     <TableHead className="hidden md:table-cell">Payment</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -208,7 +210,7 @@ export default function FarmExpensesPage() {
                           </TableCell>
                           <TableCell className="font-medium">
                             ₦{f.cost.toLocaleString()}
-                          </TableCell>
+                          </TableCell><TableCell><FarmAdminCorrection recordType="feed" record={f} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-gray-500">
                             —
                           </TableCell>
@@ -230,7 +232,7 @@ export default function FarmExpensesPage() {
                         </TableCell>
                         <TableCell className="font-medium">
                           ₦{e.amount.toLocaleString()}
-                        </TableCell>
+                        </TableCell><TableCell><FarmAdminCorrection recordType="expense" record={e} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-gray-500 capitalize">
                           {e.payment_method}
                         </TableCell>

@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { FARM_PRODUCTS, farmDateToday } from "@/lib/farm-products";
+import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { TrendingUp, Lock, Edit2, Trash2, X, AlertTriangle, ChevronRight } from "lucide-react";
+import { TrendingUp, Lock, AlertTriangle, ChevronRight } from "lucide-react";
 
 interface Sale {
   id: string;
@@ -17,6 +19,8 @@ interface Sale {
   payment_method: string;
   notes?: string;
   is_edited?: boolean;
+  weight_kg?: number | null;
+  pricing_basis?: string | null;
 }
 
 interface DailyRecord {
@@ -24,21 +28,14 @@ interface DailyRecord {
   status: "open" | "closed";
 }
 
-const PRODUCTS = [
-  { key: "catfish", label: "Catfish", color: "#3b82f6", bg: "#eff6ff" },
-  { key: "goat", label: "Goat", color: "#f59e0b", bg: "#fffbeb" },
-  { key: "chicken", label: "Chicken", color: "#f97316", bg: "#fff7ed" },
-  { key: "pig", label: "Pig", color: "#ec4899", bg: "#fdf2f8" },
-  { key: "turkey", label: "Turkey", color: "#7c3aed", bg: "#f5f3ff" },
-  { key: "crops", label: "Crops", color: "#10b981", bg: "#f0fdf4" },
-];
+const PRODUCTS = FARM_PRODUCTS.filter((product) => product.key !== "other");
 
 function fmt(n: number) {
   return `₦${Math.round(n).toLocaleString("en-NG")}`;
 }
 
 function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+  return farmDateToday();
 }
 
 function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => void; onCancel: () => void; loading: boolean }) {
@@ -73,73 +70,6 @@ function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => voi
   );
 }
 
-function EditSaleDialog({ sale, onSave, onCancel }: {
-  sale: Sale;
-  onSave: (id: string, updates: Partial<Sale>) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const productLabel = PRODUCTS.find((p) => p.key === sale.product)?.label ?? sale.product;
-  const [qty, setQty] = useState(String(sale.quantity));
-  const [price, setPrice] = useState(String(sale.unit_price));
-  const [customer, setCustomer] = useState(sale.customer_name ?? "");
-  const [payMethod, setPayMethod] = useState(sale.payment_method);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    await onSave(sale.id, { quantity: Number(qty), unit_price: Number(price), customer_name: customer, payment_method: payMethod });
-    setSaving(false);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-sm shadow-2xl">
-        <div className="flex items-center justify-between mb-4">
-          <p className="font-bold text-gray-900">Edit — {productLabel}</p>
-          <button onClick={onCancel} className="p-1.5 rounded-full bg-gray-100"><X className="h-4 w-4 text-gray-500" /></button>
-        </div>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-xs font-semibold text-gray-500">Quantity</label>
-              <input type="number" inputMode="numeric" className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" value={qty} onChange={(e) => setQty(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500">Unit Price (₦)</label>
-              <input type="number" inputMode="numeric" className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" value={price} onChange={(e) => setPrice(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500">Customer</label>
-            <input className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" value={customer} onChange={(e) => setCustomer(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500">Payment</label>
-            <div className="mt-1 flex gap-2">
-              {["cash", "transfer", "pos"].map((m) => (
-                <button key={m} onClick={() => setPayMethod(m)}
-                  className="flex-1 rounded-xl py-2 text-xs font-semibold border transition-all"
-                  style={{ backgroundColor: payMethod === m ? "#1b4332" : "transparent", borderColor: payMethod === m ? "#1b4332" : "#e5e7eb", color: payMethod === m ? "#fff" : "#6b7280" }}>
-                  {m.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button onClick={onCancel} className="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-200 text-gray-600">Cancel</button>
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white"
-            style={{ backgroundColor: "#1b4332" }}>
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function SalesPage() {
   const router = useRouter();
   const today = getTodayStr();
@@ -148,7 +78,6 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
-  const [editSale, setEditSale] = useState<Sale | null>(null);
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
     setDateLabel(new Date().toLocaleDateString("en-NG", { weekday: "long", day: "numeric", month: "long" }));
@@ -191,29 +120,6 @@ export default function SalesPage() {
     } catch { toast.error("Failed to close day"); }
     finally { setClosing(false); setShowCloseConfirm(false); }
   }
-
-  async function handleEditSave(id: string, updates: Partial<Sale>) {
-    try {
-      const res = await fetch(`/api/farm/sales/${id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Updated");
-      setEditSale(null);
-      await loadData();
-    } catch { toast.error("Failed to update"); }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      const res = await fetch(`/api/farm/sales/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      toast.success("Removed");
-      await loadData();
-    } catch { toast.error("Failed to delete"); }
-  }
-
 
   return (
     <div className="space-y-5">
@@ -317,21 +223,12 @@ export default function SalesPage() {
                         <p className="text-sm font-semibold text-gray-900 mt-1">{sale.customer_name}</p>
                       )}
                       <p className="text-xs text-gray-400">
-                        {sale.quantity} × {fmt(sale.unit_price)} · {sale.payment_method.toUpperCase()}
+                        {sale.pricing_basis === "per_kg" ? `${sale.quantity} animals · ${sale.weight_kg} kg × ${fmt(sale.unit_price)}/kg` : sale.pricing_basis ? `${sale.quantity} × ${fmt(sale.unit_price)}` : `${sale.quantity} units · Historical total`} · {sale.payment_method.toUpperCase()}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="font-bold text-gray-900">{fmt(sale.total_amount)}</p>
-                      {!isDayClosed && (
-                        <div className="flex gap-1 mt-1 justify-end">
-                          <button onClick={() => setEditSale(sale)} className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-                          <button onClick={() => handleDelete(sale.id)} className="p-1.5 rounded-lg bg-red-50 text-red-500">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      )}
+                      <FarmCorrectionRequest recordType="sale" recordId={sale.id} />
                     </div>
                   </div>
                 </div>
@@ -344,9 +241,7 @@ export default function SalesPage() {
       {showCloseConfirm && (
         <CloseDayDialog onConfirm={handleCloseDay} onCancel={() => setShowCloseConfirm(false)} loading={closing} />
       )}
-      {editSale && (
-        <EditSaleDialog sale={editSale} onSave={handleEditSave} onCancel={() => setEditSale(null)} />
-      )}
+
     </div>
   );
 }

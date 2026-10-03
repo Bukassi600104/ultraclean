@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 
 export const runtime = "nodejs";
 
 const feedItemSchema = z.object({
-  feed_type: z.enum(["fish", "goat", "chicken", "other"]),
+  feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]),
   feed_source: z.enum(["local", "foreign"]).default("local"),
   weight_unit: z.enum(["tons", "kg"]).default("tons"),
   weight_amount: z.number().positive("Weight must be positive").default(1),
@@ -88,20 +89,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rows = parsed.data.map((item) => ({
-    ...item,
-    created_by: profile.id,
-  }));
-
-  const { data, error } = await supabase
-    .from("farm_feed_purchases")
-    .insert(rows)
-    .select();
-
-  if (error) {
-    console.error("farm_feed_purchases POST error:", error);
-    return NextResponse.json({ error: "Failed to save records" }, { status: 500 });
-  }
-
+  const rows = parsed.data;
+  const { data, error } = await farmWrite(profile, "feed", "create", rows, { requestId: request.headers.get("X-Request-ID") || (Array.isArray(body) ? body[0]?.request_id : (body as { request_id?: string })?.request_id) || undefined });
+  if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });
 }

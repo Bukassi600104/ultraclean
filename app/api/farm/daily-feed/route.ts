@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
+import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -15,7 +17,7 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
-  const limit = Math.min(100, parseInt(searchParams.get("limit") || "50"));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
 
   let query = supabase.from("farm_daily_feed").select("*", { count: "exact" });
   if (date) query = query.eq("date", date);
@@ -34,21 +36,10 @@ export async function POST(request: NextRequest) {
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const body = await request.json();
-  const { date, feed_type, num_bags, feed_source, notes } = body;
-
-  if (!date || !feed_type || !num_bags || num_bags <= 0) {
-    return NextResponse.json({ error: "date, feed_type and num_bags are required" }, { status: 400 });
-  }
-
-  const source = feed_source === "foreign" ? "foreign" : "local";
-
-  const { data, error } = await supabase
-    .from("farm_daily_feed")
-    .insert({ date, feed_type, num_bags: Number(num_bags), feed_source: source, notes: notes || null, created_by: profile.id })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]), num_bags: z.number().positive(), feed_source: z.enum(["local", "foreign"]).default("local"), notes: z.string().max(1000).nullable().optional() });
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+  const { data, error } = await farmWrite(profile, "daily_feed", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || undefined });
+  if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });
 }

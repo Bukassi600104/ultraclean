@@ -1,3 +1,37 @@
+# Primefield Farm V2 — implementation checklist
+
+Preserve production data and accounts. No production migration, push, or deployment is authorized.
+
+- [x] Capture read-only schema/baseline and document migration/release gates.
+- [x] Implement forward-only schema, transactional writes, audit and correction requests.
+- [x] Enforce role permissions, immutable closed days, and offline conflict handling.
+- [x] Correct prospective sales pricing and linked inventory movements; preserve legacy totals.
+- [x] Consolidate products, add cattle, refine inventory and mortality.
+- [x] Extend supplies correction/archive/history and owner transfer correction/void.
+- [x] Unify full-scope financial aggregation and expense funding selection.
+- [x] Run lint, build, isolated farm tests and regression checks.
+- [x] Document results, outstanding release gates and rollback limitations.
+
+## Accepted decisions
+
+Managers request corrections after save; Bimbo applies audited corrections, including closed-day corrections without reopening. Feed remains owner-funded. Historical values and unknown attribution remain untouched.
+
+## Local verification and release gates
+
+- PostgreSQL (isolated, synthetic data): 63 assertions pass.
+- Farm API handlers (mocked auth/transport): 38 checks pass.
+- Financial/mortality calculations: 11 checks pass.
+- Actual React components in a mobile browser with synthetic APIs: 19 checks pass.
+- Built application GET smoke checks: 13 pass. Primefield Host returned a production-domain redirect; staging domain verification remains required.
+- Public Playwright suite: 80/81 pass initially; first homepage cold-load timing exceeded 8 seconds. Targeted rerun passed (2.4 seconds). No public code changed.
+- Lint and the final production build pass.
+- Final live comparison: all 11 table fingerprints and row counts match the initial read-only baseline.
+- No production mutations, push or deployment. Full backup restore, production environment mapping, authenticated staging and real multi-connection concurrency checks remain release gates.
+
+See docs/PRIMEFIELD-V2-RELEASE.md for schema drift, migration effects, test reproduction, release sequence and rollback restrictions.
+
+## Previous completed task
+
 # Instant Quote System — Implementation Plan
 
 ## Goal
