@@ -123,5 +123,7 @@ If release fails, keep farm writes paused. Prefer fixing the compatible applicat
 - The actual server finance service over production REST agrees with independent PostgreSQL owner, sales-cash and operational totals at currency precision.
 - All 56 production tables retained their original column fingerprints after both migrations. No production test sales, expenses, corrections or transfers were saved.
 - The temporary database farm-write pause covered all ten original farm tables and was removed only after database, deployment, domain and preservation checks passed. The permanent write boundary remains active.
+- Released source pushed to GitHub `main` at `87bfdc0`. The resulting automatic production deployment `dpl_4k5jBGV7BnzhMgRcFtYMfVXsY4xt` completed successfully and serves all live domains, including `farm.primefieldagric.com`.
+- Additional isolated checks on the restored live schema passed for cattle stock, per-head sales with gender and mortality through the trusted service-role RPC; the test transaction was rolled back.
 
 Existing-user interactive login and browser submission testing were not automated against production; no password, account or historical record was changed to obtain a test session. The restore/concurrency tests and live read/permission checks do not claim that coverage. Users should refresh existing tabs to receive V2 before continuing work.

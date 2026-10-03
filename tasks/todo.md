@@ -38,7 +38,7 @@ Managers request corrections after save; Bimbo applies audited corrections, incl
 - [x] Block old service-role direct farm writes while preserving trusted V2 RPCs and reads; 67 isolated SQL assertions pass.
 - [x] Promote V2; verify live domain pages/assets, REST schema/permissions, financial aggregation and all 56 legacy table fingerprints.
 - [x] Remove the temporary farm-write pause after successful checks; keep the permanent write boundary.
-- [ ] Push the released source and release evidence to main, then verify the resulting deployment.
+- [x] Push the released source and release evidence to main, then verify the resulting deployment (`87bfdc0`, production deployment `dpl_4k5jBGV7BnzhMgRcFtYMfVXsY4xt` ready on all live domains).
 
 Interactive existing-user browser login/submission was not automated in production. Supabase-managed realtime/vault infrastructure was archived but not emulated during the local application/auth/storage restore.
 
