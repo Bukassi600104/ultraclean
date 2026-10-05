@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "bossbimbz-operations-expansion": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/email-automation",

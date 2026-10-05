@@ -73,6 +73,23 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // New operational modules have their own server-enforced access boundary.
+  const moduleName = pathname === "/property" || pathname.startsWith("/property/")
+    ? "property" : pathname === "/content" || pathname.startsWith("/content/") ? "content" : null;
+  if (moduleName) {
+    const { supabaseResponse, user, supabase } = await updateSession(request);
+    if (pathname === `/${moduleName}/login`) return supabaseResponse;
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = `/${moduleName}/login`;
+    loginUrl.search = "";
+    if (!user) return NextResponse.redirect(loginUrl);
+    const { data: profile } = await supabase.from("profiles").select("role, suspended").eq("id", user.id).single();
+    if (!profile || profile.suspended === true || (profile.role !== "admin" && profile.role !== `${moduleName}_manager`)) {
+      return NextResponse.redirect(loginUrl);
+    }
+    return supabaseResponse;
+  }
+
   if (hostname.startsWith("leads.")) {
     const result = await updateSession(request);
     const { supabaseResponse, user, supabase } = result;
@@ -85,6 +102,12 @@ export async function middleware(request: NextRequest) {
     // Login page
     if (pathname === "/login") {
       if (user) {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        if (profile?.role === "property_manager" || profile?.role === "content_manager") {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = profile.role === "property_manager" ? "/property" : "/content";
+          return NextResponse.redirect(redirectUrl);
+        }
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = "/";
         return NextResponse.redirect(redirectUrl);
@@ -166,7 +189,8 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect("https://farm.primefieldagric.com");
       }
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/dashboard";
+      redirectUrl.pathname = profile?.role === "property_manager" ? "/property"
+        : profile?.role === "content_manager" ? "/content" : "/dashboard";
       return NextResponse.redirect(redirectUrl);
     }
     return supabaseResponse;

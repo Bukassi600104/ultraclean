@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export type UserRole = "admin" | "manager";
+export type UserRole = "admin" | "manager" | "property_manager" | "content_manager";
 
 export interface Profile {
   id: string;
@@ -81,4 +81,20 @@ export async function requireManager() {
     throw new Error("Unauthorized: account suspended");
   }
   return profile;
+}
+
+async function requireOperationsRole(role: "property_manager" | "content_manager") {
+  const profile = await getCurrentUser();
+  if (!profile || (profile.role !== "admin" && profile.role !== role) || profile.suspended === true) {
+    throw new Error("Unauthorized: operational access required");
+  }
+  return profile;
+}
+
+export function requirePropertyManager() {
+  return requireOperationsRole("property_manager");
+}
+
+export function requireContentManager() {
+  return requireOperationsRole("content_manager");
 }

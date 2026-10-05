@@ -9,10 +9,11 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import type { UserRole } from "@/lib/auth";
 
 interface Profile {
   id: string;
-  role: "admin" | "manager";
+  role: UserRole;
   name: string | null;
   email: string | null;
 }

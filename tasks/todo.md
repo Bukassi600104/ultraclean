@@ -1,3 +1,48 @@
+# Bossbimbz operations expansion — active implementation plan
+
+Baseline: 574eee3f6358c03707adfb547deb9d289b1aeaf0 (released Primefield V2).
+Branch: bossbimbz-operations-expansion. Production remains untouched in this phase.
+Source specification: docs/BOSSBIMBZ-SPEC.md. Requirement ledger: docs/BOSSBIMBZ-REQUIREMENTS.md.
+
+## Preservation and release boundary
+
+Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, records, financial meanings and operational designs. New SQL is prepared/rehearsed against isolated data; a coordinated live migration/release needs fresh authorization. No merge to main or production deployment. Disable automatic deployments for this feature branch before pushing it. Supabase stays Free; no paid social APIs. No fabricated metrics or records.
+
+## Checkpoints and deliverables
+
+- [x] Fetch main, record baseline, read repository and V2 release instructions, create feature branch.
+- [x] Read full specification and approved CEO composition reference.
+- [x] A — read-only live schema/roles/grants/Free-plan baseline; additive migration rehearsal and preservation tests (306 isolated assertions; final release security review remains).
+- [x] Shared access — add property_manager/content_manager without renaming admin/manager; preserve farm guards; real guard/middleware role tests (31 guards, 73 middleware checks).
+- [ ] B — Daily Report draft/submission/review/history, atomic linked Operational Requests and CEO decision workflow; validate date/retry/revision boundaries.
+- [ ] C — complete Property Manager properties/units/tenancies/rent/expenses/vacancy/maintenance/repair/history and CEO data; isolated role/finance/UI regression.
+- [ ] D — complete Content Manager records/publication/performance/leads/mentorship/affiliate data and manual fallback; isolated role/aggregate/UI regression.
+- [ ] Social — free official Meta Instagram first, Facebook/TikTok where documented access permits; server-only OAuth/encrypted tokens and honest authorization/configuration states.
+- [ ] E — CEO Dashboard data integration and composition redesign only; retain all CRM/appointment/DBA/UltraTidy actions and links; no guessed farm KPIs.
+- [ ] UI review — desktop/tablet/mobile, actual data/empty/loading/error states, accessible forms, long text and navigation.
+- [ ] Security/bug hunt — all cross-role API/RLS denials, duplicate/stale/bad input/date/offline paths, tokens/provider failures, totals and historical records.
+- [ ] Final tests, lint, build and full preservation/diff review; document exact evidence.
+- [ ] Commit incremental verified slices, push feature branch with automatic deployment disabled, prepare all 29 release report items.
+
+## Accepted implementation rulings
+
+- Dedicated modules use /property and /content paths with their own login/layout/access guards; existing domains/routes keep behavior. Optional new subdomains require external DNS authorization and are not assumed.
+- New property/content records require explicit ISO currency; CEO financial summaries group currencies rather than converting or mixing them.
+- Farm finance reuses getFarmFinance. Separate owner funds and sales cash; no invented combined wallet. Feed quantities retain actual item units; production cost is unavailable until an allocation definition exists.
+- Content follower metrics use latest platform-level snapshots; reach is labelled with its measurement period/source, never claimed as deduplicated people. Social access requires CEO/provider OAuth authorization; complete manual tracking works independently.
+- Reference influences composition, not color/content. Reference path: C:/Users/USER/Pictures/Screenshots/Screenshot 2026-10-05 121245.png.
+- User explicitly requires specialized agents; delegate disjoint ownership in waves within available concurrency. Test and review each integrated slice before treating its checkpoint complete.
+
+## Execution ledger
+
+2026-10-05: Baseline fetched and clean; feature branch created. Goal Guardian, Production Safety and Database/Supabase agents started. Live Supabase identity confirmed read-only; database about 14.8 MB. Free organization confirmed by database agent. Production mutations: none. Existing auth has only admin/manager and needs additive landing/route guards for new roles.
+
+2026-10-05 checkpoint A: Three CLI-allocated additive migration slices rehearsed; parent independently reran all 306 PostgreSQL assertions. Legacy rows/profiles/V2 routines unchanged; new RLS/direct-write/retry/revision/audit/currency/occupancy/token boundaries checked. Real shared guards pass31 and middleware pass73; lint clean for this slice. Approved image supplied and inspected. CEO aggregation calculation and actual-handler/real-guard tests pass, including501 rent rows and partial query errors. Farm first-save revision0 issue found by security and fixed by owner. Property and Content specialists implementing disjoint modules; no production changes or deployment.
+
+---
+
+## Archived previous work
+
 # Primefield Farm V2 — implementation checklist
 
 Preserve production data and accounts. No production migration, push, or deployment is authorized.
