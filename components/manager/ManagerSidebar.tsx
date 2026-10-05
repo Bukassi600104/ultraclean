@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Home, TrendingUp, Receipt, Clock, Wallet,
-  LogOut, X, Layers, Droplets, PlusSquare, Skull, Package,
+  LogOut, X, Layers, Droplets, PlusSquare, Skull, Package, ClipboardList, MessageSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,6 +31,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/sales", label: "Sales", icon: TrendingUp },
       { href: "/expenses", label: "Expenses", icon: Receipt },
+      { href: "/daily-report", label: "Daily Report", icon: ClipboardList },
+      { href: "/operational-requests", label: "Operational Requests", icon: MessageSquare },
     ],
   },
   {

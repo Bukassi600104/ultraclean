@@ -14,7 +14,7 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 - [x] Read full specification and approved CEO composition reference.
 - [x] A — read-only live schema/roles/grants/Free-plan baseline; additive migration rehearsal and preservation tests (306 isolated assertions; final release security review remains).
 - [x] Shared access — add property_manager/content_manager without renaming admin/manager; preserve farm guards; real guard/middleware role tests (31 guards, 73 middleware checks).
-- [ ] B — Daily Report draft/submission/review/history, atomic linked Operational Requests and CEO decision workflow; validate date/retry/revision boundaries.
+- [x] B — Daily Report draft/submission/review/history, atomic linked Operational Requests and CEO decision workflow; validate date/retry/revision boundaries (API34, styled browser24, preserved V2 suites).
 - [ ] C — complete Property Manager properties/units/tenancies/rent/expenses/vacancy/maintenance/repair/history and CEO data; isolated role/finance/UI regression.
 - [ ] D — complete Content Manager records/publication/performance/leads/mentorship/affiliate data and manual fallback; isolated role/aggregate/UI regression.
 - [ ] Social — free official Meta Instagram first, Facebook/TikTok where documented access permits; server-only OAuth/encrypted tokens and honest authorization/configuration states.
@@ -38,6 +38,8 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 2026-10-05: Baseline fetched and clean; feature branch created. Goal Guardian, Production Safety and Database/Supabase agents started. Live Supabase identity confirmed read-only; database about 14.8 MB. Free organization confirmed by database agent. Production mutations: none. Existing auth has only admin/manager and needs additive landing/route guards for new roles.
 
 2026-10-05 checkpoint A: Three CLI-allocated additive migration slices rehearsed; parent independently reran all 306 PostgreSQL assertions. Legacy rows/profiles/V2 routines unchanged; new RLS/direct-write/retry/revision/audit/currency/occupancy/token boundaries checked. Real shared guards pass31 and middleware pass73; lint clean for this slice. Approved image supplied and inspected. CEO aggregation calculation and actual-handler/real-guard tests pass, including501 rent rows and partial query errors. Farm first-save revision0 issue found by security and fixed by owner. Property and Content specialists implementing disjoint modules; no production changes or deployment.
+
+2026-10-05 checkpoint B: Farm specialist passed API34 and styled actual-component browser24 checks, including lost-response/reload retry UUID protection. Existing V2 SQL67/API38/calculations11/UI19/GET smoke13 pass. Parent inspected the styled mobile report screenshot: legible full sections and no horizontal overflow. Admin sidebar links will land with the CEO slice. Content social reauthorization required a safe server-only token ID/revision lookup; added and isolated tested without revealing ciphertext. No production writes.
 
 ---
 
