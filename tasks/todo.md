@@ -12,17 +12,17 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 
 - [x] Fetch main, record baseline, read repository and V2 release instructions, create feature branch.
 - [x] Read full specification and approved CEO composition reference.
-- [x] A — read-only live schema/roles/grants/Free-plan baseline; additive migration rehearsal and preservation tests (306 isolated assertions; final release security review remains).
+- [x] A — read-only live schema/roles/grants/Free-plan baseline; additive migration rehearsal and preservation tests (308 foundation + 47 addendum SQL assertions; final independent review passed).
 - [x] Shared access — add property_manager/content_manager without renaming admin/manager; preserve farm guards; real guard/middleware role tests (31 guards, 73 middleware checks).
-- [ ] B — reconcile Daily Report and requests with October 7 confirmed fields, repeated sick animals, action-taken metadata and water/pump request categories; keep verified draft/review/retry foundation.
-- [ ] Feed — inspect live legacy bag/unit completeness read-only; build prospective movement-based bags with authorized opening counts, atomic receipts/new-bag use and daily-feed/report linkage; never infer legacy opening quantities.
-- [ ] C — complete Property Manager properties/units/tenancies/rent/expenses/vacancy/maintenance/repair/history and CEO data; isolated role/finance/UI regression.
-- [ ] D — complete Content Manager records/publication/performance/leads/mentorship/affiliate data and manual fallback; isolated role/aggregate/UI regression.
-- [ ] Social — free official Meta Instagram first, Facebook/TikTok where documented access permits; server-only OAuth/encrypted tokens and honest authorization/configuration states.
-- [ ] E — CEO Dashboard data integration and composition redesign only; retain all CRM/appointment/DBA/UltraTidy actions and links; no guessed farm KPIs.
-- [ ] UI review — desktop/tablet/mobile, actual data/empty/loading/error states, accessible forms, long text and navigation.
-- [ ] Security/bug hunt — all cross-role API/RLS denials, duplicate/stale/bad input/date/offline paths, tokens/provider failures, totals and historical records.
-- [ ] Final tests, lint, build and full preservation/diff review; document exact evidence.
+- [x] B — reconcile Daily Report and requests with October 7 confirmed fields, repeated sick animals, action-taken metadata and water/pump request categories; keep verified draft/review/retry foundation.
+- [x] Feed — inspect live legacy bag/unit completeness read-only; build prospective movement-based bags with authorized opening counts, atomic receipts/new-bag use and daily-feed/report linkage; never infer legacy opening quantities.
+- [x] C — complete Property Manager properties/units/tenancies/rent/expenses/vacancy/maintenance/repair/history and CEO data; isolated role/finance/UI regression.
+- [x] D — complete Content Manager records/publication/performance/leads/mentorship/affiliate data and manual fallback; isolated role/aggregate/UI regression.
+- [x] Social — free official Meta Instagram first, Facebook/TikTok where documented access permits; server-only OAuth/encrypted tokens and honest authorization/configuration states.
+- [x] E — CEO Dashboard data integration and composition redesign only; retain all CRM/appointment/DBA/UltraTidy actions and links; no guessed farm KPIs.
+- [x] UI review — desktop/tablet/mobile, actual data/empty/loading/error states, accessible forms, long text and navigation.
+- [x] Security/bug hunt — all cross-role API/RLS denials, duplicate/stale/bad input/date/offline paths, tokens/provider failures, totals and historical records.
+- [x] Final tests, lint, build and full preservation/diff review; document exact evidence.
 - [ ] Commit incremental verified slices, push feature branch with automatic deployment disabled, prepare all 29 release report items.
 
 ## Accepted implementation rulings
@@ -45,6 +45,8 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 2026-10-05 checkpoint B: Farm specialist passed API34 and styled actual-component browser24 checks, including lost-response/reload retry UUID protection. Existing V2 SQL67/API38/calculations11/UI19/GET smoke13 pass. Parent inspected the styled mobile report screenshot: legible full sections and no horizontal overflow. Admin sidebar links will land with the CEO slice. Content social reauthorization required a safe server-only token ID/revision lookup; added and isolated tested without revealing ciphertext. No production writes.
 
 ---
+
+Closing verification October 7: combined source implementation853a5ad, report74/feed26/property38/content51/CEO35 browser checks; guard31/middleware73/domain60; foundation308/feed47/V2SQL67; real PostgreSQL multi-connection16; originalV2API38/finance11/mobile19; publicPlaywright81/81; GET smoke13+23; lint/build116 all pass. Read-only live V2 body hashes match protectedmigration012; roles3admin2manager,policies25,expansiontables0. All29 release report items are covered in docs/BOSSBIMBZ-RELEASE.md. Production/OAuth/count entry remain separately gated. Feature push awaits final confirmation.
 
 ## Archived previous work
 

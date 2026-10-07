@@ -13,13 +13,13 @@ Status convention: implementation and verification are separate. `Pending` means
 | ID | Requirement / acceptance evidence | Implementation | Verification |
 |---|---|---|---|
 | G01 | Controlled expansion of existing live application; no rebuild, rewrite, prototype, demo, clean slate, or database reset | IMPLEMENTED baseline/current-source audit; no restart | Reviewed tasks/todo.md, BOSSBIMBZ-DATABASE.md and preserved V2 baseline; no live writes |
-| G02 | Fetch latest main, verify HEAD, record baseline, use feature branch; incremental slices with tests, final diff, branch push, release report | IMPLEMENTED baseline/feature branch/incremental commits | Baseline and branch verified; final feature commit/push/report pending root |
+| G02 | Fetch latest main, verify HEAD, record baseline, use feature branch; incremental slices with tests, final diff, branch push, release report | IMPLEMENTED baseline/feature branch/incremental commits | Baseline and branch verified; implementation commits through853a5ad verified; RELEASE.md all29 items covered; protected push pending root |
 | G03 | No merge to main or production deployment without explicit release authorization; inspect automatic deployment behavior before push | IMPLEMENTED feature auto-deploy protection; production gate retained | Source vercel.json branch protection reviewed; no main merge/production deployment authorized |
 | G04 | Read AGENTS, lessons, todo, V2 release document, migrations 012/013 completely before implementation | IMPLEMENTED baseline/current-source audit; no restart | Reviewed tasks/todo.md, BOSSBIMBZ-DATABASE.md and preserved V2 baseline; no live writes |
 | G05 | Inspect live schema and confirmed project identity, auth, middleware, roles, routes, CEO/admin dashboard, existing farm write boundaries, deployment behavior | IMPLEMENTED baseline/current-source audit; no restart | Reviewed tasks/todo.md, BOSSBIMBZ-DATABASE.md and preserved V2 baseline; no live writes |
-| G06 | Preserve existing rows, historical financial values, user IDs/passwords, saved data, routes and working actions; no truncation, deletion, reseeding, unnecessary recreation or historical recalculation | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; final live read-only comparison pending root |
-| G07 | Preserve V2 intended behavior and write boundaries; no authorization weakening or unrelated cleanup; add around stable logic | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; final live read-only comparison pending root |
-| G08 | Changes affecting production data additive, backward compatible, documented, reversible where practical, and legacy-data tested | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; final live read-only comparison pending root |
+| G06 | Preserve existing rows, historical financial values, user IDs/passwords, saved data, routes and working actions; no truncation, deletion, reseeding, unnecessary recreation or historical recalculation | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; Oct7 live V2 source hashes/roles/policies/new-table absence verified; RELEASE.md |
+| G07 | Preserve V2 intended behavior and write boundaries; no authorization weakening or unrelated cleanup; add around stable logic | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; Oct7 live V2 source hashes/roles/policies/new-table absence verified; RELEASE.md |
+| G08 | Changes affecting production data additive, backward compatible, documented, reversible where practical, and legacy-data tested | IMPLEMENTED additive preservation/write boundaries | TESTED SQL308/feedSQL47 + original V2 routine/file preservation; Oct7 live V2 source hashes/roles/policies/new-table absence verified; RELEASE.md |
 | G09 | Only CEO Dashboard deliberately visually redesigned; Farm, Property, Content, UltraTidy, DBA, CRM and public pages retain design language and working flows | IMPLEMENTED CEO-only redesign and functional operational pages | TESTED farm74/feed26/property38/content51/CEO35 styled browser + root new GET23; docs/BOSSBIMBZ-UI.md |
 | G10 | Goal Guardian continuously tracks completeness, safety, unfinished UI and fake data at every milestone | IMPLEMENTED combined ledger and iterative reviews | Reviewed KEEP/ADJUST/REMOVE; all R01–R05 and final navigation findings fixed/tested; BOSSBIMBZ-REVIEW.md + FINAL-REVIEW.md |
 | G11 | Specialized responsibilities covered: Production Safety/Regression, Database/Supabase, Primefield, Property, Content, CEO, UI/UX, Security, Debugger | IMPLEMENTED required responsibilities in waves | Role8/10 responsibilities reused because hard agent/thread/usage limits; do not claim ten independent agents; docs/UI + DEBUG + FINAL-REVIEW |
@@ -137,8 +137,8 @@ Stop and verify after each major slice; do not stack large unrelated unverified 
 
 | Gate | Required proof | Implementation | Verification |
 |---|---|---|---|
-| A | Database migration only: old tables unchanged, old counts stable, auth intact, V2 intact; confirmed live catalog + isolated migration/legacy rehearsal + read-only production comparison | IMPLEMENTED additive schema and feed forward migration | TESTED isolated SQL308/feedSQL47 and loopbackPG17 concurrency16 root; final live read-only comparison pending |
-| B | Primefield additions: all existing Primefield workflows intact | IMPLEMENTED farm/report/request/feed scope | TESTED reportAPI44/UI74, feedSQL47/API25/dailyAPI18/UI26, V2API38/calculations11; final V2SQL/UI rerun root pending |
+| A | Database migration only: old tables unchanged, old counts stable, auth intact, V2 intact; confirmed live catalog + isolated migration/legacy rehearsal + read-only production comparison | IMPLEMENTED additive schema and feed forward migration | TESTED isolated SQL308/feedSQL47 and loopbackPG17 concurrency16 root; Oct7 live V2 source hashes/roles/policies/new-table absence verified; RELEASE.md |
+| B | Primefield additions: all existing Primefield workflows intact | IMPLEMENTED farm/report/request/feed scope | TESTED reportAPI44/UI74, feedSQL47/API25/dailyAPI18/UI26, V2API38/calculations11; current V2SQL67/UI19 reruns PASS; RELEASE.md |
 | C | Property module: Primefield and auth still intact | IMPLEMENTED Property core | TESTED propertyAPI50/UI38 + guards31/domain60 + SQL308; no live account mutation |
 | D | Content module: all other apps intact | IMPLEMENTED Content/manual/conditional official adapters | TESTED contentAPI24/UI51/crypto19/IG21/FB-TikTok59 + domain60; real OAuth not authorized |
 | E | CEO redesign: dashboard functions preserved, business data correct, navigation intact, no flow removed | IMPLEMENTED redesigned CEO + all existing actions | TESTED CEOAPI25/UI35/data; final-review FR01/FR02 resolved with farmUI74/feedUI26; root full build PASS116 routes |
@@ -149,35 +149,35 @@ Stop and verify after each major slice; do not stack large unrelated unverified 
 |---|---|---|---|
 | Q01 | `npm run lint` | Executed root final npm run lint | TESTED PASS; root also reports build-integrated lint/types PASS |
 | Q02 | `npm run build` | Executed root final npm run build | TESTED PASS116 routes including actual admin DailyFeed route; parent evidence |
-| Q03 | `node scripts/test-farm-v2.mjs` | Baseline PASS67 preserved; final rerun underway root | Final current rerun pending; do not substitute baseline for fresh result |
+| Q03 | `node scripts/test-farm-v2.mjs` | Executed root final current V2 SQL | TESTED PASS67; docs/BOSSBIMBZ-RELEASE.md |
 | Q04 | `node scripts/test-farm-v2-api.mjs` | Executed current V2 actual handlers | TESTED PASS38; parent evidence |
 | Q05 | `node scripts/test-farm-v2-calculations.mjs` | Executed current finance/mortality calculations | TESTED PASS11; parent evidence |
-| Q06 | `node scripts/test-farm-v2-ui.mjs` | Baseline PASS19 preserved; final rerun underway root | Final current rerun pending; do not infer completion |
+| Q06 | `node scripts/test-farm-v2-ui.mjs` | Executed root final current V2 mobile UI | TESTED PASS19; docs/BOSSBIMBZ-RELEASE.md |
 | Q07 | `node scripts/test-farm-v2-smoke.mjs` | Executed current built-app GET smoke | TESTED legacy13 + new23; parent evidence; no live authenticated writes |
-| Q08 | Existing Playwright suite; results/retries/failures reported precisely | Root public Playwright81 running | Final outcome pending root session52980; no passed count inferred from partial run |
+| Q08 | Existing Playwright suite; results/retries/failures reported precisely | Executed root final public Playwright | TESTED PASS81/81 in1.6m; docs/BOSSBIMBZ-RELEASE.md |
 | Q09 | Targeted tests for every new workflow, aggregate and security boundary, including real-handler/component tests | IMPLEMENTED targeted bug/role/retry/date/schema/provider/UI checks and fixes | TESTED suites below + independent final review; realPG17 concurrency16 root; hosted/provider limitations explicit |
 | Q10 | Debugger: duplicate submissions, slow network, stale state, bad input, missing input, date boundaries, historical records, long text | IMPLEMENTED targeted bug/role/retry/date/schema/provider/UI checks and fixes | TESTED suites below + independent final review; realPG17 concurrency16 root; hosted/provider limitations explicit |
 | Q11 | Debugger: role bypass, incorrect totals, empty states, broken navigation, social API failure, token failure, mobile overflow, reload/back behavior | IMPLEMENTED targeted bug/role/retry/date/schema/provider/UI checks and fixes | TESTED suites below + independent final review; realPG17 concurrency16 root; hosted/provider limitations explicit |
 | Q12 | Debugger: schema mismatches, races, failed API paths, auth/routing bugs, broken forms; discovered bugs fixed and retested | IMPLEMENTED targeted bug/role/retry/date/schema/provider/UI checks and fixes | TESTED suites below + independent final review; realPG17 concurrency16 root; hosted/provider limitations explicit |
-| Q13 | Before/after existing records, farm totals, inventory, fund transfers, expenses and sales | IMPLEMENTED isolated preservation and baseline read-only audit | TESTED SQL308/feedSQL47/routine preservation; fresh final live fingerprint comparison pending root; no production mutation |
-| Q14 | Before/after users, auth, roles, UltraTidy, DBA, CRM, routes and production schema; investigate every unexplained difference | IMPLEMENTED isolated preservation and baseline read-only audit | TESTED SQL308/feedSQL47/routine preservation; fresh final live fingerprint comparison pending root; no production mutation |
+| Q13 | Before/after existing records, farm totals, inventory, fund transfers, expenses and sales | IMPLEMENTED isolated preservation and baseline read-only audit | TESTED SQL308/feedSQL47/routine preservation; Oct7 live V2 normalized source hashes match, roles3admin/2manager, farm policies25, expansion tables0; no production mutation; RELEASE.md |
+| Q14 | Before/after users, auth, roles, UltraTidy, DBA, CRM, routes and production schema; investigate every unexplained difference | IMPLEMENTED isolated preservation and baseline read-only audit | TESTED SQL308/feedSQL47/routine preservation; Oct7 live V2 normalized source hashes match, roles3admin/2manager, farm policies25, expansion tables0; no production mutation; RELEASE.md |
 | Q15 | No untested account/session paths represented as tested; isolated/mocked evidence distinguished from authenticated staging and live read-only evidence | IMPLEMENTED evidence boundary disclosures | Reviewed isolated mocks/PGlite/real loopback vs hosted/live OAuth explicitly distinguished |
 
 ## Free-plan final review
 
 | ID | Required reported item | Implementation | Verification |
 |---|---|---|---|
-| F01 | New tables and indexes, expected DB growth and storage growth | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory in root report pending |
-| F02 | Realtime usage, Edge Function usage, egress considerations | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory in root report pending |
-| F03 | Social API usage and paid feature usage | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory in root report pending |
-| F04 | Explicit `SUPABASE PAID FEATURES: NONE` and `PAID SOCIAL API: NONE`, supported by architecture/config review | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory in root report pending |
+| F01 | New tables and indexes, expected DB growth and storage growth | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory documented RELEASE.md + BOSSBIMBZ-FILES.md |
+| F02 | Realtime usage, Edge Function usage, egress considerations | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory documented RELEASE.md + BOSSBIMBZ-FILES.md |
+| F03 | Social API usage and paid feature usage | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory documented RELEASE.md + BOSSBIMBZ-FILES.md |
+| F04 | Explicit `SUPABASE PAID FEATURES: NONE` and `PAID SOCIAL API: NONE`, supported by architecture/config review | DOCUMENTED Free-only growth/usage architecture | Reviewed BOSSBIMBZ-DATABASE.md + FEED.md + SOCIAL.md; zero production schema/storage growth during preparation; final inventory documented RELEASE.md + BOSSBIMBZ-FILES.md |
 
 ## Confirmed business decisions and remaining external gates
 
 | Item | Safe handling and evidence needed | State |
 |---|---|---|
 | Approved CEO reference image supplied | User supplied `C:/Users/USER/Pictures/Screenshots/Screenshot 2026-10-05 121245.png`; parent inspected it. Direction: compact dark sidebar, spacious rounded panels, main/secondary grid; retain current teal, branding and fonts. Implementation comparison remains pending | IMPLEMENTED/TESTED actual CEO UI35 and composition review; reference supplied |
-| Live schema / project mapping | Confirm actual Supabase identity through read-only live inspection, current Vercel mapping and baseline fingerprints. Release doc names `gsxqrjywtugeuexrjcln`, but do not assume mapping remains correct | Pending verification |
+| Live schema / project mapping | Confirm actual Supabase identity through read-only live inspection, current Vercel mapping and baseline fingerprints. Release doc names `gsxqrjywtugeuexrjcln`, but do not assume mapping remains correct | Project verified read-only gsxqrjywtugeuexrjcln; Oct7 production V2/role/policy boundaries checked; RELEASE.md |
 | Feed Inventory | CONFIRMED actual remaining bags by feed type. Prospective movement tracking, real authorized opening count, atomic receipts/new-bag use and one authoritative deduction source; preserve legacy rows without guessed backfill | CONFIRMED; IMPLEMENTED/TESTED stock SQL47/API25/daily18/UI26/CEO25; real opening count is operational prerequisite |
 | Production Cost | CONFIRMED same as Expenses; remove separate KPI/model safely; preserve actual expense records | CONFIRMED; IMPLEMENTED removal; TESTED CEO API25/UI35 |
 | Cash balance | Reuse V2 owner funds and sales cash balances with explicit labels; preserve accepted funding-separated financial meaning | IMPLEMENTED/TESTED authoritative V2 source, active reversal logic and UI |
@@ -211,7 +211,7 @@ Every item below is **RESOLVED / CONFIRMED** as a business decision. That status
 | A13 | Content core module approved; KEEP matching existing safe implementation; official free APIs plus independent manual fallback | IMPLEMENTED/TESTED ContentAPI24/UI51/crypto19/IG21/FB-TikTok59; real provider consent/config external |
 | A14 | Report template structure confirmed by addendum; no extra template file required | CONFIRMED/IMPLEMENTED/TESTED structure reportAPI44/UI74 + SQL47; no further template gate |
 | A15 | Final Primefield CEO summary has the eight approved metrics; bags breakdown is compact, truthful and authoritative | IMPLEMENTED/TESTED approved eight metrics, authoritative bags CEOAPI25/UI35 |
-| A16 | Preserve original data/accounts/permissions/V2/transfers/routes/history; no destructive migrations, guesswork, paid APIs or production release | IMPLEMENTED/TESTED isolated preservation and source limits; root lint/build PASS; final public/V2 reruns, live comparison, push/report pending |
+| A16 | Preserve original data/accounts/permissions/V2/transfers/routes/history; no destructive migrations, guesswork, paid APIs or production release | IMPLEMENTED/TESTED isolated preservation and source limits; root lint/build PASS; final public81/81 + V2SQL67/UI19 + live read-only boundaries verified; protected push pending |
 
 ## Current work reconciliation: KEEP / ADJUST / REMOVE
 
@@ -223,17 +223,17 @@ Oct 7 initial review: combined specification and current source inspected before
 
 ## Final report checklist
 
-The checklist below separates covered implementation/evidence from root final report/push fields. The root is preparing `docs/BOSSBIMBZ-RELEASE.md`; no missing file is represented as complete.
+The checklist below separates covered implementation/evidence from root final report/push fields. `docs/BOSSBIMBZ-RELEASE.md` now covers all29 items and `BOSSBIMBZ-FILES.md` the104-file implementation manifest. Protected feature push remains pending root confirmation.
 
 | No. | Required final report item | Status |
 |---|---|---|
 | 1 | Baseline commit (supplied above; verify against Git) | Verified baseline |
 | 2 | Working branch (supplied above; verify against Git) | Verified feature branch |
-| 3 | Commits | Incremental existing commits verified; final commit/push pending |
-| 4 | Files changed | Working diff inspected; final committed file manifest pending |
-| 5 | Migrations | Covered DATABASE.md + FEED.md; final release inventory pending |
+| 3 | Commits | Implementation commits faaee14/ae66a1b/4015314/dee3815/ad66ac0/853a5ad verified; final evidence commit/protected push pending |
+| 4 | Files changed | 104-file implementation manifest BOSSBIMBZ-FILES.md covered; final evidence docs commit pending |
+| 5 | Migrations | Covered DATABASE.md + FEED.md; final release inventory covered RELEASE.md + BOSSBIMBZ-FILES.md |
 | 6 | Tables created | Covered additive namespaces/tables DATABASE.md + FEED.md |
-| 7 | Indexes | Covered DATABASE.md + FEED.md; final inventory pending |
+| 7 | Indexes | Covered DATABASE.md + FEED.md; final inventory covered RELEASE.md + BOSSBIMBZ-FILES.md |
 | 8 | Role changes | IMPLEMENTED/TESTED additive roles/guards31/routes73/domain60 |
 | 9 | Daily Report | IMPLEMENTED/TESTED API44/UI74/SQL47 |
 | 10 | Operational Requests | IMPLEMENTED/TESTED automatic/manual decisions + history |
@@ -246,16 +246,16 @@ The checklist below separates covered implementation/evidence from root final re
 | 17 | Bugs discovered | Covered REVIEW/DEBUG/FINAL-REVIEW docs |
 | 18 | Bugs fixed | Covered fixes and fresh GREEN evidence in FINAL-REVIEW |
 | 19 | Security review | Covered SECURITY + independent FINAL-REVIEW |
-| 20 | Regression review | Covered baseline/current suites; final public/V2/live comparison root pending |
+| 20 | Regression review | TESTED current V2SQL67/API38/finance11/UI19, public81/81 and live read-only boundary comparison; RELEASE.md |
 | 21 | UI review | Covered UI/COMPOSITION + actual styled browser evidence |
-| 22 | Tests (commands, outcomes, scope and limitations) | Covered exact counts/evidence boundaries; final pending outcomes root |
+| 22 | Tests (commands, outcomes, scope and limitations) | Covered final exact counts/evidence boundaries RELEASE.md; no pending local test outcome |
 | 23 | Lint | TESTED final root npm run lint PASS |
 | 24 | Build | TESTED root build PASS116 routes |
 | 25 | Supabase Free-plan review | Covered DATABASE/FEED/SOCIAL; no paid feature dependency |
 | 26 | Unresolved business questions | Confirmed listed business decisions; no stale business clarification gate |
 | 27 | External authorizations still required | Documented real provider approval/OAuth and production release gates; physical counts operational prerequisite |
-| 28 | Deployment steps; do not execute without release authorization | Covered DATABASE/FEED migration order; final coordinated sequence root report pending; NOT authorized |
-| 29 | Rollback/recovery notes; preserve data, audit and V2 compatibility | Covered DATABASE/FEED/V2 compatibility recovery; final root report pending |
+| 28 | Deployment steps; do not execute without release authorization | Covered coordinated sequence RELEASE.md; production NOT authorized |
+| 29 | Rollback/recovery notes; preserve data, audit and V2 compatibility | Covered final recovery sequence RELEASE.md; preserve audit/data/write boundaries |
 
 ## Milestone audit log
 
@@ -267,6 +267,13 @@ October 7 resumed Guardian audit: current feed SQL42, feed API25, content API24 
 
 ## Current final Guardian disposition — October 7
 
-This section supersedes pending interim notes above, which remain chronological audit history. All original-plus-addendum business requirements are **CONFIRMED**, implementation is present and domain/security/UI tests above cover the combined scope. All review code findings R01–R05 and FR01/FR02 are fixed/tested; independent `docs/BOSSBIMBZ-FINAL-REVIEW.md` reports no open code finding. Root fresh lint/build PASS116 routes and current GET smoke13+23 are supplied evidence; final public Playwright, current V2SQL/UI reruns, live read-only fingerprint comparison, final commit/feature push and 29-item release report remain root closing actions at this point.
+This section supersedes pending interim notes above, which remain chronological audit history. All original-plus-addendum business requirements are **CONFIRMED**, implementation is present and domain/security/UI tests above cover the combined scope. All review code findings R01–R05 and FR01/FR02 are fixed/tested; independent `docs/BOSSBIMBZ-FINAL-REVIEW.md` reports no open code finding. Root final lint/build PASS116 routes, GET smoke13+23, public Playwright81/81, V2SQL67/UI19 and retry11 are supplied evidence. Oct7 read-only production boundaries verified as documented below. Implementation commits through853a5ad, all29 RELEASE.md items and104-file manifest are covered. Only final evidence-doc commit/protected feature push verification remains root closing action at this point.
 
 No production migration/merge/deployment is authorized. Provider app/configuration/eligibility and real OAuth consent remain external; manual workflows work independently. Feed definition is resolved; physical opening counts are real administrator data-entry prerequisites, never a missing business approval or guessed stock. Required specialist responsibilities were performed in waves/reused reviewer roles under hard concurrency/thread/usage limits; this ledger does not claim ten independent agents. Hosted provider/live authenticated behavior is not established by local evidence. The combined goal must not be marked complete until authorized closing actions and final evidence are recorded.
+
+
+### Final test/report closing evidence
+
+Parent completed public Playwright **81/81 PASS** (1.6m), current V2 SQL **67 PASS**, mobile **19 PASS**, independent retry **11 PASS**. RELEASE.md is present and its29 required items/test table/release/recovery sequence were read; BOSSBIMBZ-FILES.md contains the104-file implementation manifest. Git implementation HEAD853a5ad and six implementation commits were verified locally. Root reports origin/main still protected574eee3; production expansion table count0, profiles3admin/2manager and farm policies25. Normalized V2 body MD5s exactly match protected migration012: write `1c417d229a4b79d598d1a9b0183b2b08`, date lock `959892dfccbb6336fb636faba1825d7c`. This is precise live schema/role/routine evidence, not a backup or a claim that every production table's content was independently rehashed in this closing review.
+
+Original and addendum code/review/local-test/report requirements are covered as one goal. Final evidence docs commit and protected feature remote push remain **PENDING** until root verifies them. No main merge, production migration/deployment, hosted provider consent or invented physical opening count is claimed.
