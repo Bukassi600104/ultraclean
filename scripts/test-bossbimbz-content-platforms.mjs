@@ -19,5 +19,3 @@ grant('tiktok');provider[0].data.scope='user.info.basic';assert.equal((await rou
 assert.equal(social.verifySocialState(social.socialState('actor','facebook')+'.extra','actor','facebook'),false);checks++;
 console.log(`PASS: ${checks} Facebook/TikTok actual handler OAuth, role, state, explicit account selection, reauthorization, encrypted token, sync dedup/manual protection and failure checks. Synthetic providers/database only.`)
 }finally{globalThis.fetch=original}
-
-

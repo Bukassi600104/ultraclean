@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import { feedStockWrite } from "@/lib/farm-feed-stock";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -36,10 +37,18 @@ export async function POST(request: NextRequest) {
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]), num_bags: z.number().positive(), feed_source: z.enum(["local", "foreign"]).default("local"), notes: z.string().max(1000).nullable().optional() });
+  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]), num_bags: z.number().positive(), feed_source: z.enum(["local", "foreign"]).default("local"), notes: z.string().max(1000).nullable().optional(), bags_opened:z.number().int().min(0).max(99999).optional() }).strict();
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
-  const { data, error } = await farmWrite(profile, "daily_feed", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || undefined });
+  const requestId=request.headers.get("X-Request-ID") || undefined;
+  if(parsed.data.bags_opened!==undefined){
+    if(!requestId||!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:"A valid X-Request-ID is required for safe feed retries"},{status:400});
+    const {data,error}=await feedStockWrite(profile,"create_daily_feed",parsed.data,{requestId});
+    if(error)return farmErrorResponse(error);
+    return NextResponse.json({data:data.daily_feed},{status:201});
+  }
+  // Compatibility for existing clients; the database enforces prospective stock controls.
+  const { data, error } = await farmWrite(profile, "daily_feed", "create", parsed.data, { requestId });
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });
 }

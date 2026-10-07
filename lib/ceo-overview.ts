@@ -22,10 +22,10 @@ export async function getCeoOverview(scope: OverviewScope) {
   section(async()=>{const [records,performance,leads,sales]=await Promise.all([all("content_records"),all("content_performance"),all("content_leads"),all("content_sales")]);return summarizeContent({records,performance,leads,sales},scope);}),
   section(async()=>{const [properties,units,rent,expenses,maintenance]=await Promise.all([all("property_properties"),all("property_units"),all("property_rent_payments"),all("property_expenses"),all("property_maintenance")]);return summarizeProperties({properties,units,rent,expenses,maintenance},scope);}),
   section(async()=>{
-   const [finance,inventory,supplies,movements,sales]=await Promise.all([getFarmFinance({date:scope.to,...scope}),all("farm_inventory"),all("farm_supply_inventory"),all("farm_inventory_transactions"),all("farm_sales")]);
+   const [finance,inventory,feedStock,movements,sales]=await Promise.all([getFarmFinance({date:scope.to,...scope}),all("farm_inventory"),section(()=>all("farm_feed_stock")),all("farm_inventory_transactions"),all("farm_sales")]);
    const mortality=activeMortality(movements as unknown as FarmInventoryTransaction[]).filter(r=>r.date>=scope.from&&r.date<=scope.to);
    const mortalityByProduct=Object.entries(mortality.reduce<Record<string,number>>((total,row)=>{total[row.product]=(total[row.product]??0)+Number(row.quantity);return total;},{})).map(([product,quantity])=>({product,quantity}));
-   return {finance,inventory,fish:inventory.filter(r=>r.product==="catfish"),livestock:inventory.filter(r=>["goat","ram","cattle","pig","chicken","turkey"].includes(String(r.product))),feed:supplies.filter(r=>r.category==="feed"&&!r.archived_at),mortality:mortalityByProduct,salesCount:sales.filter(r=>!r.voided_at&&String(r.date)>=scope.from&&String(r.date)<=scope.to).length,productionCost:{available:false,reason:"Production cost allocation has not been defined. Operational expenses are shown separately."}};
+   return {finance,inventory,fish:inventory.filter(r=>r.product==="catfish"),livestock:inventory.filter(r=>["goat","ram","cattle","pig","chicken","turkey"].includes(String(r.product))),feed:feedStock.data,feedError:feedStock.error,mortality:mortalityByProduct,salesCount:sales.filter(r=>!r.voided_at&&String(r.date)>=scope.from&&String(r.date)<=scope.to).length};
   }),
   section(async()=>{
    const [reports,requests]=await Promise.all([all("farm_daily_reports"),all("farm_operational_requests")]);
@@ -34,7 +34,9 @@ export async function getCeoOverview(scope: OverviewScope) {
   section(async()=>{
    const [leads,posts,appointments,dbaSales]=await Promise.all([all("leads"),all("blog_posts"),all("appointments"),all("dba_sales")]);
    const within=(date:unknown)=>typeof date==="string"&&date.slice(0,10)>=scope.from&&date.slice(0,10)<=scope.to;
-   return {leads:leads.filter(r=>within(r.created_at)).length,publishedPosts:posts.filter(r=>r.status==="published").length,pendingAppointments:appointments.filter(r=>r.status==="pending").length,dbaSalesCount:dbaSales.filter(r=>within(r.created_at)).length,recentLeads:[...leads].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5),leadsByStatus:Object.entries(leads.filter(r=>within(r.created_at)).reduce<Record<string,number>>((acc,row)=>{const key=String(row.status);acc[key]=(acc[key]??0)+1;return acc;},{})).map(([name,count])=>({name,count}))};
+   const periodLeads=leads.filter(r=>within(r.created_at));
+   const distribution=(field:string)=>Object.entries(periodLeads.reduce<Record<string,number>>((acc,row)=>{const key=String(row[field]);acc[key]=(acc[key]??0)+1;return acc;},{}));
+   return {leads:periodLeads.length,publishedPosts:posts.filter(r=>r.status==="published").length,pendingAppointments:appointments.filter(r=>r.status==="pending").length,dbaSalesCount:dbaSales.filter(r=>within(r.created_at)).length,recentLeads:[...leads].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5),leadsByStatus:distribution("status").map(([name,count])=>({name,count})),leadsByBusiness:distribution("business").map(([name,count])=>({name,count}))};
   })
  ]);
  return {scope,generatedAt:new Date().toISOString(),content,properties,farm,operations,crm};

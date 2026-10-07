@@ -31,6 +31,9 @@ import {
   UserCog,
   Sparkles,
   Package,
+  Building2,
+  Radio,
+  ClipboardList,
 } from "lucide-react";
 
 // ── Navigation structure ────────────────────────────────────────────────────
@@ -39,7 +42,7 @@ const NAV_SECTIONS = [
   {
     label: "Overview",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/dashboard", label: "CEO Dashboard", icon: LayoutDashboard },
     ],
   },
   {
@@ -65,6 +68,11 @@ const NAV_SECTIONS = [
       { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
       { href: "/dashboard/farm", label: "Farm", icon: Tractor },
       { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
+      { href: "/dashboard/farm/feed-stock", label: "Feed Inventory", icon: Package },
+      { href: "/dashboard/farm/daily-reports", label: "Daily Reports", icon: FileText },
+      { href: "/dashboard/farm/operational-requests", label: "Operational Requests", icon: ClipboardList },
+      { href: "/property", label: "Properties", icon: Building2 },
+      { href: "/content", label: "Content Manager", icon: Radio },
     ],
   },
   {
@@ -156,16 +164,18 @@ function NavContent({
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 group",
                     collapsed && "justify-center px-2",
-                    isActive
+                    isActive && pathname === "/dashboard"
+                      ? "bg-teal-400 text-[#1B1464] shadow-sm"
+                      : isActive
                       ? "bg-white/15 text-white"
-                      : "text-white/50 hover:bg-white/8 hover:text-white/80"
+                      : pathname === "/dashboard" ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-white/50 hover:bg-white/8 hover:text-white/80"
                   )}
                 >
                   <item.icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
                       isActive
-                        ? "text-white"
+                        ? pathname === "/dashboard" ? "text-[#1B1464]" : "text-white"
                         : "text-white/40 group-hover:text-white/70"
                     )}
                   />
@@ -263,6 +273,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isCeoHome = pathname === "/dashboard";
 
   return (
     <>
@@ -271,6 +282,7 @@ export function Sidebar() {
         className={cn(
           "hidden lg:flex flex-col border-r border-white/5 bg-[#1B1464] transition-all duration-200 relative shrink-0",
           collapsed ? "w-[68px]" : "w-60"
+          ,isCeoHome && "my-3 ml-3 rounded-2xl border-0 shadow-lg"
         )}
       >
         {/* Brand header */}
@@ -281,6 +293,7 @@ export function Sidebar() {
               variant="ghost"
               size="icon"
               onClick={() => setCollapsed(true)}
+              aria-label="Collapse navigation"
               className="h-7 w-7 text-white/30 hover:text-white/80 hover:bg-white/8 shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -294,6 +307,7 @@ export function Sidebar() {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
+            aria-label="Expand navigation"
             className="absolute -right-3 top-[68px] h-6 w-6 rounded-full border border-white/25 bg-[#1B1464] text-white/50 hover:text-white hover:bg-white/10 flex items-center justify-center z-20 transition-colors shadow-sm"
           >
             <ChevronRight className="h-3 w-3" />
@@ -312,7 +326,8 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden absolute left-3 top-3.5 z-50 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white shadow-sm rounded-lg h-9 w-9"
+            aria-label="Open navigation"
+            className={cn("lg:hidden absolute left-3 top-3.5 z-50 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white shadow-sm rounded-lg h-9 w-9", isCeoHome && "h-11 w-11")}
           >
             <Menu className="h-4 w-4" />
           </Button>

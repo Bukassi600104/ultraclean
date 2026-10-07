@@ -7,7 +7,7 @@ import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
 import { Menu } from "lucide-react";
 
-// ─── Page title map ───────────────────────────────────────────────────────────
+// Page title map
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
@@ -28,13 +28,14 @@ const PAGE_TITLES: Record<string, string> = {
   "/supplies": "Farm Supplies",
   "/inventory": "Inventory",
   "/daily-feed": "Daily Feed",
+  "/feed-stock": "Feed Inventory",
   "/stock": "Add Stock",
   "/mortality": "Mortality",
   "/records": "Past Records",
   "/cash": "Cash Summary",
 };
 
-// ─── Layout ───────────────────────────────────────────────────────────────────
+// Layout
 
 export default function ManagerLayout({
   children,

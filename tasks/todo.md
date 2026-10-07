@@ -2,7 +2,7 @@
 
 Baseline: 574eee3f6358c03707adfb547deb9d289b1aeaf0 (released Primefield V2).
 Branch: bossbimbz-operations-expansion. Production remains untouched in this phase.
-Source specification: docs/BOSSBIMBZ-SPEC.md. Requirement ledger: docs/BOSSBIMBZ-REQUIREMENTS.md.
+Combined source specifications: docs/BOSSBIMBZ-SPEC.md and docs/BOSSBIMBZ-ADDENDUM.md. Requirement ledger: docs/BOSSBIMBZ-REQUIREMENTS.md. This is one continuing goal; the October 7 confirmed rules supersede earlier ambiguity.
 
 ## Preservation and release boundary
 
@@ -14,7 +14,8 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 - [x] Read full specification and approved CEO composition reference.
 - [x] A — read-only live schema/roles/grants/Free-plan baseline; additive migration rehearsal and preservation tests (306 isolated assertions; final release security review remains).
 - [x] Shared access — add property_manager/content_manager without renaming admin/manager; preserve farm guards; real guard/middleware role tests (31 guards, 73 middleware checks).
-- [x] B — Daily Report draft/submission/review/history, atomic linked Operational Requests and CEO decision workflow; validate date/retry/revision boundaries (API34, styled browser24, preserved V2 suites).
+- [ ] B — reconcile Daily Report and requests with October 7 confirmed fields, repeated sick animals, action-taken metadata and water/pump request categories; keep verified draft/review/retry foundation.
+- [ ] Feed — inspect live legacy bag/unit completeness read-only; build prospective movement-based bags with authorized opening counts, atomic receipts/new-bag use and daily-feed/report linkage; never infer legacy opening quantities.
 - [ ] C — complete Property Manager properties/units/tenancies/rent/expenses/vacancy/maintenance/repair/history and CEO data; isolated role/finance/UI regression.
 - [ ] D — complete Content Manager records/publication/performance/leads/mentorship/affiliate data and manual fallback; isolated role/aggregate/UI regression.
 - [ ] Social — free official Meta Instagram first, Facebook/TikTok where documented access permits; server-only OAuth/encrypted tokens and honest authorization/configuration states.
@@ -28,12 +29,14 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 
 - Dedicated modules use /property and /content paths with their own login/layout/access guards; existing domains/routes keep behavior. Optional new subdomains require external DNS authorization and are not assumed.
 - New property/content records require explicit ISO currency; CEO financial summaries group currencies rather than converting or mixing them.
-- Farm finance reuses getFarmFinance. Separate owner funds and sales cash; no invented combined wallet. Feed quantities retain actual item units; production cost is unavailable until an allocation definition exists.
+- Farm finance reuses getFarmFinance. Separate owner funds and sales cash; no invented combined wallet. Feed Inventory means authoritative bags by feed type, established by authorized real opening counts. Production Cost is the same as Expenses and must be removed as a separate metric/model.
 - Content follower metrics use latest platform-level snapshots; reach is labelled with its measurement period/source, never claimed as deduplicated people. Social access requires CEO/provider OAuth authorization; complete manual tracking works independently.
 - Reference influences composition, not color/content. Reference path: C:/Users/USER/Pictures/Screenshots/Screenshot 2026-10-05 121245.png.
 - User explicitly requires specialized agents; delegate disjoint ownership in waves within available concurrency. Test and review each integrated slice before treating its checkpoint complete.
 
 ## Execution ledger
+
+2026-10-07 combined-goal reconciliation: KEEP safe schema/access/property/content/CEO composition and audited requests. ADJUST every pond/vat to Water Quality, Mortality, Feed and General Remarks; keep separate animal groups; replace the single sick-animal note with repeatable affected-animal records. ADJUST feed from supplies display to authoritative prospective bags with real opening authorization and one bag-use source linked to daily activity. ADJUST linked requests to retain issue, action taken, submitter/date/time and water/pump categories. REMOVE the separate unavailable Production Cost display/model. All listed business approvals and template questions are CONFIRMED, not awaiting clarification. Earlier completed checks remain evidence of the baseline, not proof that the addendum is complete. No production migration or deployment is authorized.
 
 2026-10-05: Baseline fetched and clean; feature branch created. Goal Guardian, Production Safety and Database/Supabase agents started. Live Supabase identity confirmed read-only; database about 14.8 MB. Free organization confirmed by database agent. Production mutations: none. Existing auth has only admin/manager and needs additive landing/route guards for new roles.
 

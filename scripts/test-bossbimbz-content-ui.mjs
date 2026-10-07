@@ -16,7 +16,3 @@ fail=true;await page.goto(origin);await page.getByRole('alert').waitFor();assert
 for(const kind of ['records','performance','leads','sales','history','integrations']){await page.goto(origin+`/?kind=${kind}`);await page.waitForTimeout(100);for(const width of [390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`${kind} ${width} overflow`);await page.screenshot({path:path.join(artifacts,`${kind}-${width}.png`),fullPage:true});checks++}}
 await page.goto(origin+'/?kind=shell');await page.getByRole('button',{name:'Sign out',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(await page.evaluate(()=>window.redirected),undefined);checks++;await page.evaluate(()=>{window.logoutSuccess=true});await page.getByRole('button',{name:'Sign out',exact:true}).click();await page.waitForFunction(()=>window.redirected==='/content/login');checks++;assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual content React/browser checks, project Tailwind CSS. CRUD/revision/history/manual metrics/error/empty and 390/768/1440 screens. Screenshots: ${artifacts}`)
 }catch(e){console.error({faults,body:await page.locator('body').innerText()});throw e}finally{await browser.close();await new Promise(r=>server.close(r))}
-
-
-
-

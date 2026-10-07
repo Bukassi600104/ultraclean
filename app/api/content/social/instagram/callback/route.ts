@@ -7,6 +7,3 @@ export async function GET(request:NextRequest){let connected:Record<string,unkno
  // Reauthorization invalidates the old token; retrieve only its non-secret revision metadata through a guarded RPC.
  await socialWrite(actor.id,'token',{integration_id:connected.id,ciphertext:encryptSocialToken(token.access_token),expires_at:expires},existing||undefined);
  const response=NextResponse.redirect(new URL('/content/integrations?connected=instagram',request.url));response.cookies.set('content_instagram_state','',{httpOnly:true,secure:true,sameSite:'lax',maxAge:0,path:'/api/content/social/instagram'});return response}catch(e){if(connected&&actorId){try{await socialWrite(actorId,'integration',{status:'error',last_error:'Authorization could not be completed. Please reconnect.'},connected)}catch{}}return contentError(e)}}
-
-
-
