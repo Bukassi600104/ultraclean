@@ -23,7 +23,7 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 - [x] UI review — desktop/tablet/mobile, actual data/empty/loading/error states, accessible forms, long text and navigation.
 - [x] Security/bug hunt — all cross-role API/RLS denials, duplicate/stale/bad input/date/offline paths, tokens/provider failures, totals and historical records.
 - [x] Final tests, lint, build and full preservation/diff review; document exact evidence.
-- [ ] Commit incremental verified slices, push feature branch with automatic deployment disabled, prepare all 29 release report items.
+- [x] Commit incremental verified slices, push feature branch with automatic deployment disabled, prepare all 29 release report items.
 
 ## Accepted implementation rulings
 
@@ -46,7 +46,7 @@ Do not replay or weaken migrations 012/013. Preserve existing accounts, URLs, re
 
 ---
 
-Closing verification October 7: combined source implementation853a5ad, report74/feed26/property38/content51/CEO35 browser checks; guard31/middleware73/domain60; foundation308/feed47/V2SQL67; real PostgreSQL multi-connection16; originalV2API38/finance11/mobile19; publicPlaywright81/81; GET smoke13+23; lint/build116 all pass. Read-only live V2 body hashes match protectedmigration012; roles3admin2manager,policies25,expansiontables0. All29 release report items are covered in docs/BOSSBIMBZ-RELEASE.md. Production/OAuth/count entry remain separately gated. Feature push awaits final confirmation.
+Closing verification October 7: combined source implementation853a5ad, report74/feed26/property38/content51/CEO35 browser checks; guard31/middleware73/domain60; foundation308/feed47/V2SQL67; real PostgreSQL multi-connection16; originalV2API38/finance11/mobile19; publicPlaywright81/81; GET smoke13+23; lint/build116 all pass. Read-only live V2 body hashes match protectedmigration012; roles3admin2manager,policies25,expansiontables0. All29 release report items are covered in docs/BOSSBIMBZ-RELEASE.md. Production/OAuth/count entry remain separately gated. Protected feature push verified at7860f0b: remote branch matches local, remote main remains574eee3, Vercel feature deployments0 and existing main deployment unchanged. Final documentation confirmation follows; no application source change.
 
 ## Archived previous work
 

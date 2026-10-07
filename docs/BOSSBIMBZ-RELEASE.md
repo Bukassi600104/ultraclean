@@ -4,6 +4,8 @@ October 7, 2026. The original specification and Bimbo's confirmed addendum are o
 
 The feature branch has automatic Vercel deployments disabled. Nothing has been merged to main, deployed, migrated in production, or used to create/reset/reassign production accounts. Social grants and physical opening counts are never fabricated.
 
+Protected push verified: GitHub feature branch matches local evidence commit `7860f0b5ef1e44d3b9d6242d3afe0d3f3124c666`; remote main remains the protected baseline. After the push, Vercel reports zero deployments for this feature branch and the same existing main deployment `dpl_2zk4rJGHcd2x4QYjrLvP6jh4R8dX`. The final push-confirmation documentation commit follows that evidence commit without changing application code.
+
 ## Required 29-item report
 
 | No. | Item | Evidence / disposition |
