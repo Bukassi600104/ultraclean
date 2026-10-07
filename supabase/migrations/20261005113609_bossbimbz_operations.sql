@@ -75,7 +75,7 @@ begin
  if p_kind='tenancy' then
   v_unit:=(v_result->>'unit_id')::uuid;
   select to_jsonb(u) into v_unit_before from property_units u where id=v_unit;
-  update property_units set status=case when exists(select 1 from property_tenancies where unit_id=v_unit and status='active') then 'occupied' else 'vacant' end,revision=revision+1,updated_at=now() where id=v_unit returning to_jsonb(property_units.*) into v_unit_after;
+  update property_units set status=case when exists(select 1 from property_tenancies where unit_id=v_unit and status='active') then 'occupied' when status='unavailable' then 'unavailable' else 'vacant' end,revision=revision+1,updated_at=now() where id=v_unit returning to_jsonb(property_units.*) into v_unit_after;
   insert into property_events(record_type,record_id,operation,actor_id,before_value,after_value,reason) values('unit',v_unit,'occupancy',p_actor,v_unit_before,v_unit_after,p_reason);
  end if;
  insert into property_events(record_type,record_id,operation,actor_id,before_value,after_value,reason) values(p_kind,(v_result->>'id')::uuid,p_operation,p_actor,v_before,v_result,p_reason);

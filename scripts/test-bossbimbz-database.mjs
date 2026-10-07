@@ -80,6 +80,11 @@ try{
  await deny(()=>write('property',property,'expense','create',{property_id:another.id,unit_id:unit.id,category:'repair',amount:100,currency:'NGN',expense_date:date}),'23503');
  await deny(()=>write('property',property,'tenancy','update',{expected_revision:0,status:'ended',end_date:date},tenancy.id,'Ended too early'),'23514');
  await write('property',property,'tenancy','update',{expected_revision:0,status:'ended',end_date:'2026-10-31'},tenancy.id,'Ended');equal(await scalar('select status from property_units where id=$1',[unit.id]),'vacant');
+ const unavailableUnit=await write('property',property,'unit','create',{property_id:p.id,name:'Unavailable unit',status:'unavailable'});
+ const historicalTenancy=await write('property',property,'tenancy','create',{...tenancyPayload,unit_id:unavailableUnit.id,status:'ended',end_date:'2026-10-31'});
+ equal(await scalar('select status from property_units where id=$1',[unavailableUnit.id]),'unavailable');
+ await write('property',property,'tenancy','update',{expected_revision:0,tenant_name:'Correct historical name'},historicalTenancy.id,'Correct historical name');
+ equal(await scalar('select status from property_units where id=$1',[unavailableUnit.id]),'unavailable');
  await deny(()=>write('property',property,'property','update',{expected_revision:0,currency:'USD'},p.id,'Change'),'23514');
  await deny(()=>write('property',property,'property','update',{expected_revision:0,created_by:farm},p.id,'Tamper'),'22023');
  const record=await write('content',content,'record','create',{title:'Test content',platform:'instagram',content_type:'reel'});equal(record.status,'draft');
