@@ -15,6 +15,7 @@ const source = ts.transpileModule(readFileSync('middleware.ts', 'utf8'), {
 }).outputText;
 new Function('require', 'module', 'exports', source)((name) => {
   if (name === 'next/server') return { NextResponse: {
+    next: () => response,
     redirect: (url) => ({ kind: 'redirect', url: new URL(String(url)) }),
     rewrite: (url) => ({ kind: 'rewrite', url: new URL(String(url)) }),
   } };
@@ -84,6 +85,7 @@ await test('suspended farm host signs out', async () => {
   const result = await module.exports.middleware(request('/sales', 'farm.primefieldagric.com'));
   assert.equal(result.kind, 'redirect'); assert.equal(signedOut, 1);
 });
+profile=null;for(const host of ['localhost','farm.primefieldagric.com','leads.ultratidycleaning.com'])for(const asset of ['/farm-manifest.json','/property-manifest.json','/content-manifest.json','/property-sw.js','/content-sw.js'])await test('public install asset '+host+asset,async()=>{assert.equal((await module.exports.middleware(request(asset,host))).kind,'next')});
 if (failures.length) {
   console.error(`FAIL: ${failures.length} route checks; ${checks} passed. Actual middleware with synthetic sessions only.`);
   for (const failure of failures) console.error(failure);

@@ -4,6 +4,11 @@ import { updateSession } from "@/lib/supabase/middleware";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public installation metadata/scripts must not be rewritten into protected apps.
+  if (["/manifest.json", "/farm-manifest.json", "/property-manifest.json", "/content-manifest.json", "/property-sw.js", "/content-sw.js"].includes(pathname)) {
+    return NextResponse.next();
+  }
+
   // Production subdomain rewriting
   const hostname = request.headers.get("host") || "";
 
