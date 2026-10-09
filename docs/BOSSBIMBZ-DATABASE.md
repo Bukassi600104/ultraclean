@@ -1,6 +1,6 @@
 # BossBimbz database expansion
 
-Prepared and rehearsed; **not applied to production**. Baseline branch `bossbimbz-operations-expansion`, commit `574eee3f6358c03707adfb547deb9d289b1aeaf0`. Migrations 012 and 013 remain unchanged and must never be replayed on the existing project.
+**Production activation verified October 9:** All four expansion migrations are installed through the Supabase plugin, historical public-table fingerprints were preserved, and the coordinated farm-write pause was removed. See [production release evidence](BOSSBIMBZ-MOBILE-RELEASE.md). The inspection below records the historical preparation baseline, branch `bossbimbz-operations-expansion`, commit `574eee3f6358c03707adfb547deb9d289b1aeaf0`. Migrations 012 and 013 remain unchanged and must never be replayed on the existing project.
 
 ## Production inspection
 
