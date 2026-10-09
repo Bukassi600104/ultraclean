@@ -1,5 +1,7 @@
 # Bossbimbz combined expansion release report
 
+**October 9 production update:** The user authorized production release on October 8. The Supabase expansion migrations are installed, the compatible Vercel application has been promoted, and the farm-write pause has been removed. See [the mobile and production release evidence](BOSSBIMBZ-MOBILE-RELEASE.md). The October 7 report below is historical pre-release evidence; its pending release gates are superseded by this update. Real feed opening counts and external social authorization remain operational setup, not fabricated release data.
+
 October 7, 2026. The original specification and Bimbo's confirmed addendum are one implementation and acceptance goal. Existing work was retained and reconciled, not restarted. **Code and local verification are complete; production activation remains separately authorized.**
 
 The feature branch has automatic Vercel deployments disabled. Nothing has been merged to main, deployed, migrated in production, or used to create/reset/reassign production accounts. Social grants and physical opening counts are never fabricated.
