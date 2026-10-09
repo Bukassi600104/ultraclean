@@ -78,7 +78,7 @@ const NAV_SECTIONS = [
   {
     label: "Team",
     items: [
-      { href: "/dashboard/managers", label: "Farm Managers", icon: UserCog },
+      { href: "/dashboard/managers", label: "Manage Accounts", icon: UserCog },
     ],
   },
 ];

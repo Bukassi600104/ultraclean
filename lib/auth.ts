@@ -50,6 +50,8 @@ export async function getCurrentUser() {
     } = await supabase.auth.getUser();
 
     if (!user) return null;
+    if (user.app_metadata?.manager_access_removed === true) return null;
+    if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return null;
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -66,7 +68,7 @@ export async function getCurrentUser() {
 
 export async function requireAdmin() {
   const profile = await getCurrentUser();
-  if (!profile || profile.role !== "admin") {
+  if (!profile || profile.role !== "admin" || profile.suspended === true) {
     throw new Error("Unauthorized: admin access required");
   }
   return profile;

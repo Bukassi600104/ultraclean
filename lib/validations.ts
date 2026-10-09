@@ -191,6 +191,7 @@ export const changePasswordSchema = z.object({
 
 // ── Manager user management ──
 export const managerCreateSchema = z.object({
+  role: z.enum(["manager", "property_manager", "content_manager"]).default("manager"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   password: z
@@ -209,7 +210,7 @@ export const managerUpdateSchema = z.object({
     .optional(),
   name: z.string().min(2).optional(),
   suspended: z.boolean().optional(),
-});
+}).strict().refine((value) => Object.values(value).some((entry) => entry !== undefined), "Provide an account change");
 
 export const managerResetPasswordSchema = z.object({
   password: z

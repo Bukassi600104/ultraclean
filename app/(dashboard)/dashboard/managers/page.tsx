@@ -23,13 +23,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { managerApps, managerRoles, type ManagerRole } from "@/lib/manager-accounts";
 import { Plus, Trash2, KeyRound, UserCircle2, Loader2, Eye, EyeOff, Ban, UserCheck } from "lucide-react";
 
 interface Manager {
   id: string;
   name: string | null;
   email: string | null;
-  role: "manager";
+  role: ManagerRole;
+  access_removed?: boolean;
   created_at: string;
   suspended: boolean | null;
 }
@@ -37,6 +39,9 @@ interface Manager {
 export default function ManagersPage() {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [appFilter, setAppFilter] = useState<ManagerRole | "all">("all");
+  const [addRole, setAddRole] = useState<ManagerRole>("manager");
 
   // Add dialog
   const [showAdd, setShowAdd] = useState(false);
@@ -63,12 +68,14 @@ export default function ManagersPage() {
 
   const fetchManagers = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const res = await fetch("/api/managers");
-      if (res.ok) {
-        const data = await res.json();
-        setManagers(data);
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unable to load accounts");
+      setManagers(data);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load accounts. Please retry.");
     } finally {
       setLoading(false);
     }
@@ -103,6 +110,7 @@ export default function ManagersPage() {
           name: addName.trim(),
           email: addEmail.trim(),
           password: addPassword,
+          role: addRole,
         }),
       });
       const data = await res.json();
@@ -116,6 +124,7 @@ export default function ManagersPage() {
       setAddEmail("");
       setAddPassword("");
       setAddConfirmPassword("");
+      setAddRole("manager");
       setShowAddPassword(false);
       setShowAddConfirm(false);
       fetchManagers();
@@ -134,13 +143,15 @@ export default function ManagersPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        toast.success(`${deleteTarget.name || "Manager"} has been removed`);
+        toast.success(`Access removed for ${deleteTarget.name || "Manager"}`);
         setDeleteTarget(null);
         fetchManagers();
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to delete manager.");
       }
+    } catch {
+      toast.error("Network error. Refresh accounts to check the result before retrying.");
     } finally {
       setDeleteLoading(false);
     }
@@ -163,6 +174,8 @@ export default function ManagersPage() {
         const data = await res.json();
         toast.error(data.error || "Failed to update password.");
       }
+    } catch {
+      toast.error("Network error. Please refresh and retry.");
     } finally {
       setResetLoading(false);
     }
@@ -187,6 +200,8 @@ export default function ManagersPage() {
         const data = await res.json();
         toast.error(data.error || "Failed to update manager.");
       }
+    } catch {
+      toast.error("Network error. Refresh accounts to check the current status.");
     } finally {
       setSuspendLoading(false);
     }
@@ -202,8 +217,8 @@ export default function ManagersPage() {
   return (
     <div className="flex flex-col min-h-full">
       <DashboardHeader
-        title="Farm Managers"
-        subtitle="Manage who can access the Primefield Farm Portal"
+        title="Manage Accounts"
+        subtitle="Staff access for Farm, Property and Content"
         actions={
           <Button onClick={() => setShowAdd(true)} size="sm">
             <Plus className="h-4 w-4 mr-1.5" />
@@ -213,7 +228,15 @@ export default function ManagersPage() {
       />
 
       <div className="flex-1 p-6 max-w-3xl">
-        {loading ? (
+        <div className="mb-5 space-y-1.5">
+          <Label htmlFor="account-filter">Filter by app</Label>
+          <select id="account-filter" value={appFilter} onChange={(event) => setAppFilter(event.target.value as ManagerRole | "all")} className="h-11 w-full rounded-md border bg-white px-3 text-sm">
+            <option value="all">All apps</option>
+            {managerRoles.map((role) => <option key={role} value={role}>{managerApps[role].label}</option>)}
+          </select>
+        </div>
+        {loadError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError}<Button className="ml-3" variant="outline" onClick={fetchManagers}>Retry</Button></div> :
+        loading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-8">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading managers...
@@ -223,7 +246,7 @@ export default function ManagersPage() {
             <UserCircle2 className="h-10 w-10 mx-auto text-gray-300 mb-3" />
             <p className="text-sm font-medium text-gray-500">No managers yet</p>
             <p className="text-xs text-gray-400 mt-1">
-              Add a manager so they can log in to the Farm Portal
+              Add a staff account with access to the appropriate app
             </p>
             <Button
               size="sm"
@@ -237,10 +260,11 @@ export default function ManagersPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {managers.map((m) => (
+            {appFilter !== "all" && !managers.some((m) => m.role === appFilter) && <p className="rounded-lg border bg-white p-5 text-sm text-gray-600">No accounts for this app yet.</p>}
+            {managers.filter((m) => appFilter === "all" || m.role === appFilter).map((m) => (
               <div
                 key={m.id}
-                className="flex items-center gap-4 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm"
+                className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm"
               >
                 <div className="h-10 w-10 rounded-full bg-[#1B4332]/10 flex items-center justify-center shrink-0">
                   <span className="text-sm font-bold text-[#1B4332]">
@@ -252,18 +276,19 @@ export default function ManagersPage() {
                     <p className="text-sm font-semibold text-gray-900 truncate">
                       {m.name || "—"}
                     </p>
-                    {m.suspended && (
+                    {(m.suspended || m.access_removed) && (
                       <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600 border border-red-100 shrink-0">
-                        Suspended
+                        {m.access_removed ? "Access removed" : "Suspended"}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-gray-500 truncate">{m.email}</p>
+                  <p className="text-xs font-semibold text-gray-700 mt-1">{managerApps[m.role].label}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
                     Added {formatDate(m.created_at)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                {!m.access_removed && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
                     variant="outline"
@@ -271,7 +296,7 @@ export default function ManagersPage() {
                       setResetTarget(m);
                       setNewPassword("");
                     }}
-                    className="h-8 px-3 text-xs gap-1.5"
+                    className="min-h-11 px-3 text-xs gap-1.5"
                   >
                     <KeyRound className="h-3.5 w-3.5" />
                     Reset Password
@@ -282,7 +307,7 @@ export default function ManagersPage() {
                       variant="outline"
                       onClick={() => handleSuspend(m, false)}
                       disabled={suspendLoading}
-                      className="h-8 px-3 text-xs gap-1.5 text-green-600 hover:text-green-700 hover:border-green-200"
+                      className="min-h-11 px-3 text-xs gap-1.5 text-green-800 hover:text-green-900 hover:border-green-200"
                     >
                       <UserCheck className="h-3.5 w-3.5" />
                       Reactivate
@@ -293,7 +318,7 @@ export default function ManagersPage() {
                       variant="outline"
                       onClick={() => handleSuspend(m, true)}
                       disabled={suspendLoading}
-                      className="h-8 px-3 text-xs gap-1.5 text-amber-600 hover:text-amber-700 hover:border-amber-200"
+                      className="min-h-11 px-3 text-xs gap-1.5 text-amber-800 hover:text-amber-900 hover:border-amber-200"
                     >
                       <Ban className="h-3.5 w-3.5" />
                       Suspend
@@ -303,12 +328,12 @@ export default function ManagersPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setDeleteTarget(m)}
-                    className="h-8 px-3 text-xs gap-1.5 text-red-500 hover:text-red-600 hover:border-red-200"
+                    className="min-h-11 px-3 text-xs gap-1.5 text-red-700 hover:text-red-800 hover:border-red-200"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Remove
+                    Remove access
                   </Button>
-                </div>
+                </div>}
               </div>
             ))}
           </div>
@@ -320,13 +345,9 @@ export default function ManagersPage() {
             How managers log in
           </p>
           <p className="text-xs text-gray-600">
-            Managers visit{" "}
-            <span className="font-mono font-semibold">
-              primefieldagric.com
-            </span>{" "}
-            and sign in with their email and password. Share the credentials
-            securely — they cannot see or delete historical data.
+            Each account can access its assigned app. Share its email, password and the appropriate login link securely.
           </p>
+          <ul className="mt-3 space-y-2 text-xs">{managerRoles.map((role) => <li key={role}><a className="font-semibold underline break-all" href={managerApps[role].login}>{managerApps[role].label}: {managerApps[role].login}</a></li>)}</ul>
         </div>
       </div>
 
@@ -343,14 +364,22 @@ export default function ManagersPage() {
             setShowAddPassword(false);
             setShowAddConfirm(false);
             setAddError("");
+            setAddRole("manager");
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Farm Manager</DialogTitle>
+            <DialogTitle>Add Staff Account</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="m-app">App access</Label>
+              <select id="m-app" value={addRole} onChange={(event) => setAddRole(event.target.value as ManagerRole)} className="h-11 w-full rounded-md border bg-white px-3 text-sm">
+                {managerRoles.map((role) => <option key={role} value={role}>{managerApps[role].label}</option>)}
+              </select>
+              <p className="text-xs text-muted-foreground">Access is limited to this app. This does not grant CEO access.</p>
+            </div>
             {addError && (
               <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
                 {addError}
@@ -461,12 +490,12 @@ export default function ManagersPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove manager?</AlertDialogTitle>
+            <AlertDialogTitle>Remove account access?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete{" "}
+              This will permanently remove access for{" "}
               <strong>{deleteTarget?.name || deleteTarget?.email}</strong>&apos;s
-              account. They will no longer be able to log in to the Farm Portal.
-              Their past entries will not be affected.
+              account. They will no longer be able to use their assigned app.
+              Their historical entries and attribution will be preserved. The email remains reserved. Removed access cannot be reactivated here; use Suspend for a temporary restriction.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -481,7 +510,7 @@ export default function ManagersPage() {
               {deleteLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Yes, Remove"
+                "Yes, Remove Access"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

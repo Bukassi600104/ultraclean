@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 const require=createRequire(import.meta.url),ts=require('typescript');
-let profile=null;
+let profile=null,metadata={},bannedUntil;
 const cache=new Map();
 function load(filename){
  const file=path.resolve(filename);if(cache.has(file))return cache.get(file).exports;
@@ -11,7 +11,7 @@ function load(filename){
  const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
  function resolve(name){
   if(name==='next/headers')return {cookies:()=>({getAll:()=>[],set:()=>{}})};
-  if(name==='@supabase/ssr')return {createServerClient:()=>({auth:{getUser:async()=>({data:{user:profile?{id:profile.id}:null}})},from:()=>({select:()=>({eq:()=>({single:async()=>({data:profile})})})})})};
+  if(name==='@supabase/ssr')return {createServerClient:()=>({auth:{getUser:async()=>({data:{user:profile?{id:profile.id,app_metadata:metadata,banned_until:bannedUntil}:null}})},from:()=>({select:()=>({eq:()=>({single:async()=>({data:profile})})})})})};
   if(name.startsWith('@/'))return load(name.slice(2)+'.ts');
   if(name.startsWith('.'))return load(path.join(path.dirname(file),name)+'.ts');
   return require(name);
@@ -33,4 +33,9 @@ for(const role of ['admin','manager','property_manager','content_manager']){
 }
 for(const guard of Object.values(guards)){profile=null;await assert.rejects(guard,/Unauthorized/);checks++;}
 for(const role of ['manager','property_manager','content_manager']){profile={id:'00000000-0000-4000-8000-000000000001',role,suspended:true};for(const guard of [auth.requireManager,auth.requirePropertyManager,auth.requireContentManager]){await assert.rejects(guard,/Unauthorized/);checks++;}}
-console.log(`PASS: ${checks} actual server auth guard checks; four roles, anonymous and suspended access. Synthetic session only.`);
+profile={id:'admin',role:'admin',suspended:true};await assert.rejects(auth.requireAdmin,/Unauthorized/);checks++;
+for(const role of ['manager','property_manager','content_manager']){
+ profile={id:'staff',role,suspended:false};metadata={manager_access_removed:true};await assert.rejects(guards[({manager:'farm',property_manager:'property',content_manager:'content'})[role]],/Unauthorized/);checks++;
+ metadata={};bannedUntil='2099-01-01T00:00:00Z';await assert.rejects(guards[({manager:'farm',property_manager:'property',content_manager:'content'})[role]],/Unauthorized/);checks++;bannedUntil=undefined;
+}
+console.log(`PASS: ${checks} actual server auth guard checks; four roles, anonymous, suspension, removed access and Auth bans. Synthetic session only.`);
