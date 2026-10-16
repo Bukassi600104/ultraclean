@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import { AlertTriangle, X } from "lucide-react";
 
+import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
+
 type Product = FarmProduct;
 
 interface FormValues {
@@ -78,6 +80,7 @@ export default function SaleProductPage() {
   const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
 
+  const [stockGroup,setStockGroup] = useState("");
   const [form, setForm] = useState<FormValues>({
     date: "",
     quantity: "",
@@ -171,6 +174,7 @@ export default function SaleProductPage() {
       const payload: Record<string, unknown> = {
         date: form.date,
         product: productKey,
+        stock_group_id: stockGroup||null,
         pricing_basis: config.pricingBasis,
         request_id: requestId,
         payment_method: form.payment_method,
@@ -256,6 +260,7 @@ export default function SaleProductPage() {
       )}
 
       {/* Form */}
+      <LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
         {/* 1. Date */}
         <div>

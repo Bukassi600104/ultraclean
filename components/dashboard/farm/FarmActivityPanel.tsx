@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FARM_PRODUCTS } from "@/lib/farm-products";
+
+import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
 type FarmRecord = Record<string, unknown>;
 type Field = { key: string; label: string; numeric?: boolean; choices?: string[]; type?: string };
@@ -27,12 +29,15 @@ function timestamp(value: string) { return new Date(value).toLocaleString("en-GB
 export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recordType:string;record:object;onSaved?:()=>void;requestId?:string}) {
   const row=record as FarmRecord;
   const [open,setOpen]=useState(false);const [saving,setSaving]=useState(false);
+  const [stockGroup,setStockGroup]=useState("");const [categoryEdited,setCategoryEdited]=useState(false);
+  const chooseCategory=useCallback((id:string)=>{setStockGroup(id);setCategoryEdited(true);setRetryId(crypto.randomUUID());},[]);
   const [reason,setReason]=useState("");const [values,setValues]=useState<Record<string,string>>({});
   const [operation,setOperation]=useState("update");const [retryId,setRetryId]=useState("");
   const editFields=recordType==='sale'&&!row.pricing_basis
     ? [...fields.sale.filter(f=>f.key!=="pricing_basis"),{key:"total_amount",label:"Historical recorded amount (₦)",numeric:true}]
     : fields[recordType]??[];
   function start() {
+    setStockGroup(String(row.stock_group_id??""));setCategoryEdited(false);
     setValues(Object.fromEntries(editFields.map(f=>[f.key,String(f.key==='target_quantity'?row.current_stock??0:f.key==='quantity_change'&&recordType==='supply'?0:row[f.key]??"")])));
     setReason("");setOperation("update");setRetryId(crypto.randomUUID());setOpen(true);
   }
@@ -46,6 +51,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
       if(field.numeric&&!Number.isFinite(Number(value)))return toast.error("Enter valid numeric values");
       changes[field.key]=field.numeric?Number(value):value;
     }
+    if(operation==="update"&&categoryEdited)changes.stock_group_id=stockGroup||null;
     setSaving(true);
     try{
       const response=await fetch(requestId?`/api/farm/corrections/${requestId}`:"/api/farm/corrections/admin",{
@@ -64,6 +70,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
       {recordType==='sale'&&!row.pricing_basis&&<p className="text-sm text-gray-500">This is a legacy sale. Its historical amount and stock movements are preserved unless you explicitly correct the amount.</p>}
       <Label>Action<select className="block border rounded p-2 w-full mt-1" value={operation} onChange={e=>{setOperation(e.target.value);setRetryId(crypto.randomUUID());}}><option value="update">Correct details</option>{['sale','expense','fund'].includes(recordType)&&<option value="void">Void record</option>}{recordType==='supply'&&<option value="archive">Remove from active supplies</option>}</select></Label>
       {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} step={field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
+      {operation==="update"&&(["inventory","inventory_transaction"].includes(recordType)||(recordType==="sale"&&!!row.pricing_basis))&&<LivestockGroupPicker product={values.product||String(row.product)} value={stockGroup} onChange={chooseCategory}/>}
       <Label>Reason<Textarea value={reason} maxLength={1000} onChange={e=>{setReason(e.target.value);setRetryId(crypto.randomUUID());}}/></Label>
       <Button disabled={saving} onClick={save}>{saving?"Saving...":"Save correction"}</Button>
     </DialogContent></Dialog></>;

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
+import { classificationFields } from "@/lib/farm-livestock-validation";
 import { FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
+  ...classificationFields,
   product: z.enum(FARM_PRODUCT_KEYS),
   quantity: z.number().positive("Quantity must be positive"),
   unit_price: z.number().positive("Unit price must be positive"),
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("farm_sales")
-    .select("*", { count: "exact" }).is("voided_at", null);
+    .select("*,stock_group:farm_livestock_groups(*)", { count: "exact" }).is("voided_at", null);
 
   if (date) query = query.eq("date", date);
   const product = searchParams.get("product");

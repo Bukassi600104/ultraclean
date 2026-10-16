@@ -1,5 +1,7 @@
 "use client";
+import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 
+import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { useEffect, useState } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +93,7 @@ export default function FarmInventoryPage() {
     <>
       <DashboardHeader title="Farm Inventory" />
       <div className="p-4 lg:p-8 space-y-6">
+      <LivestockInventoryBreakdown canManage refreshKey={refresh} />
         <Link
           href="/dashboard/farm"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
@@ -225,7 +228,7 @@ export default function FarmInventoryPage() {
                               {formatDate(tx)}
                             </TableCell>
                             <TableCell className="capitalize">
-                              {tx.product}
+                              {tx.product}{tx.stock_group&&<span className="block text-xs normal-case text-gray-600">{livestockGroupLabel(tx.stock_group)}</span>}
                             </TableCell>
                             <TableCell>
                               <Badge

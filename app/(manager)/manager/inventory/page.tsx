@@ -1,5 +1,6 @@
 "use client";
 
+import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { useEffect, useState } from "react";
 import { Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -54,6 +55,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-5">
+      <LivestockInventoryBreakdown />
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Inventory</h1>
         <button onClick={loadData} className="p-2 rounded-xl border border-gray-200 text-gray-500">

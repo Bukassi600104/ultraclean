@@ -86,6 +86,8 @@ export interface Profile {
 }
 
 export interface FarmSale {
+  stock_group_id?: string | null;
+  stock_group?: import("@/lib/farm-livestock-categories").LivestockGroup | null;
   id: string;
   date: string;
   customer_name: string;
@@ -132,6 +134,8 @@ export interface FarmInventory {
 }
 
 export interface FarmInventoryTransaction {
+  stock_group_id?: string | null;
+  stock_group?: import("@/lib/farm-livestock-categories").LivestockGroup | null;
   id: string;
   product: string;
   action: "add" | "remove" | "sale" | "mortality";

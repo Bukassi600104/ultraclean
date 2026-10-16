@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { farmProductLabel } from "@/lib/farm-products";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
+import { livestockGroupLabel,type LivestockGroup } from "@/lib/farm-livestock-categories";
 
 export function InventoryActivity({ action, refreshKey }: { action: "add" | "mortality"; refreshKey?: string | null }) {
-  const [movements, setMovements] = useState<{ id: string; product: string; action: string; date: string; quantity: number; correction_of?: string | null; correction_role?: string | null }[]>([]);
+  const [movements, setMovements] = useState<{ id: string; product: string; action: string; date: string; quantity: number; stock_group?:LivestockGroup|null; correction_of?: string | null; correction_role?: string | null }[]>([]);
   const [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
@@ -21,7 +22,7 @@ export function InventoryActivity({ action, refreshKey }: { action: "add" | "mor
   return <details className="bg-white rounded-2xl border p-4">
     <summary className="font-semibold text-sm cursor-pointer">View recent saved {action === "add" ? "stock" : "mortality"} activity</summary>
     {error ? <p className="text-sm py-3 text-red-700">Activity could not be loaded.</p> : rows.length === 0 ? <p className="text-sm py-3 text-gray-500">No activity recorded.</p> : rows.map((row) => <div key={row.id} className="border-t mt-3 pt-3 flex justify-between gap-3 items-center">
-      <div><p className="text-sm font-semibold">{farmProductLabel(row.product)} · {row.quantity}</p><p className="text-xs text-gray-500">{row.date}{row.correction_role ? ` · ${row.correction_role}` : ""}</p></div>
+      <div><p className="text-sm font-semibold">{farmProductLabel(row.product)} · {row.quantity}</p><p className="text-xs text-gray-600">{row.stock_group?livestockGroupLabel(row.stock_group):"Unclassified / legacy stock"}</p><p className="text-xs text-gray-500">{row.date}{row.correction_role ? ` · ${row.correction_role}` : ""}</p></div>
       {row.correction_role !== "reversal" && !reversed.has(row.id) && <FarmCorrectionRequest recordType="inventory_transaction" recordId={row.id} />}
     </div>)}
   </details>;

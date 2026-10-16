@@ -7,6 +7,8 @@ import { InventoryActivity } from "@/components/manager/InventoryActivity";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { Skull, Check } from "lucide-react";
 
+import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
+
 const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label: product.label }));
 
 export default function MortalityPage() {
@@ -18,6 +20,7 @@ export default function MortalityPage() {
     setDate(t);
   }, []);
   const [product, setProduct] = useState("catfish");
+  const [stockGroup,setStockGroup] = useState("");
   const [quantity, setQuantity] = useState("");
   const [cause, setCause] = useState("");
   const [notes, setNotes] = useState("");
@@ -34,7 +37,7 @@ export default function MortalityPage() {
       const res = await fetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: requestId, product, action: "mortality", quantity: Number(quantity), date, reason: cause.trim() || "Unknown", notes: notes.trim() || undefined }),
+        body: JSON.stringify({ request_id: requestId, product, stock_group_id:stockGroup||null, action: "mortality", quantity: Number(quantity), date, reason: cause.trim() || "Unknown", notes: notes.trim() || undefined }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to save");
@@ -67,6 +70,7 @@ export default function MortalityPage() {
             value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
 
+        <LivestockGroupPicker product={product} value={stockGroup} onChange={setStockGroup} refreshKey={savedId} />
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Animal Type</label>
           <div className="mt-1.5 grid grid-cols-3 gap-2 sm:grid-cols-3">

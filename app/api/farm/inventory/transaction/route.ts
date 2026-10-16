@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("farm_inventory_transactions")
-    .select("*")
+    .select("*,stock_group:farm_livestock_groups(*)")
     .order("date", { ascending: false })
     .order("created_at", { ascending: false });
   if (profile.role === "manager") query = query.limit(200);
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   if (profile.role === "admin") {
     const rows = [];
     for (let offset = 0; ; offset += 500) {
-      let pageQuery = supabase.from("farm_inventory_transactions").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).order("id").range(offset, offset + 499);
+      let pageQuery = supabase.from("farm_inventory_transactions").select("*,stock_group:farm_livestock_groups(*)").order("date", { ascending: false }).order("created_at", { ascending: false }).order("id").range(offset, offset + 499);
       if (action) pageQuery = pageQuery.eq("action", action);
       const { data, error } = await pageQuery;
       if (error) return farmErrorResponse(error);

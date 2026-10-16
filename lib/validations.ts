@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { classificationFields } from "@/lib/farm-livestock-validation";
 import { FARM_PRODUCT_KEYS } from "@/lib/farm-products";
 
 // ── Public contact form ──
@@ -98,6 +99,7 @@ export const dbaSaleSchema = z.object({
 
 // ── Farm ──
 export const farmSaleSchema = z.object({
+  ...classificationFields,
   date: z.string(),
   customer_name: z.string().min(1, "Customer name is required"),
   product: z.enum(FARM_PRODUCT_KEYS),
@@ -127,6 +129,7 @@ export const farmExpenseSchema = z.object({
 });
 
 export const farmInventoryTransactionSchema = z.object({
+  ...classificationFields,
   product: z.string().min(1, "Product is required").max(100),
   action: z.enum(["add", "remove", "sale", "mortality"]),
   request_id: z.string().uuid().optional(),

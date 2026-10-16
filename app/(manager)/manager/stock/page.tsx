@@ -7,6 +7,9 @@ import { InventoryActivity } from "@/components/manager/InventoryActivity";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { PlusSquare, Check } from "lucide-react";
 
+import { LivestockClassificationFields } from "@/components/manager/LivestockClassificationFields";
+import { emptyClassification, validClassification } from "@/lib/farm-livestock-categories";
+
 const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label: product.label }));
 
 export default function StockPage() {
@@ -18,6 +21,7 @@ export default function StockPage() {
     setDate(t);
   }, []);
   const [product, setProduct] = useState("catfish");
+  const [classification,setClassification] = useState(emptyClassification);
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
@@ -27,6 +31,8 @@ export default function StockPage() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   async function handleSave() {
+    if (!validClassification(product,classification)) return toast.error("Select the animal type and growth stage");
+    if (!Number.isInteger(Number(quantity))) return toast.error("Enter a whole-animal quantity");
     if (!quantity || Number(quantity) <= 0) return toast.error("Enter a valid quantity");
 
     setSaving(true);
@@ -34,7 +40,7 @@ export default function StockPage() {
       const res = await fetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: requestId, product, action: "add", quantity: Number(quantity), date, reason: reason.trim() || "New batch arrived", notes: notes.trim() || undefined }),
+        body: JSON.stringify({ request_id: requestId, product, classification, action: "add", quantity: Number(quantity), date, reason: reason.trim() || "New batch arrived", notes: notes.trim() || undefined }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to save");
@@ -83,6 +89,7 @@ export default function StockPage() {
           </div>
         </div>
 
+        <LivestockClassificationFields product={product} value={classification} onChange={setClassification} />
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity *</label>
           <input type="number" inputMode="numeric"

@@ -1,4 +1,5 @@
 "use client";
+import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 import { useEffect, useState } from "react";
@@ -118,7 +119,7 @@ export default function FarmSalesPage() {
                         {format(new Date(s.date), "MMM d")}
                       </TableCell>
                       <TableCell>{s.customer_name}</TableCell>
-                      <TableCell className="capitalize">{s.product}</TableCell>
+                      <TableCell className="capitalize">{s.product}{s.stock_group&&<span className="block text-xs normal-case text-gray-600">{livestockGroupLabel(s.stock_group)}</span>}</TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {s.quantity}
                       </TableCell>

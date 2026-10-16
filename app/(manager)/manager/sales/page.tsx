@@ -8,7 +8,10 @@ import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionReques
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Lock, AlertTriangle, ChevronRight } from "lucide-react";
 
+import { livestockGroupLabel,type LivestockGroup } from "@/lib/farm-livestock-categories";
+
 interface Sale {
+  stock_group?:LivestockGroup|null;
   id: string;
   date: string;
   customer_name?: string;
@@ -213,7 +216,7 @@ export default function SalesPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
                           style={{ backgroundColor: (p?.color ?? "#6b7280") + "20", color: p?.color ?? "#6b7280" }}>
-                          {p?.label ?? sale.product}
+                          {p?.label ?? sale.product}{sale.stock_group&&<span className="block text-xs font-normal text-gray-600">{livestockGroupLabel(sale.stock_group)}</span>}
                         </span>
                         {sale.is_edited && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Edited</span>
