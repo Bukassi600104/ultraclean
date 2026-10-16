@@ -24,6 +24,7 @@ await page.route('**/api/farm/**',async route=>{const req=route.request(),url=ne
 if(method==='POST'&&url.pathname.endsWith('/sales'))data={data:[{id,total_amount:216000}]};
 else if(method==='POST'&&url.pathname.endsWith('/corrections'))data={id};
 else if(method==='PUT'&&url.pathname.includes('/corrections/')){resolved=true;data={status:'applied'};}
+else if(url.pathname.endsWith('/livestock/groups'))data={data:[]};
 else if(url.pathname.endsWith('/inventory'))data=[{id,product:'cattle',current_stock:5},{id:'00000000-0000-4000-8000-000000000002',product:'pig',current_stock:7}];
 else if(url.pathname.endsWith('/supplies/history'))data={data:[],total:0};
 else if(url.pathname.endsWith('/supplies'))data=[item];
@@ -34,7 +35,7 @@ else if(url.pathname.endsWith('/activity'))data={data:[],total:0};
 else data={};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});});
 let checks=0;
 try{
-  await page.goto(`http://127.0.0.1:${port}/?screen=inventory`);await page.getByText('Cattle',{exact:true}).waitFor();assert.equal(await page.getByText('Pig',{exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:/Add Stock|Record Mortality/}).count(),0);checks+=3;
+  await page.goto(`http://127.0.0.1:${port}/?screen=inventory`);await page.getByText('Cattle',{exact:true}).filter({visible:true}).waitFor();assert.equal(await page.getByText('Pig',{exact:true}).filter({visible:true}).count(),1);assert.equal(await page.getByRole('button',{name:/Add Stock|Record Mortality/}).count(),0);checks+=3;
   await page.getByRole('button',{name:'Request correction'}).first().click();await page.locator('textarea').nth(0).fill('Count should be six cattle');await page.locator('textarea').nth(1).fill('Physical count verified');await page.getByRole('button',{name:'Send request'}).click();await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));assert.equal(requests.find(r=>r.method==='POST'&&r.path.endsWith('/corrections')).body.record_type,'inventory');checks++;
   for(const screen of ['stock','mortality']){await page.goto(`http://127.0.0.1:${port}/?screen=${screen}`);await page.getByRole('button',{name:'Cattle',exact:true}).waitFor();checks++;}
   await page.goto(`http://127.0.0.1:${port}/?screen=sale`);await page.locator('input[type=date]').waitFor();await page.locator('input[type=number]').nth(0).fill('40');await page.locator('input[type=number]').nth(1).fill('72');await page.locator('input[type=number]').nth(2).fill('3000');await page.getByRole('button',{name:/Save Sale/}).click();await page.getByRole('button',{name:'Edit',exact:true}).waitFor();assert.equal(requests.filter(r=>r.method==='POST'&&r.path.endsWith('/sales')).length,0);await page.getByRole('button',{name:'Confirm Save',exact:true}).click();await page.getByText('1 sale recorded',{exact:true}).waitFor();const sale=requests.find(r=>r.method==='POST'&&r.path.endsWith('/sales')).body[0];assert.equal(sale.quantity,40);assert.equal(sale.weight_kg,72);assert.equal(sale.pricing_basis,'per_kg');assert.ok(sale.request_id);assert.ok((await page.locator('body').innerText()).includes('216,000'));checks+=6;

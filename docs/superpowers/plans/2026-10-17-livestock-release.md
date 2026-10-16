@@ -26,6 +26,18 @@ DDL uses a five-second lock timeout and sixty-second statement timeout. Stage a 
 
 Final lint and production build passed (117 static pages). Existing styled browser checks also passed: farm operations 74, feed 26, CEO 35. Built application GET-only smoke checks passed 25 checks. Live release results follow after activation.
 
+The original farm V2 mobile browser suite also passed 19 checks after updating its synthetic category endpoint fixture and scoping visible product labels. No production component change was needed for that fixture correction.
+
+## Production activation, October 17, 2026
+
+Staged production build `dpl_9Xm8tdemtsND6ZpmkDWRCU7tmMiS` reached READY on implementation commit `bbec580770c0b38483f89af11c225f2c12dc5c3a`. Farm writes were paused during the schema transition. The new migration was applied successfully through the Supabase plugin; the plugin-generated migration journal timestamp was aligned to the checked-in version `20261016225631` without replaying the migration.
+
+Before/after fingerprints proved all 47 original public tables unchanged. The five original auth users and their full stored rows also matched, as did profiles, aggregate stock, original core write source, date-lock source and inventory-trigger source. The two new tables have RLS enabled and started empty. Live PostgREST checks confirmed both new relationships and the complete balance RPC; all original quantities remained Unclassified.
+
+The exact staged production build was promoted and verified as the deployment serving `farm.primefieldagric.com`. Sixteen live GET checks passed across farm/CEO/Property/Content login routes, public websites, mobile manifests and anonymous private-access denials, including the new category endpoint. No live business test records were created. Farm writes were resumed, and a fresh Supabase plugin query confirmed zero release-pause triggers. The local isolated PostgreSQL server was stopped cleanly.
+
+The accompanying follow-up commit contains test-fixture and documentation updates only; application behavior matches the staged and verified implementation build. GitHub main synchronization is the final release bookkeeping step.
+
 ## Rollback limits
 
 Retain the additive schema, links and ledger after any classified activity. Do not replay old migrations, rebuild stock, replace prices or restore the old unguarded write entry point. If an application regression needs rollback, pause affected farm writes and deploy a compatible correction; keep ledger guards until verified. A backup restore requires deliberate reconciliation of all subsequent real business activity and is not a routine application rollback. Accounts, passwords, funding rules and other apps are outside this change.

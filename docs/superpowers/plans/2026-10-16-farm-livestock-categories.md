@@ -114,8 +114,8 @@ Normalize new displayed `Winners`/`Weaners` wording to `Weaner`; do not rewrite 
 - [x] Verify all requested catalogue values appear and persist; no protected non-farm implementation, account role, password or historical financial amount changed.
 - [x] Document backup/restore evidence, legacy NULL behavior, migration preconditions, locking implications and rollback limitations. An old app must not be restored if it would ignore category allocations and corrupt classified stock.
 - [x] Obtain explicit authorization for this correction release. Earlier production approvals do not authorize deployment of a plan requested for review.
-- [ ] Recheck the production project, branch and commit; take a fresh restorable backup and use a brief farm-write pause if required for the coordinated routine/schema transition.
-- [ ] Apply only the approved new migration, deploy compatible code, verify stock invariants, live access and aliases, then remove any pause. Confirm original profiles, quantities and history are preserved. Do not seed screenshot numbers.
+- [x] Recheck the production project, branch and commit; take a fresh restorable backup and use a brief farm-write pause if required for the coordinated routine/schema transition.
+- [x] Apply only the approved new migration, deploy compatible code, verify stock invariants, live access and aliases, then remove any pause. Confirm original profiles, quantities and history are preserved. Do not seed screenshot numbers.
 
 ## Acceptance summary
 

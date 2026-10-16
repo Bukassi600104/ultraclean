@@ -180,3 +180,13 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Separate Property/Content mobile installation prompts, identities and scoped network-only workers verified.
 - [x] GitHub main synchronized; automatic production deployment reached READY with all branded domains and no alias error.
 - Operational setup: enter actual feed opening counts; configure/authorize social providers for automatic synchronization. Manual content tracking is available. No accounts or business test records were fabricated.
+
+## Farm livestock corrections — October 17, 2026
+
+- [x] Confirm goat category order, cattle Stocker/Feeder wording and all turkey stages for both sexes.
+- [x] Implement shared classifications, linked deductions, audited allocation/transfer and legacy Unclassified balances.
+- [x] Pass isolated ledger/concurrency, API, styled browser and existing farm/feed/CEO/account checks; lint and production build pass.
+- [x] Restore private production backup and rehearse additive migration, preserving 82 original tables.
+- [x] Apply approved migration and promote compatible production build; preserve all 47 original public tables, five auth users, stock quantities and source routines.
+- [x] Pass 16 live GET checks and remove the farm-write pause; zero pause triggers confirmed.
+- Existing stock is not guessed or reclassified. Bimbo can allocate verified quantities through the admin inventory category controls.
