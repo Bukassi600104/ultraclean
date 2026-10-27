@@ -146,7 +146,6 @@ function SalesTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
-    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
@@ -307,7 +306,6 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
-    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
@@ -439,7 +437,6 @@ function FeedTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
-    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 

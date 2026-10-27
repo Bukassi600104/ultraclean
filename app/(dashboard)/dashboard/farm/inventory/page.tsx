@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from "next/link";
+
 import { Skull, TrendingDown, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";

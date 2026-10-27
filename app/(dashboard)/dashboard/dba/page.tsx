@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { FinancialPeriodForm, businessMoney } from "@/components/dashboard/BusinessFinancialCharts";
+import { farmDateToday } from "@/lib/farm-products";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { SalesTable } from "@/components/dashboard/dba/SalesTable";
@@ -19,13 +21,19 @@ export default function DBAOverviewPage() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showLogSale, setShowLogSale] = useState(false);
+  const [summary,setSummary] = useState<{revenue:number}|null>(null);
+  const [period,setPeriod] = useState({from:"",to:farmDateToday()});
 
   async function loadData() {
     try {
-      const [prodRes, salesRes] = await Promise.all([
+      const params=new URLSearchParams(window.location.search),from=params.get("from")||"0001-01-01",to=params.get("to")||farmDateToday();setPeriod({from:params.get("from")||"",to});
+      const [prodRes, salesRes, overviewRes] = await Promise.all([
         fetch("/api/dba/products"),
         fetch("/api/dba/sales?limit=10"),
+        fetch(`/api/ceo/overview?from=${from}&to=${to}`),
       ]);
+      if(!prodRes.ok||!salesRes.ok||!overviewRes.ok)throw Error();
+      const overview=await overviewRes.json();if(overview.dba.error)throw Error();setSummary(overview.dba.data);
       const prods = await prodRes.json();
       const salesData = await salesRes.json();
       setProducts(Array.isArray(prods) ? prods : []);
@@ -42,12 +50,15 @@ export default function DBAOverviewPage() {
   }, []);
 
   const activeProducts = products.filter((p) => p.status === "active").length;
-  const totalRevenue = sales.reduce((sum, s) => sum + s.amount, 0);
+  const totalRevenue = summary?.revenue;
 
   return (
     <>
       <DashboardHeader title="DBA Products" />
       <div className="p-4 lg:p-8 space-y-6">
+        <FinancialPeriodForm from={period.from} to={period.to}/>
+        {!isLoading&&!summary&&<p role="alert" className="text-red-700">DBA finances unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
+        <p className="text-xs text-slate-500">The financial amount uses the selected period; the recent-sales list remains a separate history preview. Currency is not recorded in this sales ledger.</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
@@ -66,8 +77,8 @@ export default function DBAOverviewPage() {
                 icon={ShoppingBag}
               />
               <SummaryCard
-                title="Revenue (recent)"
-                value={`$${totalRevenue.toFixed(2)}`}
+                title="Recorded sales amount"
+                value={totalRevenue===undefined?"Unavailable":businessMoney(totalRevenue,null)}
                 icon={DollarSign}
               />
             </>
@@ -102,7 +113,7 @@ export default function DBAOverviewPage() {
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
-            ) : (
+            ) : !summary ? <p className="p-4 text-red-700">Recent sales unavailable.</p> : (
               <SalesTable sales={sales} />
             )}
           </CardContent>

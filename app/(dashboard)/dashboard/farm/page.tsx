@@ -1,5 +1,6 @@
 "use client";
 import { formatCurrency } from "@/lib/utils";
+import { FinancialPeriodForm } from "@/components/dashboard/BusinessFinancialCharts";
 import { FarmActivityPanel, FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 import { farmDateToday } from "@/lib/farm-products";
 import { activeMortality } from "@/lib/farm-inventory";
@@ -68,6 +69,7 @@ function fmt(n: number) {
 
 export default function FarmOverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [period,setPeriod] = useState({from:"",to:farmDateToday()});
   const [financialError, setFinancialError] = useState(false);
   const [ownerBalance, setOwnerBalance] = useState(0);
   const [ownerSpent, setOwnerSpent] = useState(0);
@@ -95,9 +97,11 @@ export default function FarmOverviewPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const today = farmDateToday();
+        const params = new URLSearchParams(window.location.search);
+        const today = params.get("to") || farmDateToday();
+        const from = params.get("from") || ""; setPeriod({from,to:today});
         const [financeRes, inventoryRes, mortRes] = await Promise.all([
-          fetch(`/api/farm/balance?date=${today}`), fetch("/api/farm/inventory"),
+          fetch(`/api/farm/balance?date=${today}${from?`&from=${from}`:""}&to=${today}`), fetch("/api/farm/inventory"),
           fetch("/api/farm/inventory/transaction"),
         ]);
         if (!financeRes.ok || !inventoryRes.ok || !mortRes.ok) throw new Error("Farm figures unavailable");
@@ -125,7 +129,7 @@ export default function FarmOverviewPage() {
   async function refreshFinance() {
     try {
       const responses = await Promise.all([
-        fetch(`/api/farm/balance?date=${farmDateToday()}`),
+        fetch(`/api/farm/balance?date=${period.to}${period.from?`&from=${period.from}`:""}&to=${period.to}`),
         fetch("/api/farm/inventory"), fetch("/api/farm/inventory/transaction"),
       ]);
       if (responses.some(response => !response.ok)) throw new Error("Farm figures unavailable");
@@ -204,6 +208,8 @@ export default function FarmOverviewPage() {
       <DashboardHeader title="Farm Overview" />
       <div className="p-4 lg:p-8 space-y-6">
         {financialError && <p role="alert" className="text-red-600">Farm figures could not be loaded. Refresh before relying on these totals.</p>}
+        <FinancialPeriodForm from={period.from} to={period.to}/>
+        <p className="text-xs text-slate-500">Balances are as at the end date. Recent transfer history below is independent of the selected financial period.</p>
         {/* Summary */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {isLoading ? (

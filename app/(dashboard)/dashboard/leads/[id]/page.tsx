@@ -38,7 +38,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
-import Link from "next/link";
+
 
 const STATUSES = ["new", "contacted", "quoted", "booked", "completed", "lost"] as const;
 

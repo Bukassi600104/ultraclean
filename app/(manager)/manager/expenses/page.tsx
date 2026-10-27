@@ -203,7 +203,7 @@ export default function ExpensesOverviewPage() {
           <div className="space-y-2">
             {[1, 2].map((i) => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}
           </div>
-        ) : allItems.length === 0 ? (
+        ) : loadError ? <p className="text-red-700">Expense records unavailable.</p> : allItems.length === 0 ? (
           <div className="rounded-2xl bg-white border border-dashed border-gray-200 p-8 text-center">
             <Receipt className="h-8 w-8 text-gray-300 mx-auto mb-2" />
             <p className="text-sm text-gray-400">No expenses recorded today</p>

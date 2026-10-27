@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+
 import { PenLine } from "lucide-react";
 import type { FarmSale } from "@/types";
 

@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+
 
 import type { FarmExpense } from "@/types";
 
@@ -129,7 +129,7 @@ export default function FarmExpensesPage() {
                   <Skeleton key={i} className="h-10" />
                 ))}
               </div>
-            ) : rows.length ? (
+            ) : loadError ? <p className="p-4 text-red-700">Expense records unavailable.</p> : rows.length ? (
               <Table>
                 <TableHeader>
                   <TableRow>

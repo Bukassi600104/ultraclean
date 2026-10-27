@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Admin access required" }, { status: 403 }); }
   const params = new URL(request.url).searchParams;
-  let dates;
+  let dates: ReturnType<typeof farmReadDates>;
   try { dates = farmReadDates(params); } catch { return NextResponse.json({ error: "Invalid date range" }, { status: 400 }); }
   const page = Number(params.get("page") || 1), limit = Number(params.get("limit") || 20), category = params.get("category") || "all";
   if (!Number.isSafeInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(page * limit)) return NextResponse.json({ error: "Invalid pagination" }, { status: 400 });
