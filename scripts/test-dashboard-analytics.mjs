@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url),ts=require('typescript');
+function load(file){const mod={exports:{}};new Function('require','module','exports',ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText)(require,mod,mod.exports);return mod.exports;}
+const {calculateFarmFinance}=load('lib/farm-finance-calculations.ts'),calc=load('lib/ceo-calculations.ts');
+const scope={from:'2026-10-01',to:'2026-10-27'};
+const f=calculateFarmFinance({transfers:[{date:'2026-09-01',amount:100},{date:'2026-10-01',amount:50}],sales:[{date:'2026-09-01',total_amount:10},{date:'2026-10-02',total_amount:20}],expenses:[{date:'2026-10-01',amount:5},{date:'2026-10-02',amount:2,expense_source:'sales_cash'}],feed:[{date:'2026-10-02',cost:3}]},{date:scope.to,...scope});
+assert.equal(f.period_reconciliation.opening_owner_balance,100);assert.equal(f.period_reconciliation.closing_owner_balance,142);assert.equal(f.period_reconciliation.opening_sales_cash_balance,10);assert.equal(f.period_reconciliation.closing_sales_cash_balance,28);assert.equal(f.daily.reduce((s,r)=>s+r.revenue,0),f.revenue);
+const u=calc.summarizeUltraTidy({inflow:Array.from({length:501},()=>({date:'2026-10-02',amount:1,service:'cleaning'})),expenses:[{date:'2026-10-02',amount:600,category:'labour'}]},scope);assert.equal(u.revenue,501);assert.equal(u.operational_net,-99);assert.equal(u.currency,'CAD');
+const d=calc.summarizeDba({sales:[{created_at:'2026-10-02',amount:10,product_id:'p'}],products:[{id:'p',name:'Course'}]},scope);assert.equal(d.revenue,10);assert.equal(d.profit,null);assert.equal(d.by_product[0].name,'Course');
+const c=calc.summarizeContent({records:[],leads:[],sales:[{sale_date:'2026-10-01',amount:10,currency:'CAD',sale_type:'affiliate'}],performance:[{platform:'instagram',account_id:'a',metric_date:'2026-09-30',followers:10},{platform:'instagram',account_id:'a',metric_date:'2026-10-02',followers:15}]},scope);assert.equal(c.audience_growth[0].change,5);assert.equal(c.analytics[0].currency,'CAD');
+const p=calc.summarizeProperties({properties:[],units:[{status:'occupied'},{status:'vacant'}],rent:[],expenses:[],maintenance:[]},scope);assert.equal(p.occupied,1);assert.equal(p.occupancy_rate,50);assert.equal(p.overdue_rent,null);
+console.log('PASS analytics: funding bridges, complete series, deficits, currency, unavailable profit/arrears, audience growth and current occupancy');

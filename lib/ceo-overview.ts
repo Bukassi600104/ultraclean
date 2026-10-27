@@ -1,7 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getFarmFinance } from "@/lib/farm-finance";
 import { activeMortality } from "@/lib/farm-inventory";
-import { summarizeContent, summarizeProperties, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
+import { summarizeContent, summarizeProperties, summarizeUltraTidy, summarizeDba, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
 import type { FarmInventoryTransaction } from "@/types";
 
 export async function getCeoOverview(scope: OverviewScope) {
@@ -18,9 +18,9 @@ export async function getCeoOverview(scope: OverviewScope) {
  async function section<T>(read:()=>Promise<T>):Promise<{data:T;error:null}|{data:null;error:string}> {
   try{return {data:await read(),error:null};}catch{return {data:null,error:"Data could not be loaded. Retry or check database migration/configuration."};}
  }
- const [content,properties,farm,operations,crm]=await Promise.all([
+ const [content,properties,farm,operations,crm,ultratidy,dba]=await Promise.all([
   section(async()=>{const [records,performance,leads,sales]=await Promise.all([all("content_records"),all("content_performance"),all("content_leads"),all("content_sales")]);return summarizeContent({records,performance,leads,sales},scope);}),
-  section(async()=>{const [properties,units,rent,expenses,maintenance]=await Promise.all([all("property_properties"),all("property_units"),all("property_rent_payments"),all("property_expenses"),all("property_maintenance")]);return summarizeProperties({properties,units,rent,expenses,maintenance},scope);}),
+  section(async()=>{const [properties,units,rent,expenses,maintenance,tenancies]=await Promise.all([all("property_properties"),all("property_units"),all("property_rent_payments"),all("property_expenses"),all("property_maintenance"),all("property_tenancies")]);return summarizeProperties({properties,units,rent,expenses,maintenance,tenancies},scope);}),
   section(async()=>{
    const [finance,inventory,feedStock,movements,sales]=await Promise.all([getFarmFinance({date:scope.to,...scope}),all("farm_inventory"),section(()=>all("farm_feed_stock")),all("farm_inventory_transactions"),all("farm_sales")]);
    const mortality=activeMortality(movements as unknown as FarmInventoryTransaction[]).filter(r=>r.date>=scope.from&&r.date<=scope.to);
@@ -37,7 +37,9 @@ export async function getCeoOverview(scope: OverviewScope) {
    const periodLeads=leads.filter(r=>within(r.created_at));
    const distribution=(field:string)=>Object.entries(periodLeads.reduce<Record<string,number>>((acc,row)=>{const key=String(row[field]);acc[key]=(acc[key]??0)+1;return acc;},{}));
    return {leads:periodLeads.length,publishedPosts:posts.filter(r=>r.status==="published").length,pendingAppointments:appointments.filter(r=>r.status==="pending").length,dbaSalesCount:dbaSales.filter(r=>within(r.created_at)).length,recentLeads:[...leads].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5),leadsByStatus:distribution("status").map(([name,count])=>({name,count})),leadsByBusiness:distribution("business").map(([name,count])=>({name,count}))};
-  })
+  }),
+  section(async()=>summarizeUltraTidy({inflow:await all("ultratidy_inflow"),expenses:await all("ultratidy_expenses")},scope)),
+  section(async()=>summarizeDba({sales:await all("dba_sales"),products:await all("dba_products")},scope))
  ]);
- return {scope,generatedAt:new Date().toISOString(),content,properties,farm,operations,crm};
+ return {ultratidy,dba,scope,generatedAt:new Date().toISOString(),content,properties,farm,operations,crm};
 }
