@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { farmDateToday } from "@/lib/farm-products";
 
@@ -57,7 +58,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Reac
 };
 
 function fmt(n: number) {
-  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+  return formatCurrency(n);
 }
 
 function getTodayStr() {
@@ -77,6 +78,7 @@ export default function ExpensesOverviewPage() {
   const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [summary, setSummary] = useState<{ general_expenses: number; feed_expenses: number; expenses_by_category: { name: string; value: number }[] } | null>(null);
   const [dateLabel, setDateLabel] = useState("");
   useEffect(() => {
@@ -84,12 +86,13 @@ export default function ExpensesOverviewPage() {
   }, []);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    setLoading(true);setLoadError(false);setSummary(null);
     try {
+      const read = async (url:string) => {const response=await fetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
       const [expRes, feedRes, recordRes, financeRes] = await Promise.all([
-        fetch(`/api/farm/expenses?date=${today}&limit=100`).then((r) => r.json()),
-        fetch(`/api/farm/feed-purchases?date=${today}&limit=100`).then((r) => r.json()),
-        fetch(`/api/farm/daily-record?date=${today}`).then((r) => r.json()),
+        read(`/api/farm/expenses?date=${today}&limit=100`),
+        read(`/api/farm/feed-purchases?date=${today}&limit=100`),
+        read(`/api/farm/daily-record?date=${today}`),
         fetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
       ]);
       setSummary(financeRes);
@@ -97,7 +100,7 @@ export default function ExpensesOverviewPage() {
       setFeedPurchases((feedRes.data || []).map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
       setDayRecord(recordRes.record || null);
     } catch {
-      toast.error("Failed to load data");
+      setLoadError(true);toast.error("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -134,11 +137,13 @@ export default function ExpensesOverviewPage() {
         )}
       </div>
 
+      {loadError && <p role="alert" className="text-red-700">Financial summary unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
+      <p className="text-xs text-gray-500">Reporting period: {today} · today only</p>
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: "Expenses", value: fmt(totalExpenses), color: "#ef4444" },
-          { label: "Feed Purchases", value: fmt(totalFeed), color: "#f59e0b" },
+          { label: "Expenses", value: summary ? fmt(totalExpenses) : loading ? "Loading…" : "Unavailable", color: "#ef4444" },
+          { label: "Feed Purchases", value: summary ? fmt(totalFeed) : loading ? "Loading…" : "Unavailable", color: "#f59e0b" },
         ].map((card) => (
           <div key={card.label} className="rounded-2xl p-3 bg-white border border-gray-100">
             <p className="text-xs text-gray-500 mb-1">{card.label}</p>

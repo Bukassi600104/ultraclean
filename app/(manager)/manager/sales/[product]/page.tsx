@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -22,7 +23,7 @@ interface FormValues {
   notes: string;
 }
 
-function fmt(n: number) { return `₦${Math.round(n).toLocaleString("en-NG")}`; }
+function fmt(n: number) { return formatCurrency(n); }
 function getTodayStr() { return farmDateToday(); }
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────

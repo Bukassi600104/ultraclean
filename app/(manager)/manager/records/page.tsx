@@ -1,10 +1,11 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 
 function fmt(n: number): string {
-  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+  return formatCurrency(n);
 }
 
 type MainTab = "sales" | "expenses";

@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 import { useEffect, useState } from "react";
@@ -99,7 +100,7 @@ export default function FarmExpensesPage() {
             <p className="text-sm text-gray-500">{combinedTotal} total records</p>
             {pageTotalAmount > 0 && (
               <p className="text-xs text-gray-400">
-                Page total: ₦{pageTotalAmount.toLocaleString()}
+                Page total: {formatCurrency(pageTotalAmount)}
               </p>
             )}
           </div>
@@ -157,7 +158,7 @@ export default function FarmExpensesPage() {
                             {f.feed_type} feed · {f.num_bags} bag{f.num_bags !== 1 ? "s" : ""}
                           </TableCell>
                           <TableCell className="font-medium">
-                            ₦{f.cost.toLocaleString()}
+                            {formatCurrency(f.cost)}
                           </TableCell><TableCell><FarmAdminCorrection recordType="feed" record={f} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-gray-500">
                             —
@@ -179,7 +180,7 @@ export default function FarmExpensesPage() {
                             : (e.paid_to || "—")}
                         </TableCell>
                         <TableCell className="font-medium">
-                          ₦{e.amount.toLocaleString()}
+                          {formatCurrency(e.amount)}
                         </TableCell><TableCell><FarmAdminCorrection recordType="expense" record={e} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-gray-500 capitalize">
                           {e.payment_method}

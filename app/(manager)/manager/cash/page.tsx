@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
 import { useState, useEffect, useCallback } from "react";
@@ -95,7 +96,7 @@ export default function ManagerCashPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold" style={{ color: "#1B4332" }}>
-                ₦{todaySales.toLocaleString("en-NG")}
+                {formatCurrency(todaySales)}
               </p>
             </div>
 
@@ -113,7 +114,7 @@ export default function ManagerCashPage() {
                 </div>
               </div>
               <p className="text-3xl font-bold text-red-600">
-                ₦{todayExpenses.toLocaleString("en-NG")}
+                {formatCurrency(todayExpenses)}
               </p>
             </div>
 
@@ -146,7 +147,7 @@ export default function ManagerCashPage() {
                 className="text-3xl font-bold"
                 style={{ color: isPositive ? "#1B4332" : "#dc2626" }}
               >
-                {isPositive ? "+" : ""}₦{net.toLocaleString("en-NG")}
+                {formatCurrency(net)}
               </p>
             </div>
           </>

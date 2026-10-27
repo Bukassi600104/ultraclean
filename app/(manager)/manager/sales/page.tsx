@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -34,7 +35,7 @@ interface DailyRecord {
 const PRODUCTS = FARM_PRODUCTS.filter((product) => product.key !== "other");
 
 function fmt(n: number) {
-  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+  return formatCurrency(n);
 }
 
 function getTodayStr() {
@@ -79,6 +80,8 @@ export default function SalesPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<{revenue:number;sales_by_product:{name:string;value:number}[]} | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
   const [dateLabel, setDateLabel] = useState("");
@@ -87,26 +90,28 @@ export default function SalesPage() {
   }, []);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    setLoading(true);setLoadError(false);setSummary(null);
     try {
-      const [salesRes, recordRes] = await Promise.all([
-        fetch(`/api/farm/sales?date=${today}&limit=100`).then((r) => r.json()),
-        fetch(`/api/farm/daily-record?date=${today}`).then((r) => r.json()),
+      const read = async (url:string) => {const response=await fetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
+      const [salesRes, recordRes, finance] = await Promise.all([
+        read(`/api/farm/sales?date=${today}&limit=100`),
+        read(`/api/farm/daily-record?date=${today}`),
+        read(`/api/farm/balance?date=${today}&from=${today}&to=${today}`),
       ]);
-      setSales(salesRes.data || []);
+      setSummary(finance);setSales(salesRes.data || []);
       setDayRecord(recordRes.record || null);
-    } catch { toast.error("Failed to load data"); }
+    } catch { setLoadError(true);toast.error("Failed to load data"); }
     finally { setLoading(false); }
   }, [today]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const isDayClosed = dayRecord?.status === "closed";
-  const totalSales = sales.reduce((s, x) => s + (x.total_amount || 0), 0);
+  const totalSales = summary?.revenue ?? 0;
 
   const chartData = PRODUCTS.map((p) => ({
     name: p.label,
-    total: sales.filter((s) => s.product === p.key).reduce((sum, s) => sum + s.total_amount, 0),
+    total: summary?.sales_by_product.find(row => row.name === p.key)?.value ?? 0,
     color: p.color,
   })).filter((d) => d.total > 0);
 
@@ -149,6 +154,8 @@ export default function SalesPage() {
         </div>
       </div>
 
+      {loadError && <p role="alert" className="text-red-700">Financial summary unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
+      <p className="text-xs text-gray-500">Reporting period: {today} · today only</p>
       {/* Total card */}
       {totalSales > 0 && (
         <div className="rounded-2xl p-4 flex items-center justify-between"

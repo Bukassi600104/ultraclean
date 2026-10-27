@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
 import { useEffect, useState } from "react";
@@ -20,7 +21,7 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
-  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+  return formatCurrency(n);
 }
 
 function getTodayStr() {
@@ -94,7 +95,7 @@ export default function ManagerHomePage() {
             <div className="h-12 w-44 rounded-xl animate-pulse" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
           ) : balanceVisible ? (
             <p className="text-4xl font-bold" style={{ color: balancePositive ? "#11d469" : "#ef4444" }}>
-              {openingBalance < 0 ? "-" : ""}{fmt(openingBalance)}
+              {fmt(openingBalance)}
             </p>
           ) : (
             <p className="text-4xl font-bold text-white tracking-widest">••••••</p>

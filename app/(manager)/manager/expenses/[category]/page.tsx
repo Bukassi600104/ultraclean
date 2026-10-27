@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
 import { useEffect, useState, useRef } from "react";
@@ -71,7 +72,7 @@ const PRODUCE_TYPES = [
 ];
 
 function fmt(n: number) {
-  return `₦${Math.round(n).toLocaleString("en-NG")}`;
+  return formatCurrency(n);
 }
 
 function getTodayStr() {

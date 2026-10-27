@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { FarmActivityPanel, FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 import { farmDateToday } from "@/lib/farm-products";
 import { activeMortality } from "@/lib/farm-inventory";
@@ -62,7 +63,7 @@ interface Transfer {
 }
 
 function fmt(n: number) {
-  return `₦${n.toLocaleString()}`;
+  return formatCurrency(n);
 }
 
 export default function FarmOverviewPage() {
@@ -209,9 +210,9 @@ export default function FarmOverviewPage() {
             Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-[110px]" />)
           ) : (
             <>
-              <SummaryCard title="Total Revenue" value={financialError ? "Unavailable" : `₦${revenue.toLocaleString()}`} icon={TrendingUp} />
-              <SummaryCard title="Total Expenses" value={financialError ? "Unavailable" : `₦${totalSpent.toLocaleString()}`} icon={TrendingDown} />
-              <SummaryCard title="Net Profit" value={financialError ? "Unavailable" : `₦${(revenue - totalSpent).toLocaleString()}`} icon={DollarSign} />
+              <SummaryCard title="Total Revenue" value={financialError ? "Unavailable" : formatCurrency(revenue)} icon={TrendingUp} />
+              <SummaryCard title="Total Expenses" value={financialError ? "Unavailable" : formatCurrency(totalSpent)} icon={TrendingDown} />
+              <SummaryCard title="Recorded operating result" value={financialError ? "Unavailable" : formatCurrency((revenue - totalSpent))} icon={DollarSign} />
               <SummaryCard title="Inventory Types" value={inventory.length} icon={Package} />
               <SummaryCard title="Total Mortality" value={totalDeaths} icon={Skull} iconClassName="text-red-500" />
             </>

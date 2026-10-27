@@ -1,4 +1,5 @@
 "use client";
+import { formatCurrency } from "@/lib/utils";
 import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
@@ -118,10 +119,10 @@ export default function FarmSalesPage() {
                         {s.quantity}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        ₦{s.unit_price.toLocaleString()} {(s as FarmSale & { pricing_basis?: string }).pricing_basis?.replace("per_", "/")}
+                        {formatCurrency(s.unit_price)} {(s as FarmSale & { pricing_basis?: string }).pricing_basis?.replace("per_", "/")}
                       </TableCell>
                       <TableCell className="font-medium">
-                        ₦{s.total_amount.toLocaleString()}
+                        {formatCurrency(s.total_amount)}
                       </TableCell>
                       <TableCell><FarmAdminCorrection recordType="sale" record={s} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                       <TableCell className="hidden sm:table-cell">

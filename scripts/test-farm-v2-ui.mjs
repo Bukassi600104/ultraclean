@@ -9,9 +9,9 @@ import http from 'node:http';
 const require=createRequire(import.meta.url);
 const {chromium}=require('@playwright/test');
 const {build}=await import(pathToFileURL(path.join(os.tmpdir(),'primefield-v2-test-runtime/node_modules/esbuild/lib/main.js')));
-const source=`import React from 'react';import {createRoot} from 'react-dom/client';
+const source=`import SalesOverview from './app/(manager)/manager/sales/page';import ExpensesOverview from './app/(manager)/manager/expenses/page';import Records from './app/(manager)/manager/records/page';import React from 'react';import {createRoot} from 'react-dom/client';
 import Inventory from './app/(manager)/manager/inventory/page';import Stock from './app/(manager)/manager/stock/page';import Mortality from './app/(manager)/manager/mortality/page';import Sale from './app/(manager)/manager/sales/[product]/page';import Supplies from './app/(dashboard)/dashboard/farm/supplies/page';import {FarmActivityPanel} from './components/dashboard/farm/FarmActivityPanel';
-const pages={inventory:Inventory,stock:Stock,mortality:Mortality,sale:Sale,supplies:Supplies,activity:FarmActivityPanel};const Page=pages[new URL(location.href).searchParams.get('screen')]||Inventory;createRoot(document.getElementById('root')).render(<Page/>);`;
+const pages={salesOverview:SalesOverview,expensesOverview:ExpensesOverview,records:Records,inventory:Inventory,stock:Stock,mortality:Mortality,sale:Sale,supplies:Supplies,activity:FarmActivityPanel};const Page=pages[new URL(location.href).searchParams.get('screen')]||Inventory;createRoot(document.getElementById('root')).render(<Page/>);`;
 const bundle=await build({stdin:{contents:source,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-next-navigation',setup(builder){builder.onResolve({filter:/^next\/(navigation|link)$/},args=>({path:args.path,namespace:'farm-mocks'}));builder.onLoad({filter:/.*/,namespace:'farm-mocks'},args=>({contents:args.path==='next/link'?`import React from 'react';export default function Link({children,...props}){return React.createElement('a',props,children);}`:`export const useParams=()=>({product:'catfish'});export const useRouter=()=>({push:()=>{},refresh:()=>{}});export const usePathname=()=>'/manager/inventory';`,loader:'js',resolveDir:process.cwd()}));}}]});
 const server=http.createServer((req,res)=>{if(req.url.startsWith('/bundle.js')){res.setHeader('Content-Type','text/javascript');res.end(bundle.outputFiles[0].text);}else{res.setHeader('Content-Type','text/html');res.end('<html><body><div id="root"></div><script src="/bundle.js"></script></body></html>');}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -19,9 +19,10 @@ const port=server.address().port;const browser=await chromium.launch({headless:t
 const page=await browser.newPage({viewport:{width:390,height:844}});const faults=[];page.on('pageerror',error=>faults.push(error.message));
 const id='00000000-0000-4000-8000-000000000001', now='2026-10-03T10:00:00Z';
 const item={id,item_name:'Feed bags',category:'feed',unit:'bags',current_quantity:10,restock_threshold:2,notes:null,updated_at:now,revision:0};
-const requests=[];let resolved=false;
+const requests=[];let resolved=false;let financialFailure=false;
 await page.route('**/api/farm/**',async route=>{const req=route.request(),url=new URL(req.url());const method=req.method();let body={};try{body=req.postDataJSON()??{};}catch{}requests.push({path:url.pathname,method,body});let data;
-if(method==='POST'&&url.pathname.endsWith('/sales'))data={data:[{id,total_amount:216000}]};
+if(url.pathname.endsWith('/balance')){if(financialFailure){await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Summary unavailable'})});return;}data={revenue:101.25,general_expenses:10.25,feed_expenses:5,total_expenses:15.25,sales_by_product:[{name:'catfish',value:101.25}],expenses_by_category:[]};}
+else if(method==='POST'&&url.pathname.endsWith('/sales'))data={data:[{id,total_amount:216000}]};
 else if(method==='POST'&&url.pathname.endsWith('/corrections'))data={id};
 else if(method==='PUT'&&url.pathname.includes('/corrections/')){resolved=true;data={status:'applied'};}
 else if(url.pathname.endsWith('/livestock/groups'))data={data:[]};
@@ -35,6 +36,8 @@ else if(url.pathname.endsWith('/activity'))data={data:[],total:0};
 else data={};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});});
 let checks=0;
 try{
+  await page.goto(`http://127.0.0.1:${port}/?screen=salesOverview`);await page.getByText(/101\.25/).first().waitFor();checks++;
+  financialFailure=true;await page.goto(`http://127.0.0.1:${port}/?screen=expensesOverview`);await page.getByRole('alert').waitFor();assert.equal(await page.getByText('₦0.00',{exact:true}).count(),0);checks++;financialFailure=false;
   await page.goto(`http://127.0.0.1:${port}/?screen=inventory`);await page.getByText('Cattle',{exact:true}).filter({visible:true}).waitFor();assert.equal(await page.getByText('Pig',{exact:true}).filter({visible:true}).count(),1);assert.equal(await page.getByRole('button',{name:/Add Stock|Record Mortality/}).count(),0);checks+=3;
   await page.getByRole('button',{name:'Request correction'}).first().click();await page.locator('textarea').nth(0).fill('Count should be six cattle');await page.locator('textarea').nth(1).fill('Physical count verified');await page.getByRole('button',{name:'Send request'}).click();await page.waitForFunction(()=>!document.querySelector('[role="dialog"]'));assert.equal(requests.find(r=>r.method==='POST'&&r.path.endsWith('/corrections')).body.record_type,'inventory');checks++;
   for(const screen of ['stock','mortality']){await page.goto(`http://127.0.0.1:${port}/?screen=${screen}`);await page.getByRole('button',{name:'Cattle',exact:true}).waitFor();checks++;}
