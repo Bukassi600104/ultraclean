@@ -21,28 +21,27 @@ export default function DBAOverviewPage() {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showLogSale, setShowLogSale] = useState(false);
+  const [financeError,setFinanceError] = useState(false);
+  const [recordsError,setRecordsError] = useState(false);
+  const [financeLoading,setFinanceLoading] = useState(true);
   const [summary,setSummary] = useState<{revenue:number}|null>(null);
   const [period,setPeriod] = useState({from:"",to:farmDateToday()});
 
   async function loadData() {
-    try {
-      const params=new URLSearchParams(window.location.search),from=params.get("from")||"0001-01-01",to=params.get("to")||farmDateToday();setPeriod({from:params.get("from")||"",to});
-      const [prodRes, salesRes, overviewRes] = await Promise.all([
-        fetch("/api/dba/products"),
-        fetch("/api/dba/sales?limit=10"),
-        fetch(`/api/ceo/overview?from=${from}&to=${to}`),
-      ]);
-      if(!prodRes.ok||!salesRes.ok||!overviewRes.ok)throw Error();
-      const overview=await overviewRes.json();if(overview.dba.error)throw Error();setSummary(overview.dba.data);
-      const prods = await prodRes.json();
-      const salesData = await salesRes.json();
-      setProducts(Array.isArray(prods) ? prods : []);
-      setSales(salesData.data || []);
-    } catch {
-      // ignore
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(true);setFinanceLoading(true);setFinanceError(false);setRecordsError(false);setSummary(null);
+    const params=new URLSearchParams(window.location.search),from=params.get("from")||"0001-01-01",to=params.get("to")||farmDateToday();setPeriod({from:params.get("from")||"",to});
+    await Promise.all([
+      (async()=>{try {
+        const [prodRes,salesRes]=await Promise.all([fetch("/api/dba/products"),fetch("/api/dba/sales?limit=10")]);
+        if(!prodRes.ok||!salesRes.ok)throw Error();
+        const [prods,salesData]=await Promise.all([prodRes.json(),salesRes.json()]);
+        setProducts(Array.isArray(prods)?prods:[]);setSales(salesData.data||[]);
+      }catch{setRecordsError(true);}finally{setIsLoading(false);}})(),
+      (async()=>{try {
+        const response=await fetch(`/api/ceo/overview?from=${from}&to=${to}`);if(!response.ok)throw Error();
+        const overview=await response.json();if(overview.dba.error)throw Error();setSummary(overview.dba.data);
+      }catch{setFinanceError(true);}finally{setFinanceLoading(false);}})()
+    ]);
   }
 
   useEffect(() => {
@@ -57,7 +56,7 @@ export default function DBAOverviewPage() {
       <DashboardHeader title="DBA Products" />
       <div className="p-4 lg:p-8 space-y-6">
         <FinancialPeriodForm from={period.from} to={period.to}/>
-        {!isLoading&&!summary&&<p role="alert" className="text-red-700">DBA finances unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
+        {financeError&&<p role="alert" className="text-red-700">DBA finances unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
         <p className="text-xs text-slate-500">The financial amount uses the selected period; the recent-sales list remains a separate history preview. Currency is not recorded in this sales ledger.</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {isLoading ? (
@@ -68,17 +67,17 @@ export default function DBAOverviewPage() {
             <>
               <SummaryCard
                 title="Total Products"
-                value={products.length}
+                value={recordsError?"Unavailable":products.length}
                 icon={Package}
               />
               <SummaryCard
                 title="Active Products"
-                value={activeProducts}
+                value={recordsError?"Unavailable":activeProducts}
                 icon={ShoppingBag}
               />
               <SummaryCard
                 title="Recorded sales amount"
-                value={totalRevenue===undefined?"Unavailable":businessMoney(totalRevenue,null)}
+                value={financeLoading?"Loading…":totalRevenue===undefined?"Unavailable":businessMoney(totalRevenue,null)}
                 icon={DollarSign}
               />
             </>
@@ -113,7 +112,7 @@ export default function DBAOverviewPage() {
                   <Skeleton key={i} className="h-12" />
                 ))}
               </div>
-            ) : !summary ? <p className="p-4 text-red-700">Recent sales unavailable.</p> : (
+            ) : recordsError ? <p className="p-4 text-red-700">Recent sales unavailable.</p> : (
               <SalesTable sales={sales} />
             )}
           </CardContent>

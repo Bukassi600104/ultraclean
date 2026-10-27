@@ -42,8 +42,7 @@ type DisplayRow =
   | { _type: "feed"; data: FeedPurchase };
 
 export default function FarmExpensesPage() {
-  const [expenses, setExpenses] = useState<FarmExpense[]>([]);
-  const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
+  const [rows, setRows] = useState<DisplayRow[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalFeed, setTotalFeed] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,33 +60,20 @@ export default function FarmExpensesPage() {
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
       .then(result => {
         if (controller.signal.aborted) return;
-        setExpenses(result.data.filter((r: DisplayRow) => r._type === "expense").map((r: DisplayRow) => r.data));
-        setFeedPurchases(result.data.filter((r: DisplayRow) => r._type === "feed").map((r: DisplayRow) => r.data));
+        setRows(result.data);
         setTotalExpenses(result.total); setTotalFeed(0);
       })
-      .catch(error => { if (error.name !== "AbortError") {setExpenses([]);setFeedPurchases([]);setLoadError("Expense history unavailable. Please retry.");} })
+      .catch(error => { if (error.name !== "AbortError") {setRows([]);setLoadError("Expense history unavailable. Please retry.");} })
       .finally(() => {if (!controller.signal.aborted) setIsLoading(false);});
     return () => controller.abort();
   }, [page, category, version]);
-
-  // Merge and sort by date desc
-  const rows: DisplayRow[] = [
-    ...expenses.map((e) => ({ _type: "expense" as const, data: e })),
-    ...feedPurchases.map((f) => ({ _type: "feed" as const, data: f })),
-  ].sort((a, b) => {
-    const dateA = a.data.date;
-    const dateB = b.data.date;
-    if (dateB !== dateA) return dateB.localeCompare(dateA);
-    return new Date(b.data.created_at).getTime() - new Date(a.data.created_at).getTime();
-  });
 
   const combinedTotal = totalExpenses + totalFeed;
   const totalPages = Math.ceil(combinedTotal / limit);
 
   // Grand total amount for current page
   const pageTotalAmount =
-    expenses.reduce((s, e) => s + (e.amount || 0), 0) +
-    feedPurchases.reduce((s, f) => s + (f.cost || 0), 0);
+    rows.reduce((sum, row) => sum + Number(row._type === "expense" ? row.data.amount : row.data.cost), 0);
 
   return (
     <>

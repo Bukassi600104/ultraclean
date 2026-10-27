@@ -219,13 +219,13 @@ export default function FarmOverviewPage() {
               <SummaryCard title="Total Revenue" value={financialError ? "Unavailable" : formatCurrency(revenue)} icon={TrendingUp} />
               <SummaryCard title="Total Expenses" value={financialError ? "Unavailable" : formatCurrency(totalSpent)} icon={TrendingDown} />
               <SummaryCard title="Recorded operating result" value={financialError ? "Unavailable" : formatCurrency((revenue - totalSpent))} icon={DollarSign} />
-              <SummaryCard title="Inventory Types" value={inventory.length} icon={Package} />
-              <SummaryCard title="Total Mortality" value={totalDeaths} icon={Skull} iconClassName="text-red-500" />
+              <SummaryCard title="Inventory Types" value={financialError?"Unavailable":inventory.length} icon={Package} />
+              <SummaryCard title="Total Mortality" value={financialError?"Unavailable":totalDeaths} icon={Skull} iconClassName="text-red-500" />
             </>
           )}
         </div>
 
-        {Object.keys(mortalityByProduct).length > 0 && <p className="text-sm text-gray-600">Mortality by product: {Object.entries(mortalityByProduct).map(([name, count]) => `${name}: ${count}`).join(" · ")}</p>}
+        {!financialError && Object.keys(mortalityByProduct).length > 0 && <p className="text-sm text-gray-600">Mortality by product: {Object.entries(mortalityByProduct).map(([name, count]) => `${name}: ${count}`).join(" · ")}</p>}
         {/* Quick nav */}
         <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" asChild>
@@ -332,7 +332,7 @@ export default function FarmOverviewPage() {
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-[250px]" />
-              ) : salesByProduct.length ? (
+              ) : financialError ? <p className="text-red-700">Sales chart unavailable. Refresh before relying on these figures.</p> : salesByProduct.length ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={salesByProduct}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -355,7 +355,7 @@ export default function FarmOverviewPage() {
             <CardContent>
               {isLoading ? (
                 <Skeleton className="h-[250px]" />
-              ) : expensesByCategory.length ? (
+              ) : financialError ? <p className="text-red-700">Expense chart unavailable. Refresh before relying on these figures.</p> : expensesByCategory.length ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
