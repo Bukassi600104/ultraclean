@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+const require=createRequire(import.meta.url),ts=require('typescript'),cache=new Map();
+let role='admin',failed=null;
+const rows={farm_sales:[{id:'older',date:'2026-09-01',created_at:'2026-09-01'},{id:'newer',date:'2026-10-01',created_at:'2026-10-01'}],farm_expenses:Array.from({length:20},(_,i)=>({id:'e'+String(i).padStart(3,'0'),date:'2026-10-01',created_at:'2026-10-01',amount:1})),farm_feed_purchases:Array.from({length:20},(_,i)=>({id:'f'+String(i).padStart(3,'0'),date:'2026-10-01',created_at:'2026-10-01',cost:2}))};
+const db={from:table=>{let data=[...(rows[table]||[])],start=0,end=Infinity;const sorts=[];const q={select:()=>q,is:(k,v)=>{data=data.filter(r=>(r[k]??null)===v);return q},eq:(k,v)=>{data=data.filter(r=>r[k]===v);return q},gte:(k,v)=>{data=data.filter(r=>r[k]>=v);return q},lte:(k,v)=>{data=data.filter(r=>r[k]<=v);return q},order:(k,{ascending=true}={})=>{sorts.push([k,ascending]);return q},range:(a,b)=>{start=a;end=b;return q},then:(ok,bad)=>Promise.resolve({data:data.sort((a,b)=>{for(const [k,asc] of sorts){const n=String(a[k]).localeCompare(String(b[k]));if(n)return asc?n:-n;}return 0}).slice(start,end+1),count:data.length,error:failed===table?{message:'Synthetic source failure'}:null}).then(ok,bad)};return q;}};
+function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const mod={exports:{}};cache.set(file,mod);new Function('require','module','exports',ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText)(name=>{if(name==='next/server')return{NextResponse:{json:(data,init)=>Response.json(data,init)}};if(name==='@/lib/auth')return{requireManager:async()=>{if(!role)throw Error();return{id:'actor',role}},requireAdmin:async()=>{if(role!=='admin')throw Error();return{id:'actor',role}}};if(name==='@/lib/supabase/server')return{createServerClient:()=>db};if(name.startsWith('@/'))return load(name.slice(2)+'.ts');return require(name)},mod,mod.exports);return mod.exports}
+const get=(route,query='')=>load('app/api/farm/'+route+'/route.ts').GET({url:'http://localhost/api/farm/'+route+query,nextUrl:new URL('http://localhost/api/farm/'+route+query)});
+let n=0;
+for(const route of ['sales','expenses','feed-purchases']){assert.equal((await get(route,'?from=2026-02-30')).status,400);assert.equal((await get(route,'?date=2026-10-01&from=2026-09-01')).status,400);n+=2;}
+let result=await (await get('sales','?from=2026-09-01&to=2026-09-30&limit=1')).json();assert.equal(result.total,1);assert.equal(result.data[0].id,'older');n+=2;
+const pages=[];for(let page=1;page<=3;page++){const r=await get('expense-history','?page='+page+'&limit=20');assert.equal(r.status,200);const b=await r.json();assert.equal(b.total,40);assert.equal(b.data.length,page===3?0:20);pages.push(...b.data.map(r=>r._type+':'+r.data.id));n+=3;}assert.equal(new Set(pages).size,40);n++;
+failed='farm_feed_purchases';assert.equal((await get('expense-history')).status,500);failed=null;n++;
+role='manager';assert.equal((await get('expense-history')).status,403);role=null;for(const route of ['sales','expenses','feed-purchases'])assert.equal((await get(route)).status,401);n+=4;
+console.log(`PASS ${n} actual reporting API checks: dates before pagination, combined history, failures and authorization`);

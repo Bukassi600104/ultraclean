@@ -1,3 +1,4 @@
+import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
@@ -35,7 +36,9 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date");
+  let dates;
+  try { dates = farmReadDates(searchParams); } catch { return NextResponse.json({ error: "Invalid date range" }, { status: 400 }); }
+  const { date, from, to } = dates;
   const page = Math.max(1, parseInt(searchParams.get("page") || "1") || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50") || 50));
 
@@ -46,9 +49,13 @@ export async function GET(request: NextRequest) {
     .select("*", { count: "exact" });
 
   if (date) query = query.eq("date", date);
+  if (from) query = query.gte("date", from);
+  if (to) query = query.lte("date", to);
 
   query = query
     .order("date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .range((page - 1) * limit, page * limit - 1);
 
   const { data, count, error } = await query;

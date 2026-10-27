@@ -109,32 +109,33 @@ function SalesTab({ from, to }: { from: string; to: string }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef(0);
+  const [loadError, setLoadError] = useState("");
 
   const load = useCallback(
     async (pageNum: number, reset: boolean) => {
       setIsLoading(true);
+      const version = ++requestRef.current; setLoadError("");
       try {
         const params = new URLSearchParams({
           page: pageNum.toString(),
           limit: PAGE_SIZE.toString(),
+          ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
         const res = await fetch(`/api/farm/sales?${params}`);
+        if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
+        if (version !== requestRef.current) return;
         const allRecs: SaleRecord[] = d.data || [];
 
-        // Filter client-side by date range
-        const filtered = allRecs.filter((r) => {
-          if (from && r.date < from) return false;
-          if (to && r.date > to) return false;
-          return true;
-        });
+        const filtered = allRecs;
 
         setRecords((prev) => (reset ? filtered : [...prev, ...filtered]));
         setHasMore(allRecs.length === PAGE_SIZE);
       } catch {
-        // ignore
+        if (version === requestRef.current) setLoadError("Records could not be loaded. Change the filter or retry.");
       } finally {
-        setIsLoading(false);
+        if (version === requestRef.current) setIsLoading(false);
       }
     },
     [from, to]
@@ -144,6 +145,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
+    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
@@ -178,6 +180,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
     );
   }
 
+  if (loadError) return <div role="alert" className="p-4 text-red-700">{loadError}<button className="ml-3 underline min-h-11" onClick={() => load(page, page === 1)}>Retry</button></div>;
   if (!isLoading && records.length === 0) {
     return (
       <div
@@ -267,31 +270,33 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef(0);
+  const [loadError, setLoadError] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const load = useCallback(
     async (pageNum: number, reset: boolean) => {
       setIsLoading(true);
+      const version = ++requestRef.current; setLoadError("");
       try {
         const params = new URLSearchParams({
           page: pageNum.toString(),
           limit: PAGE_SIZE.toString(),
+          ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
         const res = await fetch(`/api/farm/expenses?${params}`);
+        if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
+        if (version !== requestRef.current) return;
         const allRecs: ExpenseRecord[] = d.data || [];
-        const filtered = allRecs.filter((r) => {
-          if (from && r.date < from) return false;
-          if (to && r.date > to) return false;
-          return true;
-        });
+        const filtered = allRecs;
         setRecords((prev) => (reset ? filtered : [...prev, ...filtered]));
         setHasMore(allRecs.length === PAGE_SIZE);
       } catch {
-        // ignore
+        if (version === requestRef.current) setLoadError("Records could not be loaded. Change the filter or retry.");
       } finally {
-        setIsLoading(false);
+        if (version === requestRef.current) setIsLoading(false);
       }
     },
     [from, to]
@@ -301,6 +306,7 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
+    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
@@ -334,6 +340,7 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
     );
   }
 
+  if (loadError) return <div role="alert" className="p-4 text-red-700">{loadError}<button className="ml-3 underline min-h-11" onClick={() => load(page, page === 1)}>Retry</button></div>;
   if (!isLoading && records.length === 0) {
     return (
       <div
@@ -395,31 +402,33 @@ function FeedTab({ from, to }: { from: string; to: string }) {
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef(0);
+  const [loadError, setLoadError] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
   const load = useCallback(
     async (pageNum: number, reset: boolean) => {
       setIsLoading(true);
+      const version = ++requestRef.current; setLoadError("");
       try {
         const params = new URLSearchParams({
           page: pageNum.toString(),
           limit: PAGE_SIZE.toString(),
+          ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
         const res = await fetch(`/api/farm/feed-purchases?${params}`);
+        if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
+        if (version !== requestRef.current) return;
         const allRecs: FeedRecord[] = d.data || [];
-        const filtered = allRecs.filter((r) => {
-          if (from && r.date < from) return false;
-          if (to && r.date > to) return false;
-          return true;
-        });
+        const filtered = allRecs;
         setRecords((prev) => (reset ? filtered : [...prev, ...filtered]));
         setHasMore(allRecs.length === PAGE_SIZE);
       } catch {
-        // ignore
+        if (version === requestRef.current) setLoadError("Records could not be loaded. Change the filter or retry.");
       } finally {
-        setIsLoading(false);
+        if (version === requestRef.current) setIsLoading(false);
       }
     },
     [from, to]
@@ -429,6 +438,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
     setPage(1);
     setRecords([]);
     load(1, true);
+    return () => {requestRef.current++;};
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to]);
 
@@ -462,6 +472,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
     );
   }
 
+  if (loadError) return <div role="alert" className="p-4 text-red-700">{loadError}<button className="ml-3 underline min-h-11" onClick={() => load(page, page === 1)}>Retry</button></div>;
   if (!isLoading && records.length === 0) {
     return (
       <div

@@ -51,69 +51,22 @@ export default function FarmExpensesPage() {
   const [version, setVersion] = useState(0);
   const limit = 20;
 
+  const [loadError, setLoadError] = useState("");
   useEffect(() => {
-    async function load() {
-      setIsLoading(true);
-      try {
-        const expParams = new URLSearchParams();
-        expParams.set("page", page.toString());
-        expParams.set("limit", limit.toString());
-        // Only filter by category for non-feed, non-all selections
-        if (category !== "all" && category !== "feed") {
-          expParams.set("category", category);
-        }
-
-        const feedParams = new URLSearchParams();
-        feedParams.set("page", page.toString());
-        feedParams.set("limit", limit.toString());
-
-        const fetches: Promise<Response>[] = [];
-
-        // Fetch expenses (skip if filtering by feed-only)
-        if (category !== "feed") {
-          fetches.push(fetch(`/api/farm/expenses?${expParams}`));
-        }
-        // Fetch feed purchases (skip if filtering by non-feed category)
-        if (category === "all" || category === "feed") {
-          fetches.push(fetch(`/api/farm/feed-purchases?${feedParams}`));
-        }
-
-        const results = await Promise.all(fetches);
-
-        let expData: FarmExpense[] = [];
-        let expTotal = 0;
-        let feedData: FeedPurchase[] = [];
-        let feedTotal = 0;
-
-        if (category === "feed") {
-          const feedJson = await results[0].json();
-          feedData = feedJson.data || [];
-          feedTotal = feedJson.total || 0;
-        } else if (category === "all") {
-          const expJson = await results[0].json();
-          const feedJson = await results[1].json();
-          expData = expJson.data || [];
-          expTotal = expJson.total || 0;
-          feedData = feedJson.data || [];
-          feedTotal = feedJson.total || 0;
-        } else {
-          const expJson = await results[0].json();
-          expData = expJson.data || [];
-          expTotal = expJson.total || 0;
-        }
-
-        setExpenses(expData);
-        setFeedPurchases(feedData);
-        setTotalExpenses(expTotal);
-        setTotalFeed(feedTotal);
-      } catch {
-        setExpenses([]);
-        setFeedPurchases([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    load();
+    const controller = new AbortController();
+    setIsLoading(true); setLoadError("");
+    const params = new URLSearchParams({page: String(page), limit: String(limit), category});
+    fetch(`/api/farm/expense-history?${params}`, {signal: controller.signal, cache: "no-store"})
+      .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
+      .then(result => {
+        if (controller.signal.aborted) return;
+        setExpenses(result.data.filter((r: DisplayRow) => r._type === "expense").map((r: DisplayRow) => r.data));
+        setFeedPurchases(result.data.filter((r: DisplayRow) => r._type === "feed").map((r: DisplayRow) => r.data));
+        setTotalExpenses(result.total); setTotalFeed(0);
+      })
+      .catch(error => { if (error.name !== "AbortError") {setExpenses([]);setFeedPurchases([]);setLoadError("Expense history unavailable. Please retry.");} })
+      .finally(() => {if (!controller.signal.aborted) setIsLoading(false);});
+    return () => controller.abort();
   }, [page, category, version]);
 
   // Merge and sort by date desc
@@ -138,6 +91,7 @@ export default function FarmExpensesPage() {
   return (
     <>
       <DashboardHeader title="Farm Expenses" />
+      {loadError && <p role="alert" className="p-4 text-red-700">{loadError}<button className="ml-3 underline min-h-11" onClick={() => setVersion(v => v + 1)}>Retry</button></p>}
       <div className="p-4 lg:p-8 space-y-4">
         
         <div className="flex items-center justify-between">
