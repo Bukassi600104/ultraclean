@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Plus, Loader2, Trash2, X, Package, RefreshCw } from "lucide-react";
+import { Plus, Loader2, Trash2, X, Package, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
@@ -119,9 +119,7 @@ export default function UltraTidyInventoryPage() {
     <>
       <DashboardHeader title="UltraTidy — Inventory" />
       <div className="p-4 lg:p-8 space-y-6 max-w-5xl">
-        <Link href="/dashboard/ultratidy" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
-          <ArrowLeft className="h-4 w-4" /> Back to UltraTidy Overview
-        </Link>
+        
 
         <Tabs defaultValue="stock">
           <TabsList className="mb-4">

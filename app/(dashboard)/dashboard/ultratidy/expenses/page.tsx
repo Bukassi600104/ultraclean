@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Plus, Download, Loader2, Trash2, X } from "lucide-react";
+import { Plus, Download, Loader2, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
@@ -106,9 +106,7 @@ export default function UltraTidyExpensesPage() {
     <>
       <DashboardHeader title="UltraTidy — Expenses" />
       <div className="p-4 lg:p-8 space-y-6 max-w-5xl">
-        <Link href="/dashboard/ultratidy" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
-          <ArrowLeft className="h-4 w-4" /> Back to UltraTidy Overview
-        </Link>
+        
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">{count} total record{count !== 1 ? "s" : ""}</p>

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, PenLine } from "lucide-react";
+import { PenLine } from "lucide-react";
 import type { FarmSale } from "@/types";
 
 export default function FarmSalesPage() {
@@ -64,13 +64,7 @@ export default function FarmSalesPage() {
     <>
       <DashboardHeader title="Farm Sales" />
       <div className="p-4 lg:p-8 space-y-4">
-        <Link
-          href="/dashboard/farm"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Farm Overview
-        </Link>
+        
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{total} total sales</p>
           <Select value={product} onValueChange={(v) => { setProduct(v); setPage(1); }}>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { isDashboardDestinationActive } from "@/lib/dashboard-navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -151,10 +152,7 @@ function NavContent({
           )}
           <div className="px-3 space-y-0.5">
             {section.items.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" &&
-                  pathname.startsWith(item.href + "/"));
+              const isActive = isDashboardDestinationActive(pathname, item.href, NAV_SECTIONS.flatMap(section => section.items.map(link => link.href)));
               return (
                 <Link
                   key={item.href}

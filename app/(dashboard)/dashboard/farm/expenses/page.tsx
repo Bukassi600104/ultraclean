@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
 import type { FarmExpense } from "@/types";
 
 interface FeedPurchase {
@@ -139,13 +139,7 @@ export default function FarmExpensesPage() {
     <>
       <DashboardHeader title="Farm Expenses" />
       <div className="p-4 lg:p-8 space-y-4">
-        <Link
-          href="/dashboard/farm"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Farm Overview
-        </Link>
+        
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">{combinedTotal} total records</p>

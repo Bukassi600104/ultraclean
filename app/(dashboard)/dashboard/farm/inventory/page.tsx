@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { ArrowLeft, Skull, TrendingDown, ClipboardList } from "lucide-react";
+import { Skull, TrendingDown, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";
 import { activeMortality } from "@/lib/farm-inventory";
@@ -94,13 +94,7 @@ export default function FarmInventoryPage() {
       <DashboardHeader title="Farm Inventory" />
       <div className="p-4 lg:p-8 space-y-6">
       <LivestockInventoryBreakdown canManage refreshKey={refresh} />
-        <Link
-          href="/dashboard/farm"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Farm Overview
-        </Link>
+        
 
         <Tabs defaultValue="stock">
           <TabsList>

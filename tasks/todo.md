@@ -190,3 +190,13 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Apply approved migration and promote compatible production build; preserve all 47 original public tables, five auth users, stock quantities and source routines.
 - [x] Pass 16 live GET checks and remove the farm-write pause; zero pause triggers confirmed.
 - Existing stock is not guessed or reclassified. Bimbo can allocate verified quantities through the admin inventory category controls.
+
+## Dashboard audit remediation — 27 October 2026
+
+- [x] Production/read-only baseline and isolated workspace.
+- [ ] Consistent navigation and sidebar selection.
+- [ ] History filters, complete financial summaries, currency and expense pagination.
+- [ ] All-business read-only analytics and stacked CEO sections.
+- [ ] Isolated regressions, independent review and production build.
+- [ ] Approved Git push, Vercel release, live verification and rollback evidence.
+- Missing business records remain untouched by user instruction.

@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ArrowLeft,
   Phone,
   Mail,
   Calendar,
@@ -148,12 +147,7 @@ export default function LeadDetailPage() {
     <>
       <DashboardHeader title="Lead Details" />
       <div className="p-4 lg:p-8 space-y-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dashboard/leads">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Leads
-          </Link>
-        </Button>
+        
 
         {/* Status Pipeline */}
         <Card>
