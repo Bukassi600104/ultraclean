@@ -194,9 +194,11 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 ## Dashboard audit remediation — 27 October 2026
 
 - [x] Production/read-only baseline and isolated workspace.
-- [ ] Consistent navigation and sidebar selection.
-- [ ] History filters, complete financial summaries, currency and expense pagination.
-- [ ] All-business read-only analytics and stacked CEO sections.
-- [ ] Isolated regressions, independent review and production build.
-- [ ] Approved Git push, Vercel release, live verification and rollback evidence.
+- [x] Consistent navigation and sidebar selection.
+- [x] History filters, complete financial summaries, currency and expense pagination.
+- [x] All-business read-only analytics and stacked CEO sections.
+- [x] Isolated regressions, independent review and production build.
+- [x] Approved Git push, Vercel release, live verification and rollback evidence.
 - Missing business records remain untouched by user instruction.
+
+- Release evidence: docs/superpowers/plans/2026-10-27-dashboard-remediation-release.md. Existing 84 tables and all seven accounts unchanged; missing records remain untouched. Authenticated live walkthrough remains pending sign-in.

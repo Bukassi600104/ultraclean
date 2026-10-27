@@ -59,11 +59,11 @@
 
 **Deliverable:** A timestamped reconciliation of the same records and periods before any financial UI change, with confirmed gaps documented separately from software defects.
 
-- [ ] Verify branch, working tree, production deployment and configured database. Preserve unrelated local changes. Inspect any newer migrations or schema drift before relying on the audit baseline.
-- [ ] Read active transfers, general expenses, feed purchases and sales. Compare independent database sums with the existing financial service for today, this week, this month and all recorded history. Include opening balances before each selected period.
-- [ ] Reproduce the audit snapshot only if records remain unchanged: owner transfers NGN 12,436,406; owner general expenses NGN 6,745,674; feed NGN 2,716,232; owner balance NGN 2,974,500; sales cash NGN 2,808,800. New legitimate activity is not a regression; record the new baseline instead.
-- [ ] Confirm last financial entry dates and counts for every business. The audit found no general expenses after 25 August or feed purchases after 28 August; do not assume this remains true at execution time.
-- [ ] Record which requested measures are supported by stored fields and which remain unavailable. Do not interpret an empty ledger as proof of no real business activity.
+- [x] Verify branch, working tree, production deployment and configured database. Preserve unrelated local changes. Inspect any newer migrations or schema drift before relying on the audit baseline.
+- [x] Read active transfers, general expenses, feed purchases and sales. Compare independent database sums with the existing financial service for today, this week, this month and all recorded history. Include opening balances before each selected period.
+- [x] Reproduce the audit snapshot only if records remain unchanged: owner transfers NGN 12,436,406; owner general expenses NGN 6,745,674; feed NGN 2,716,232; owner balance NGN 2,974,500; sales cash NGN 2,808,800. New legitimate activity is not a regression; record the new baseline instead.
+- [x] Confirm last financial entry dates and counts for every business. The audit found no general expenses after 25 August or feed purchases after 28 August; do not assume this remains true at execution time.
+- [x] Record which requested measures are supported by stored fields and which remain unavailable. Do not interpret an empty ledger as proof of no real business activity.
 
 **Verification:** Source sums and service outputs agree to displayed currency precision for identical scopes; exceptions are explained before proceeding. A confirmed ledger/formula discrepancy pauses only affected accounting work while independent navigation work continues.
 
@@ -73,12 +73,12 @@
 
 **Interfaces:** `dashboardBackLink(pathname)` returns a fixed internal `href` and `label`, or null on the CEO homepage. DashboardHeader consumes this rule. Existing header title, subtitle and actions contracts remain supported.
 
-- [ ] Add failing route-rule and styled browser checks for all 27 dashboard page types, including dynamic edit/detail routes, direct URL entry and the four admin wrapper pages. Assert one visible Back action per page and none on the CEO homepage.
-- [ ] Implement explicit parents: top-level business/list/settings/account pages return to CEO Dashboard; Farm children return to Farm Overview; UltraTidy children return to UltraTidy Overview; DBA lists return to DBA Overview; new/edit products return to Products; new/edit blog posts return to Blog; lead details return to Leads.
-- [ ] Put the shared Back action in DashboardHeader. Replace the seven older standalone Back controls with this single consistent control, avoiding duplicate Back buttons. Retain the four form Cancel actions and all existing save/draft handling. Do not use browser history as the sole destination.
-- [ ] Select the longest matching sidebar destination so Supplies, Feed Inventory, Daily Reports and Operational Requests do not also highlight Farm. Retain all 15 destinations, desktop collapse, mobile menu and sign-out behavior.
-- [ ] Verify Property and Content's existing admin-only CEO return links and their own Overview navigation remain available; do not add duplicate dashboard chrome to their manager apps.
-- [ ] Run `node scripts/test-dashboard-navigation.mjs`. Check keyboard access, accessible names, touch targets and 390/768/1440 widths. Review and commit the navigation-only change.
+- [x] Add failing route-rule and styled browser checks for all 27 dashboard page types, including dynamic edit/detail routes, direct URL entry and the four admin wrapper pages. Assert one visible Back action per page and none on the CEO homepage.
+- [x] Implement explicit parents: top-level business/list/settings/account pages return to CEO Dashboard; Farm children return to Farm Overview; UltraTidy children return to UltraTidy Overview; DBA lists return to DBA Overview; new/edit products return to Products; new/edit blog posts return to Blog; lead details return to Leads.
+- [x] Put the shared Back action in DashboardHeader. Replace the seven older standalone Back controls with this single consistent control, avoiding duplicate Back buttons. Retain the four form Cancel actions and all existing save/draft handling. Do not use browser history as the sole destination.
+- [x] Select the longest matching sidebar destination so Supplies, Feed Inventory, Daily Reports and Operational Requests do not also highlight Farm. Retain all 15 destinations, desktop collapse, mobile menu and sign-out behavior.
+- [x] Verify Property and Content's existing admin-only CEO return links and their own Overview navigation remain available; do not add duplicate dashboard chrome to their manager apps.
+- [x] Run `node scripts/test-dashboard-navigation.mjs`. Check keyboard access, accessible names, touch targets and 390/768/1440 widths. Review and commit the navigation-only change.
 
 ## Task 3: Correct History Filtering Before Pagination
 
@@ -86,10 +86,10 @@
 
 **Interfaces:** Add optional `from` and `to` query parameters to the existing list handlers; preserve `date`, page, limit and `{data,total}`. Apply real calendar-date validation, inclusive bounds and existing authorization/void exclusions before database count, ordering and range. Conflicting exact-date/range inputs return 400; existing exact-date-only callers continue working.
 
-- [ ] Add failing fixtures where the first unfiltered page is outside the requested dates but later records match, including more than 100 rows. Cover general expenses and feed as well as sales, invalid dates, empty matches, request failure and rapid filter changes.
-- [ ] Pass filters to the server from Records; remove post-pagination filtering as the authoritative mechanism. Use stable descending date, creation time and ID ordering in the handlers.
-- [ ] Reset pagination on filter/tab changes; cancel or ignore obsolete responses. Distinguish loading, unavailable and genuinely empty results; do not silently convert HTTP errors into empty lists.
-- [ ] Preserve infinite scrolling, correction-request controls, original record dates and read permissions. Run `node scripts/test-farm-v2-api.mjs` and `node scripts/test-farm-v2-ui.mjs`; verify all new cases and existing behavior. Review and commit.
+- [x] Add failing fixtures where the first unfiltered page is outside the requested dates but later records match, including more than 100 rows. Cover general expenses and feed as well as sales, invalid dates, empty matches, request failure and rapid filter changes.
+- [x] Pass filters to the server from Records; remove post-pagination filtering as the authoritative mechanism. Use stable descending date, creation time and ID ordering in the handlers.
+- [x] Reset pagination on filter/tab changes; cancel or ignore obsolete responses. Distinguish loading, unavailable and genuinely empty results; do not silently convert HTTP errors into empty lists.
+- [x] Preserve infinite scrolling, correction-request controls, original record dates and read permissions. Run `node scripts/test-farm-v2-api.mjs` and `node scripts/test-farm-v2-ui.mjs`; verify all new cases and existing behavior. Review and commit.
 
 ## Task 4: Complete Daily Totals, Honest Errors and Consistent Money Formatting
 
@@ -97,12 +97,12 @@
 
 **Interfaces:** `formatCurrency(value, currency)` displays monetary amounts to two decimal places with a single correct sign. It formats values only; it does not modify saved amounts or pricing calculations. Existing balance fields and funding formulas retain their meaning.
 
-- [ ] Add failing checks for 101 sales in one day, a summary failure, partial list failure, 100.25, -100.25, zero, retry after failure and a negative owner balance. Assert CEO and manager display identical values for identical fields/scopes.
-- [ ] Read manager daily Sales KPI and product-chart data from `/api/farm/balance?date=D&from=D&to=D`, using `revenue` and `sales_by_product`. Keep its recent-record list paginated separately; never derive a complete KPI from that list.
-- [ ] Give manager Expenses explicit summary/list error states. Failed initial loading must show unavailable with Retry rather than zero. Preserve user input and drafts; mark any retained older result stale until refreshed.
-- [ ] Replace inconsistent monetary rounding/display in the audited farm surfaces with the formatter, including the manager home's duplicate-negative-sign case. Do not alter quantities, units, stored totals or monetary writes.
-- [ ] Label every summary with its actual period. Retain familiar defaults and distinguish general expenses, feed, owner funds and sales cash. Use Recorded operating result rather than Net Profit where only recorded sales and operating expenses are established.
-- [ ] Run the three extended farm scripts. Confirm void exclusions, feed counted once, legacy meanings and current manager create/correction workflows remain intact. Review and commit.
+- [x] Add failing checks for 101 sales in one day, a summary failure, partial list failure, 100.25, -100.25, zero, retry after failure and a negative owner balance. Assert CEO and manager display identical values for identical fields/scopes.
+- [x] Read manager daily Sales KPI and product-chart data from `/api/farm/balance?date=D&from=D&to=D`, using `revenue` and `sales_by_product`. Keep its recent-record list paginated separately; never derive a complete KPI from that list.
+- [x] Give manager Expenses explicit summary/list error states. Failed initial loading must show unavailable with Retry rather than zero. Preserve user input and drafts; mark any retained older result stale until refreshed.
+- [x] Replace inconsistent monetary rounding/display in the audited farm surfaces with the formatter, including the manager home's duplicate-negative-sign case. Do not alter quantities, units, stored totals or monetary writes.
+- [x] Label every summary with its actual period. Retain familiar defaults and distinguish general expenses, feed, owner funds and sales cash. Use Recorded operating result rather than Net Profit where only recorded sales and operating expenses are established.
+- [x] Run the three extended farm scripts. Confirm void exclusions, feed counted once, legacy meanings and current manager create/correction workflows remain intact. Review and commit.
 
 ## Task 5: Correct the Combined General-Expense and Feed History
 
@@ -110,11 +110,11 @@
 
 **Interfaces:** Admin-only GET accepts category, optional inclusive dates, page and limit. Returns `{data,total,page,limit}`, where each row retains the current display shape `{_type: 'expense' | 'feed', data: originalRecord}`. Existing expense and feed endpoints and write handlers remain unchanged.
 
-- [ ] Add failing checks for 20 general plus 20 feed entries: exactly 20 rows on each of two pages, no third page; test uneven distributions, tied timestamps, feed-only/category filters, voided expenses, more than 100 rows, and failure of either source.
-- [ ] Build one server-ordered result before slicing the combined page. For each included source, read the first `page × limit` filtered records in bounded batches, merge by descending date/created_at/ID with type as the final tie-breaker, then slice once. Use exact filtered counts for the combined total. This preserves complete pagination without adding a database view or RPC.
-- [ ] Do not return a misleading partial success if one source fails. Preserve original record types/IDs and correction controls; reset the page when filters change and ignore obsolete responses.
-- [ ] Label a page subtotal as a page subtotal. Any full-period financial KPI must continue using the complete financial service, independent of list pagination.
-- [ ] Run the extended API/UI scripts; verify stable ordering across pages and unchanged correction refresh behavior. Review and commit.
+- [x] Add failing checks for 20 general plus 20 feed entries: exactly 20 rows on each of two pages, no third page; test uneven distributions, tied timestamps, feed-only/category filters, voided expenses, more than 100 rows, and failure of either source.
+- [x] Build one server-ordered result before slicing the combined page. For each included source, read the first `page × limit` filtered records in bounded batches, merge by descending date/created_at/ID with type as the final tie-breaker, then slice once. Use exact filtered counts for the combined total. This preserves complete pagination without adding a database view or RPC.
+- [x] Do not return a misleading partial success if one source fails. Preserve original record types/IDs and correction controls; reset the page when filters change and ignore obsolete responses.
+- [x] Label a page subtotal as a page subtotal. Any full-period financial KPI must continue using the complete financial service, independent of list pagination.
+- [x] Run the extended API/UI scripts; verify stable ordering across pages and unchanged correction refresh behavior. Review and commit.
 
 ## Task 6: Extend Existing Read-Only Aggregates for All Businesses
 
@@ -122,13 +122,13 @@
 
 **Interfaces:** Preserve all existing finance/overview fields. Add per-business daily trend and breakdown arrays, separate by recorded currency. Add a farm `period_reconciliation` with opening/closing owner and sales-cash balances, period owner transfers, owner general expenses, feed purchases, sales and sales-funded expenses. Existing `opening_balance` keeps its current selected-day meaning.
 
-- [ ] Add failing calculation/API checks for matching periods, true opening balances, an empty period with prior activity, 501+ records, voids, legacy NULL sources, negative amounts/results, separate currencies, missing baselines, query failures and exact source-to-summary reconciliation.
-- [ ] Extend the existing farm calculation in one place: daily revenue/expense/operating-result series; product sales and expense categories; the period funding bridge. Closing owner balance must equal opening owner balance plus period transfers minus period owner expenses and feed. Sales cash uses its own corresponding bridge. Do not combine funding with revenue.
-- [ ] Add `summarizeUltraTidy(rows, scope)` and `summarizeDba(rows, scope)` in `lib/ceo-calculations.ts`. UltraTidy uses recorded CAD inflow/expenses, daily series and service/category breakdowns. DBA uses recorded sales and product breakdowns; expenses/profit remain unavailable because this ledger does not establish them. Confirm its existing currency convention from the schema/UI before labelling amounts.
-- [ ] Extend `summarizeContent` with mentorship/affiliate and platform/content attribution breakdowns. Audience observations remain account snapshots; do not sum follower counts over dates or sum reach snapshots as unique period reach. Growth requires comparable observations for the same account; absent baseline means unavailable. Lead status distributions describe current status of leads recorded in the selected period, not historical conversion as of the period end.
-- [ ] Extend `summarizeProperties` with recorded rent/expense trends and property-level breakdowns. Current occupancy uses current occupied/vacant/unavailable unit counts and states the denominator. Past-date occupancy and overdue rent remain unavailable unless authoritative historical occupancy/rent schedules support them. Maintenance estimates remain separate from actual posted expenses.
-- [ ] Read all relevant records with the existing complete-record pagination pattern. Add independent `ultratidy` and `dba` section results; failure in one business must not blank the others. Return explicit unavailable/empty states and latest-entry metadata, not fabricated revenue or profit.
-- [ ] Run the three extended scripts. Assert that daily series and breakdowns add to their own period/currency totals; compare new farm totals with unchanged existing fields. Review and commit.
+- [x] Add failing calculation/API checks for matching periods, true opening balances, an empty period with prior activity, 501+ records, voids, legacy NULL sources, negative amounts/results, separate currencies, missing baselines, query failures and exact source-to-summary reconciliation.
+- [x] Extend the existing farm calculation in one place: daily revenue/expense/operating-result series; product sales and expense categories; the period funding bridge. Closing owner balance must equal opening owner balance plus period transfers minus period owner expenses and feed. Sales cash uses its own corresponding bridge. Do not combine funding with revenue.
+- [x] Add `summarizeUltraTidy(rows, scope)` and `summarizeDba(rows, scope)` in `lib/ceo-calculations.ts`. UltraTidy uses recorded CAD inflow/expenses, daily series and service/category breakdowns. DBA uses recorded sales and product breakdowns; expenses/profit remain unavailable because this ledger does not establish them. Confirm its existing currency convention from the schema/UI before labelling amounts.
+- [x] Extend `summarizeContent` with mentorship/affiliate and platform/content attribution breakdowns. Audience observations remain account snapshots; do not sum follower counts over dates or sum reach snapshots as unique period reach. Growth requires comparable observations for the same account; absent baseline means unavailable. Lead status distributions describe current status of leads recorded in the selected period, not historical conversion as of the period end.
+- [x] Extend `summarizeProperties` with recorded rent/expense trends and property-level breakdowns. Current occupancy uses current occupied/vacant/unavailable unit counts and states the denominator. Past-date occupancy and overdue rent remain unavailable unless authoritative historical occupancy/rent schedules support them. Maintenance estimates remain separate from actual posted expenses.
+- [x] Read all relevant records with the existing complete-record pagination pattern. Add independent `ultratidy` and `dba` section results; failure in one business must not blank the others. Return explicit unavailable/empty states and latest-entry metadata, not fabricated revenue or profit.
+- [x] Run the three extended scripts. Assert that daily series and breakdowns add to their own period/currency totals; compare new farm totals with unchanged existing fields. Review and commit.
 
 ## Task 7: Present Full-Width Business Sections and Useful Analytics
 
@@ -136,15 +136,15 @@
 
 **Interfaces:** Consume Task 6's existing/additive API results. Charts receive the already aggregated series/breakdowns; they never fetch or sum a first page of history. Retain protected section links, date inputs, Refresh and Apply actions.
 
-- [ ] Add failing styled browser checks for the five business sections, their order, matching-period drill-downs, incomplete/empty data, partial failures, rapid Apply/Refresh actions, keyboard/screen-reader access and 390/768/1440 widths.
-- [ ] Stack full-width sections in this order: Primefield, UltraTidy, DBA, Content, Property. Place CRM/decisions/reports after the business sections so they do not compete with or fragment the financial overview. Preserve those actions and destinations.
-- [ ] Primefield: show period revenue, general/feed expenses and recorded operating result; separate owner funds and sales cash; opening-to-closing funding reconciliation; income/expense trend, product sales and expense-category charts; existing current inventory/feed/mortality details.
-- [ ] UltraTidy: show recorded inflow, expenses, operating result, trend, inflow by service and expenses by category. DBA: show recorded revenue, sale count, sales trend and product contribution; explain unavailable cost/profit measures.
-- [ ] Content: show recorded mentorship/affiliate revenue by currency, published content/leads, sales attribution and comparable audience observations. Property: show recorded rent, expenses/net cash result, current occupancy, property breakdowns, trends and open work. Show unavailable measures honestly rather than inferring profit or unpaid rent.
-- [ ] Reuse Recharts: line/bar charts for time and comparisons; donut/pie charts only for nonnegative category shares. Do not hide deficits, draw misleading negative pie slices, invent empty-series values or rely on colour alone. Each chart has a textual total and accessible table/description, currency, units and period.
-- [ ] Add CEO period presets Today, This week, This month and Custom, retaining the current default. Keep manager defaults unchanged but label them. Allow comparable periods on dedicated financial overviews; use complete server aggregates for their KPIs, preserving original histories/forms. Dedicated UltraTidy/DBA overviews may consume their section of the existing CEO endpoint rather than calculate from capped list responses.
-- [ ] Distinguish period flows, balances as at the end date and current snapshots. Show last-recorded dates and a neutral completeness notice where recent expenses are absent; do not claim spending was zero or accuse a user of omissions.
-- [ ] Run the three extended scripts and inspect actual rendered screenshots at all three widths. Verify original dashboard links, manager workflows, PWA entry points and no horizontal overflow. Review and commit.
+- [x] Add failing styled browser checks for the five business sections, their order, matching-period drill-downs, incomplete/empty data, partial failures, rapid Apply/Refresh actions, keyboard/screen-reader access and 390/768/1440 widths.
+- [x] Stack full-width sections in this order: Primefield, UltraTidy, DBA, Content, Property. Place CRM/decisions/reports after the business sections so they do not compete with or fragment the financial overview. Preserve those actions and destinations.
+- [x] Primefield: show period revenue, general/feed expenses and recorded operating result; separate owner funds and sales cash; opening-to-closing funding reconciliation; income/expense trend, product sales and expense-category charts; existing current inventory/feed/mortality details.
+- [x] UltraTidy: show recorded inflow, expenses, operating result, trend, inflow by service and expenses by category. DBA: show recorded revenue, sale count, sales trend and product contribution; explain unavailable cost/profit measures.
+- [x] Content: show recorded mentorship/affiliate revenue by currency, published content/leads, sales attribution and comparable audience observations. Property: show recorded rent, expenses/net cash result, current occupancy, property breakdowns, trends and open work. Show unavailable measures honestly rather than inferring profit or unpaid rent.
+- [x] Reuse Recharts: line/bar charts for time and comparisons; donut/pie charts only for nonnegative category shares. Do not hide deficits, draw misleading negative pie slices, invent empty-series values or rely on colour alone. Each chart has a textual total and accessible table/description, currency, units and period.
+- [x] Add CEO period presets Today, This week, This month and Custom, retaining the current default. Keep manager defaults unchanged but label them. Allow comparable periods on dedicated financial overviews; use complete server aggregates for their KPIs, preserving original histories/forms. Dedicated UltraTidy/DBA overviews may consume their section of the existing CEO endpoint rather than calculate from capped list responses.
+- [x] Distinguish period flows, balances as at the end date and current snapshots. Show last-recorded dates and a neutral completeness notice where recent expenses are absent; do not claim spending was zero or accuse a user of omissions.
+- [x] Run the three extended scripts and inspect actual rendered screenshots at all three widths. Verify original dashboard links, manager workflows, PWA entry points and no horizontal overflow. Review and commit.
 
 ## Task 8: Resolve Business-Data Questions Through Existing Workflows
 
@@ -180,4 +180,4 @@
 - Software delivery and real-world accounting reconciliation are reported separately. Missing receipts, business entries, rent schedules or profit definitions remain explicit outstanding inputs until supplied and authorized.
 - Production deployment, authenticated verification and rollback readiness are evidenced, not assumed.
 
-**Planning status:** Plan prepared for review only. No implementation, data correction, migration, push or deployment has been performed for this remediation.
+**Execution status:** Implementation and production release subsequently authorized and completed. See the accompanying release evidence. Missing-data steps in Task 8 remain deferred by explicit user instruction; no accounting records were invented. Authenticated live walkthrough remains pending sign-in.
