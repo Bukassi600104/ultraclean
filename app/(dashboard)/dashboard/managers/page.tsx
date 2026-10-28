@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import {businessForRole} from "@/lib/manager-period-types";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
@@ -290,6 +292,7 @@ export default function ManagersPage() {
                     Added {formatDate(m.created_at)}
                   </p>
                 </div>
+                <Link href={`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">View records</Link>
                 {!m.access_removed && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"

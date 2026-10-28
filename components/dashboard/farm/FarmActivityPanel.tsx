@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FARM_PRODUCTS } from "@/lib/farm-products";
 
+import {CashReceiverSelect,CashPayerSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
 import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
 type FarmRecord = Record<string, unknown>;
@@ -32,12 +33,13 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
   const [stockGroup,setStockGroup]=useState("");const [categoryEdited,setCategoryEdited]=useState(false);
   const chooseCategory=useCallback((id:string)=>{setStockGroup(id);setCategoryEdited(true);setRetryId(crypto.randomUUID());},[]);
   const [reason,setReason]=useState("");const [values,setValues]=useState<Record<string,string>>({});
+  const [cashReceiver,setCashReceiver]=useState(""),[cashPayer,setCashPayer]=useState("");
   const [operation,setOperation]=useState("update");const [retryId,setRetryId]=useState("");
   const editFields=recordType==='sale'&&!row.pricing_basis
     ? [...fields.sale.filter(f=>f.key!=="pricing_basis"),{key:"total_amount",label:"Historical recorded amount (₦)",numeric:true}]
     : fields[recordType]??[];
   function start() {
-    setStockGroup(String(row.stock_group_id??""));setCategoryEdited(false);
+    setCashReceiver("");setCashPayer("");setStockGroup(String(row.stock_group_id??""));setCategoryEdited(false);
     setValues(Object.fromEntries(editFields.map(f=>[f.key,String(f.key==='target_quantity'?row.current_stock??0:f.key==='quantity_change'&&recordType==='supply'?0:row[f.key]??"")])));
     setReason("");setOperation("update");setRetryId(crypto.randomUUID());setOpen(true);
   }
@@ -51,6 +53,8 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
       if(field.numeric&&!Number.isFinite(Number(value)))return toast.error("Enter valid numeric values");
       changes[field.key]=field.numeric?Number(value):value;
     }
+    if(operation==="update"&&recordType==="sale"&&cashReceiver)changes.cash_receiver=selectedCashReceiver(cashReceiver);
+    if(operation==="update"&&["expense","feed"].includes(recordType)&&cashPayer)changes.cash_payer_account_id=cashPayer;
     if(operation==="update"&&categoryEdited)changes.stock_group_id=stockGroup||null;
     setSaving(true);
     try{
@@ -71,6 +75,9 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
       <Label>Action<select className="block border rounded p-2 w-full mt-1" value={operation} onChange={e=>{setOperation(e.target.value);setRetryId(crypto.randomUUID());}}><option value="update">Correct details</option>{['sale','expense','fund'].includes(recordType)&&<option value="void">Void record</option>}{recordType==='supply'&&<option value="archive">Remove from active supplies</option>}</select></Label>
       {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} step={field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
       {operation==="update"&&(["inventory","inventory_transaction"].includes(recordType)||(recordType==="sale"&&!!row.pricing_basis))&&<LivestockGroupPicker product={values.product||String(row.product)} value={stockGroup} onChange={chooseCategory}/>}
+      {operation==="update"&&recordType==="sale"&&<CashReceiverSelect business="farm" value={cashReceiver} onChange={value=>{setCashReceiver(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
+      {operation==="update"&&["expense","feed"].includes(recordType)&&<CashPayerSelect business="farm" currency="NGN" bucket={recordType==="expense"&&values.expense_source==="sales_cash"?"sales":"owner"} value={cashPayer} onChange={value=>{setCashPayer(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
+      {operation==="update"&&["sale","expense","feed"].includes(recordType)&&<p className="text-xs text-gray-600">Leave the recorded cash person unchanged unless you have verified a correction. Records from before verified cash tracking retain unknown historical custody.</p>}
       <Label>Reason<Textarea value={reason} maxLength={1000} onChange={e=>{setReason(e.target.value);setRetryId(crypto.randomUUID());}}/></Label>
       <Button disabled={saving} onClick={save}>{saving?"Saving...":"Save correction"}</Button>
     </DialogContent></Dialog></>;

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
 const actorId='00000000-0000-4000-8000-000000000002',periodId='00000000-0000-4000-8000-000000000082';
-let role='manager',calls=[],error=null,outcome={status:'posted',data:{id:actorId}},checks=0;
+let selectedAdmin=false,role='manager',calls=[],error=null,outcome={status:'posted',data:{id:actorId}},checks=0;
 const actor=()=>{if(!role)throw Error('Unauthorized');return {id:actorId,role};};
 const auth={requireManager:async()=>actor(),requirePropertyManager:async()=>actor(),requireContentManager:async()=>actor(),requireAdmin:async()=>{if(role!=='admin')throw Error('Unauthorized');return actor();}};
-const db={rpc:async(name,args)=>{calls.push([name,args]);if(name==='manager_context')return {data:{business:args.p_business,actorId,managerId:actorId,periodId,mode:role==='admin'?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}};return {data:outcome,error};}};
+const db={rpc:async(name,args)=>{calls.push([name,args]);if(name==='manager_context')return {data:{business:args.p_business,actorId,managerId:selectedAdmin?periodId:actorId,periodId,mode:role==='admin'&&!selectedAdmin?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}};return {data:outcome,error};}};
 const load=typescriptLoader({'@/lib/auth':auth,'@/lib/supabase/server':{createServerClient:()=>db},'@/lib/farm-finance':{getFarmFinance:async()=>({closing_balance:1})}}),api=load('app/api/operations/funds/route.ts'),receipts=load('app/api/operations/funds/receipts/route.ts');
 const headers={'X-Manager-Actor':actorId,'X-Manager-Period':periodId,'Content-Type':'application/json'};
 const req=(body,path='/api/operations/funds',h=headers)=>new Request('http://localhost'+path,{method:body?'POST':'GET',headers:h,...(body?{body:JSON.stringify(body)}:{})});
@@ -18,6 +18,7 @@ eq((await api.POST(req({...input,payload:{...input.payload,date:'2026-02-30'}}))
 eq((await api.POST(req({...input,request_id:'invalid'}))).status,400);
 const fund={operation:'fund',payload:{business:'farm',currency:'NGN',date:'2026-10-28',amount:'123.45',recipient:{type:'custodian',name:'Procurement'},confirmed_receipt:true},request_id:actorId};
 eq((await api.POST(req(fund))).status,403);role='admin';outcome={status:'awaiting_receipt',amount:'123.45',currency:'NGN',data:{id:actorId}};eq((await api.POST(req(fund,undefined,{'Content-Type':'application/json'}))).status,202);
+selectedAdmin=true;eq((await api.POST(req(fund,'/api/operations/funds?period_id='+periodId,{'Content-Type':'application/json'}))).status,202);eq(calls.at(-1)[1].p_payload.manager_period_id,periodId);selectedAdmin=false;
 role='manager';outcome={status:'posted',data:{id:actorId}};eq((await receipts.POST(req({operation:'receive',payload:{business:'farm',currency:'NGN',event_id:actorId,date:'2026-10-28',amount:'100'},request_id:actorId}))).status,201);
 role='admin';eq((await receipts.POST(req(fund,undefined,{'Content-Type':'application/json'}))).status,400);
 const existing=load('app/api/farm/fund-transfers/route.ts');outcome={status:'awaiting_receipt',id:actorId,amount:'123.45',currency:'NGN',data:{id:actorId}};

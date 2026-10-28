@@ -1,6 +1,7 @@
 export function dashboardBackLink(pathname: string) {
   if (pathname === "/dashboard" || !pathname.startsWith("/dashboard/")) return null;
   for (const [prefix, href, label] of [
+    ["/dashboard/managers/", "/dashboard/managers", "Back to Manage Accounts"],
     ["/dashboard/dba/products/", "/dashboard/dba/products", "Back to Products"],
     ["/dashboard/blog/", "/dashboard/blog", "Back to Blog"],
     ["/dashboard/leads/", "/dashboard/leads", "Back to Leads"],

@@ -7,7 +7,7 @@ export async function withManagerWrite(request:Request,business:Business,write:(
  try{
   const scope=await requestManagerScope(request,business,adminOnly);
   const expected=request.headers.get("X-Manager-Period"),actor=request.headers.get("X-Manager-Actor");
-  if((scope.mode==="personal"&&(!expected||!actor))||(expected&&expected!==(scope.periodId||"legacy"))||(actor&&actor!==scope.actorId))
+  if((scope.mode==="personal"&&scope.actorId===scope.managerId&&(!expected||!actor))||(expected&&expected!==(scope.periodId||"legacy"))||(actor&&actor!==scope.actorId))
    throw Object.assign(Error("This saved entry belongs to another login or responsibility period. Keep it for review."),{code:"42501"});
   return await currentWrite.run(scope,write);
  }catch(error){return managerReadError(error);}

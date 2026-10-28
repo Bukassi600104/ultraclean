@@ -30,3 +30,10 @@ export function calculateFarmFinance(rows: {transfers: FinancialRow[]; expenses:
  const amounts = {opening_balance,closing_balance,transferred_today,total_transferred,total_spent_before,total_spent_today,total_sales_today,total_sales_cash_expenses,sales_cash_balance,total_owner_spent:sumMoney([total_spent_before,total_spent_today]),net_position:sumMoney([closing_balance,sales_cash_balance]),revenue,general_expenses,feed_expenses,total_expenses:sumMoney([general_expenses,feed_expenses]),operational_net:subtractMoney(revenue,general_expenses,feed_expenses),today_total_expenses:sumMoney([total_spent_today,total_sales_cash_expenses]),today_operational_net:subtractMoney(total_sales_today,total_spent_today,total_sales_cash_expenses)};
  return {...Object.fromEntries(Object.entries(amounts).map(([key,value])=>[key,moneyNumber(value)])) as {[K in keyof typeof amounts]:number},daily,period_reconciliation,last_entries,sales_by_product:grouped(range_sales,"product","total_amount"),expenses_by_category};
 }
+
+export function applyPersonalFarmCash(result:ReturnType<typeof calculateFarmFinance>,cash:import("./operations-cash-validation").CashSummary){
+ const own=cash.accounts.filter(a=>a.holder_type==="manager"&&a.currency==="NGN"),owner=own.filter(a=>a.bucket==="owner");
+ const sum=(key:"opening"|"closing"|"funds_received"|"funds_received_total"|"paid_spending"|"paid_spending_total")=>sumMoney(owner.map(a=>a[key]));
+ const closing=sum("closing"),salesHeld=sumMoney(own.filter(a=>a.bucket==="sales").map(a=>a.closing));
+ return {...result,period_reconciliation:undefined,opening_balance:moneyNumber(sum("opening")),closing_balance:moneyNumber(closing),transferred_today:moneyNumber(sum("funds_received")),total_transferred:moneyNumber(sum("funds_received_total")),total_spent_today:moneyNumber(sum("paid_spending")),total_spent_before:moneyNumber(subtractMoney(sum("paid_spending_total"),sum("paid_spending"))),total_owner_spent:moneyNumber(sum("paid_spending_total")),sales_cash_balance:moneyNumber(salesHeld),net_position:moneyNumber(sumMoney([closing,salesHeld])),personal_cash:cash};
+}

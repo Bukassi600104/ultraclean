@@ -28,8 +28,8 @@ export async function getCeoOverview(scope: OverviewScope) {
    return {finance,inventory,fish:inventory.filter(r=>r.product==="catfish"),livestock:inventory.filter(r=>["goat","ram","cattle","pig","chicken","turkey"].includes(String(r.product))),feed:feedStock.data,feedError:feedStock.error,mortality:mortality.products,salesCount:sales.filter(r=>!r.voided_at&&String(r.date)>=scope.from&&String(r.date)<=scope.to).length};
   }),
   section(async()=>{
-   const [reports,requests]=await Promise.all([all("farm_daily_reports"),all("farm_operational_requests")]);
-   return {pending:requests.filter(r=>r.status==="pending"||r.status==="approved").sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),recentReports:reports.filter(r=>r.status==="submitted").sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))).slice(0,5)};
+   const [reports,requests,people]=await Promise.all([all("farm_daily_reports"),all("farm_operational_requests"),all("profiles")]);
+   return {pending:requests.map((r):OverviewRow=>({...r,requester_name:people.find(p=>p.id===r.requested_by)?.name??null})).filter(r=>r.status==="pending"||r.status==="approved").sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),recentReports:reports.filter(r=>r.status==="submitted").sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))).slice(0,5)};
   }),
   section(async()=>{
    const [leads,posts,appointments,dbaSales]=await Promise.all([all("leads"),all("blog_posts"),all("appointments"),all("dba_sales")]);

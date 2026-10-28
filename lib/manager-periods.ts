@@ -11,7 +11,7 @@ export async function resolveManagerScope(actor:Profile,business:Business,select
   if(actor.role!=="admin"&&selection.managerId!==actor.id)failure("Own manager records only");
   let query=db.from("manager_periods").select("id,manager_id,business").eq("manager_id",selection.managerId).eq("business",business);
   if(periodId)query=query.eq("id",periodId);
-  const {data,error}=await query.order("created_at",{ascending:false}).limit(1).maybeSingle();
+  const {data,error}=await query.order("ended_at",{ascending:false,nullsFirst:true}).order("created_at",{ascending:false}).order("id",{ascending:false}).limit(1).maybeSingle();
   if(error)throw error;if(!data)failure("Manager period is not configured");periodId=data.id;
  }
  const {data,error}=await db.rpc("manager_context",{p_actor:actor.id,p_business:business,p_period_id:periodId??null});

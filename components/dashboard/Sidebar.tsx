@@ -79,6 +79,7 @@ const NAV_SECTIONS = [
   {
     label: "Team",
     items: [
+      { href: "/dashboard/funds", label: "Funds & Approvals", icon: ClipboardList },
       { href: "/dashboard/managers", label: "Manage Accounts", icon: UserCog },
     ],
   },

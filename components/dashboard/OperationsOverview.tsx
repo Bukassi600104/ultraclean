@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {useCallback,useEffect,useRef,useState,type ReactNode} from "react";
 import {RefreshCw} from "lucide-react";
 import {DashboardHeader} from "./DashboardHeader";
@@ -36,7 +37,7 @@ export function OperationsOverview({business}:{business:"properties"|"content"})
  return <>
   <DashboardHeader title={business==="properties"?"Properties Overview":"Content Overview"} subtitle="CEO reports from saved operational records" actions={<button onClick={()=>void load()} disabled={loading} aria-label="Refresh business reports" className="inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm"><RefreshCw className="h-4 w-4"/>Refresh</button>}/>
   <div className="space-y-6 p-4 text-slate-800 lg:p-8">
-   <FinancialPeriodForm {...period} note={business==="properties"?"Occupancy and open work are current snapshots.":"Audience figures are the latest recorded account snapshots as at the end date."}/>
+   <Link href={`/dashboard/funds?business=${business==="properties"?"property":"content"}`} className="inline-flex min-h-11 items-center rounded-lg border bg-white px-4 py-2 text-sm font-semibold">View funds, individual managers and approvals</Link><FinancialPeriodForm {...period} note={business==="properties"?"Occupancy and open work are current snapshots.":"Audience figures are the latest recorded account snapshots as at the end date."}/>
    <p className="text-sm text-slate-600">{business==="properties"?"Rent, expenses, occupancy and work reports from Property Manager.":"Publication, audience, leads and sales reports from Content Manager."} Refresh to load the latest saved records.</p>
    {loading?<p role="status" className={panel}>Loading business reports…</p>:error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error} <button className="min-h-11 px-3 underline" onClick={()=>void load()}>Retry</button></div>:<>
     {business==="properties"&&property&&<>

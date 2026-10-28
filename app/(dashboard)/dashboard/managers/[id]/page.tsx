@@ -1,0 +1,2 @@
+import {ManagerReport} from "@/components/dashboard/ManagerReport";import {businessSchema} from "@/lib/operations-cash-validation";
+export default function ManagerReportPage({params,searchParams}:{params:{id:string};searchParams:{business?:string}}){const business=businessSchema.safeParse(searchParams.business);return <ManagerReport managerId={params.id} initialBusiness={business.success?business.data:"farm"}/>;}

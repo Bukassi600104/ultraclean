@@ -417,7 +417,7 @@ export default function FarmOverviewPage() {
         </Card>
       </div>
 
-      <FarmActivityPanel onSaved={() => { void refreshFinance(); void fetchTransfers(); }} />
+      <div id="corrections"><FarmActivityPanel onSaved={() => { void refreshFinance(); void fetchTransfers(); }} /></div>
       {/* Add Transfer Dialog */}
       <Dialog open={showAddTransfer} onOpenChange={setShowAddTransfer}>
         <DialogContent>
