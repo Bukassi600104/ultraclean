@@ -222,7 +222,7 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Confirm legacy Excel eligibility: Farm Manager and Emmanuel Adeolu only; exclude Tony and future accounts.
 - [x] Complete independent design review and resolve both funding-policy questions with the user.
 - [x] Write and self-review the implementation plan against the reviewed design and confirmed policies.
-- [ ] Confirm the complete plan before product changes.
+- [x] Complete plan approved by user on 28 October 2026.
 - [ ] Implement individual reporting/access and account-scoped offline handling.
 - [ ] Implement farm inventory handover without inserting opening stock or changing existing quantities.
 - [ ] Simplify Feed Inventory: compact table, manager-led dated starting/received/opened entries in a centred dialog, synchronized CEO oversight, optional non-blocking review and no double stock when pending costs resolve.
@@ -232,4 +232,6 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
 - [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; not yet approved for implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
+Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; approved for isolated implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
+
+Execution: Task 1 (periods and access) in progress. Preserve all original figures; new data and permissions only.
