@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give new managers their own clean operating records, confirm farm inventory at handover, reconcile entrusted funds without inherited debt, and export the two authorised legacy accounts without changing historical records.
+**Goal:** Give Bimbo a real-data cross-business control centre, new managers their own clean operating records, verified farm handover, accurate funds reconciliation and the two authorised legacy exports without changing historical records.
 
 **Architecture:** Keep existing business ledgers and assets. Add manager operating periods, responsibility/asset links, immutable inventory acceptance, and balanced cash-custody events. Guard ownership and lifecycle in database routines, RLS and server reads; existing legacy accounts keep their historical mode while new periods use isolated activity and cash.
 
@@ -22,6 +22,8 @@
 - Reuse exact decimal arithmetic; keep currencies and owner/sales funding separate. An internal staff handoff is neither new owner funding, revenue nor an expense.
 - Create migration files with `supabase migration new <name>`; record the generated exact paths in the execution ledger. Never edit/replay original migrations. No paid database branch/project is needed.
 - Production migration/activation follows reviewed implementation, verified restore rehearsal and concrete release approval. No production test entries or automatic messages to staff.
+- CEO is the all-business control centre for actual activity, financial checks and recorded approve/decline decisions. All sidebar/nested pages need consistent placement, centred forms/dialogs where appropriate and readable restrained layouts.
+- No mock/demo data, placeholder business rows or filler chart values in deployed screens. Empty source records stay empty; genuine zero, unknown data and read failures are distinct. Synthetic test fixtures are isolated from runtime/production and cannot seed live data.
 
 ## Review Focus
 
@@ -153,8 +155,22 @@ type WriteOutcome<T> =
 - [ ] Reuse authoritative exact-money services and existing charts/data tables over complete, consistently scoped reads. Keep current physical stock counted once in business totals; accepted/shared assets are not summed as separate stock for each manager. Separate daily opening, receipts today, posted spending, pending spending and closing. Hide stale figures after errors.
 - [ ] Farm business totals continue to come from existing active source ledgers, which already include new posted farm records. Custody is their breakdown, never an added second total: legacy/unallocated owner residual equals the existing closing owner balance minus explicitly tracked new owner custody (including awaiting receipt); apply the equivalent sales-cash bridge separately. Property/Content performance comes from existing rent/sales/expense sources; owner funding is cash funding, not revenue. Their new custody sum reconciles prospective recorded cash only, with legacy/unallocated activity labelled separately.
 - [ ] Add plain Business/Manager/Period controls and View records from Manage Accounts. Keep all reports inside CEO dashboard. Clearly distinguish legacy business totals from personal responsibility and personal growth from inherited audience snapshots. Default new personal reports to their own start/current period.
+- [ ] Make the overview a clear balance/check control centre across UltraTidy, DBA, Primefield, Properties and Content using their actual supported measures. Figures drill into the source records and matching scope; do not manufacture unavailable costs, profit, currency or history to make every section look identical.
+- [ ] Extend the existing decision desk to expose operational requests, funding gaps, correction/handover issues and optional feed review with business, manager, actual date, details, status and appropriate approve/decline controls. Preserve one audited outcome per request and required acknowledgement/available-funds guards. Keep current outstanding decisions visible and explicitly labelled even when finances show a past period. Approving a feed review cannot repeat a bag movement or undo factual activity automatically.
 - [ ] Let Bimbo explicitly start a new period or assign existing assets without copying historical transactions. Starting a new period is not silently applied to either existing export account. Require an explicit resolution of pending handovers/cash before closing a personal period; retain all earlier activity and access history.
 - [ ] Test two managers, two periods on one account, admin-entered work on another's behalf, currencies, negatives in untouched legacy data, missing authority, unknown funding, 501+ rows, empty states and server error isolation. Verify responsive forms/filters and deterministic Back targets; commit GREEN.
+
+## Task 6A: CEO-wide layout consistency and real-data presentation
+
+**Files:** `app/(dashboard)/layout.tsx`, `components/dashboard/DashboardHeader.tsx`, `Sidebar.tsx`, `CeoDashboard.tsx`, `OperationsOverview.tsx`, `BusinessFinancialCharts.tsx`; only the affected body/form/dialog sections in actual sidebar destination and nested page files. Reuse `components/ui/dialog.tsx`/existing primitives. Extend `scripts/test-dashboard-navigation-ui.mjs`, CEO/account/form UI suites, and create `scripts/test-ceo-control-center-ui.mjs` where current harnesses do not cover decision and data states.
+
+**Produces:** a route-by-route layout/decision/data-state verification matrix for every `Sidebar.tsx` destination, including settings/account menus and nested details/create/edit pages. This is a layout/data presentation update, not permission to redesign unrelated business rules or public sites.
+
+- [ ] Derive the actual route list from the sidebar and existing Back mappings. For each page record its parent, page header, content container, form/modal type and genuine loading/empty/error behavior. Write RED tests for confirmed mispositioned, overflowing or inaccessible layouts; change only the owning shared component/page.
+- [ ] Apply consistent headers, spacing and constrained centred content where appropriate; centre normal forms/dialogs, preserve readable text alignment and allow necessary tables their content width. Avoid giant full-screen form panels, duplicate page headers, side-pushed content and clipped Save/Cancel/decision controls. Keep internal CEO reporting destinations and active-menu/Back behavior intact.
+- [ ] Exercise 390/768/1440 widths plus a short phone viewport, keyboard navigation, focus restoration, zoom/long labels, sticky sidebar interaction and dialog scrolling. Verify no body-level horizontal overflow; contain any table scrolling. Inspect actual rendered screenshots of representative root, detail, entry and approval screens.
+- [ ] Test complete empty responses, successful zero totals, unknown attribution/counts and independent query failures. None may show sample activity, fixed chart values, fake totals or fabricated requests. Check runtime import/data paths for fixture/mock fallbacks; keep all synthetic test data in the isolated harness. Empty tables have no fabricated rows and charts do not imply activity when none is recorded.
+- [ ] Test the decision area with no requests and isolated valid/pending/approved/declined fixtures; confirm stale/replayed decisions do not re-post funds or stock. Verify source-detail drilldowns and existing role guards. Run the affected CEO/navigation/account UI regressions; commit the verified presentation changes.
 
 ## Task 7: Restricted genuine Excel exports
 
@@ -183,6 +199,6 @@ Define `LegacyManagerSnapshot = {target:{id:string;name:string|null};asOf:string
 
 ## Self-review and execution handoff
 
-Every spec section maps to Tasks1–8, including the requested feed simplification in Task3A. Five review-focus conditions have explicit owning tests. New API/write outcomes, scope names, receipt policies and export IDs are consistent across tasks. Feed financial-pending tests distinguish confirmed physical delivery from unreceived orders so optional review cannot stop routine feeding or duplicate stock. Original money helpers, record schemas and legacy workflows remain authoritative; uncertain funding and attribution are represented explicitly rather than guessed.
+Every spec section maps to Tasks1–8, including feed simplification in Task3A and the all-business CEO control-centre/layout/data requirements in Tasks6/6A. Five review-focus conditions have explicit owning tests. New API/write outcomes, scope names, receipt policies and export IDs are consistent across tasks. Feed financial-pending tests distinguish confirmed physical delivery from unreceived orders so optional review cannot stop routine feeding or duplicate stock. Original money helpers, record schemas and legacy workflows remain authoritative; uncertain funding and attribution are represented explicitly rather than guessed. No runtime mock data or production seeding is permitted.
 
 Recommended execution: **Native**, continuing the existing workflow in this isolated worktree, with task-by-task RED/GREEN checks and one fresh final reviewer. These tasks share ownership/custody interfaces and live-data preservation rules; independent parallel edits to those interfaces would increase integration risk. Review this plan before implementation, then execute the whole approved scope rather than deploying individual half-enabled pieces.

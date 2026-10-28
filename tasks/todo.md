@@ -227,8 +227,9 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [ ] Implement farm inventory handover without inserting opening stock or changing existing quantities.
 - [ ] Simplify Feed Inventory: compact table, manager-led dated starting/received/opened entries in a centred dialog, synchronized CEO oversight, optional non-blocking review and no double stock when pending costs resolve.
 - [ ] Implement linked funds custody/receipts and exact reconciliation.
+- [ ] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
 - [ ] Implement the two eligible accounts' genuine XLSX exports.
 - [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
 - [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: reviewed design and implementation plan updated with user feed-UX addendum; not yet approved for implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
+Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; not yet approved for implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.

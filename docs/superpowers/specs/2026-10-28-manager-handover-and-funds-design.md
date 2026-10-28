@@ -1,6 +1,6 @@
 # Individual manager records, farm handover and funds reconciliation
 
-Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Feed-inventory simplification and manager-led entry added by the user during plan review. Plan remains unapproved for implementation; no product implementation or production mutation yet.
+Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Feed-inventory simplification and the CEO control-centre/data/design requirements were added by the user during plan review. Plan remains unapproved for implementation; no product implementation or production mutation yet.
 
 ## Purpose and agreed requirements
 
@@ -44,6 +44,18 @@ Use the current Next.js, Supabase, existing guarded transaction routines, UI com
 7. New farm managers see the inventory accepted at handover as existing farm assets, not purchases or activity credited to them. Their activity starts empty while the real confirmed stock can be nonzero.
 8. CEO pages remain inside the CEO shell. Default to the business overview, with simple Business, Manager and Period filters. Show money received, spent, sales/inflows, money still held, work completed and pending decisions. Label missing inputs and unallocated legacy funds plainly. Select metrics appropriate to each business; do not invent Content profit or Property arrears.
 9. Individual figures must add into the business view once, with an explicit legacy/unallocated category where required. Transfers between staff have zero effect on combined business cash. Mixed currencies remain separate.
+
+## CEO control centre — user clarification, 28 October 2026
+
+The CEO dashboard is Bimbo's central place to see, balance, check and decide across every existing business. It must present the genuine activity, financial position, individual manager work and outstanding decisions in understandable sections, with a clear route from a headline figure to its supporting records. Maintain UltraTidy, DBA, Primefield, Properties and Content in the CEO shell using their actual available data; do not imply that all businesses have the same financial fields or invent unsupported measures.
+
+Provide a clear current decision area for operational requests, proposed corrections, handover issues, optional feed reviews and funding gaps. Show business, manager/requester, date, relevant amount or quantity, supporting details and status. Bimbo can approve or decline where applicable, with actor/time and reasons retained. Pending current decisions remain visible independently of a historical financial date filter, with that difference labelled. Approval cannot fabricate funds, bypass a required manager acknowledgement, repeat physical stock effects or erase an activity that already occurred.
+
+All CEO sidebar destinations and their nested pages must follow consistent layout rules, not just the overview or new modules. Use aligned page headers, visible parent navigation, restrained spacing and clear readable hierarchy. Centre constrained page/form containers where appropriate and centre modest dialogs in the viewport. Let detailed tables use an appropriate content width with scrolling contained within the table. Do not push forms off to either side, force everything into full-screen panels, centre every text label indiscriminately, or clip actions on phones. Preserve existing working controls and business workflows while correcting layout inconsistencies.
+
+Use only real production records for live figures, charts, tables, activity and requests. No demo rows, invented managers, sample transactions, filler chart values or mock-data fallbacks may appear in the deployed app. If records are absent, leave the relevant data area empty and explain that there are no recorded entries. Show a genuine zero only when a successful complete query establishes it; unknown/missing information and query failures must remain visibly distinct from zero. Never seed production to make a screen look populated. Synthetic fixtures remain confined to isolated tests and can never be imported into runtime paths or written to production.
+
+This clarification extends the same plan; it does not authorise implementation or deployment yet. No original records, account access or historical values may be changed merely to improve how the dashboard looks.
 
 ## Farm handover wizard
 
@@ -149,7 +161,7 @@ Required acceptance tests:
 4. Personal/day/period/CEO numbers agree at exact displayed precision beyond 500 rows; genuine prior-day closing carries forward. Internal transfers do not inflate revenue/expenses. Missing receipts remain explicit.
 5. Account switching and reconnecting cannot submit an old person's queue under a new identity; unowned/uncertain entries survive for resolution. Suspension blocks new writes but preserves records and admin export.
 6. Only the two allowed accounts receive XLSX exports. Round-trip read exports to verify all rows, ownership, original values, voids, corrections, currency and formula-injection safety; no production test records.
-7. Existing account/API/UI/closure/livestock/feed/Property/Content/CEO and public-site regressions pass, as do lint and build. Compare old records/accounts/quantities before and after additive migration on an isolated restored copy, then verified production release.
+7. Existing account/API/UI/closure/livestock/feed/Property/Content/CEO and public-site regressions pass, as do lint and build. Compare old records/accounts/quantities before and after additive migration on an isolated restored copy, then verified production release. Check every CEO sidebar/nested destination for readable, correctly positioned layouts and accessible centred dialogs; exercise real-empty, genuine-zero, unknown and query-failure states with no runtime mock data or production seeding.
 
 ## Calls for review
 
