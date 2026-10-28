@@ -220,8 +220,9 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 
 - [x] Read-only account, attribution, finance, inventory, permission and offline-queue audit.
 - [x] Confirm legacy Excel eligibility: Farm Manager and Emmanuel Adeolu only; exclude Tony and future accounts.
-- [ ] Complete reviewed design and obtain design approval before product changes. Builder check returned two funding-policy questions; awaiting the user's answers.
-- [ ] Write the implementation plan after approved design.
+- [x] Complete independent design review and resolve both funding-policy questions with the user.
+- [x] Write and self-review the implementation plan against the reviewed design and confirmed policies.
+- [ ] Confirm the complete plan before product changes.
 - [ ] Implement individual reporting/access and account-scoped offline handling.
 - [ ] Implement farm inventory handover without inserting opening stock or changing existing quantities.
 - [ ] Implement linked funds custody/receipts and exact reconciliation.
@@ -229,4 +230,4 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
 - [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: design only. No application code, production records, account status or schema has changed for this request.
+Current stage: reviewed design and implementation plan ready. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.

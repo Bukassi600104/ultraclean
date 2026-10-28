@@ -1,6 +1,6 @@
 # Individual manager records, farm handover and funds reconciliation
 
-Status: proposed design for review; no product implementation or production mutation yet.
+Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Implementation plan is being prepared; no product implementation or production mutation yet.
 
 ## Purpose and agreed requirements
 
@@ -137,11 +137,11 @@ Required acceptance tests:
 - Legacy funding with no recipient cannot be honestly assigned to either manager in an Excel report.
 - Exact schema/table names and XLSX dependency selection are left to the implementation plan; these behavioral guarantees are not optional.
 
-## Builder-check questions awaiting the user
+## Confirmed financial decisions
 
-The independent design check identified two material financial decisions. They have been sent together to the user; neither recommendation is treated as an answer or approval.
+The independent design check identified two material financial decisions. The user explicitly selected both recommended policies:
 
-1. For new direct Bimbo-to-manager funding, should personal cash responsibility begin only after the manager acknowledges receipt, with sent funds shown separately as awaiting receipt, or immediately when Bimbo records the payment? Recommended: manager acknowledgement. The offline procurement person can still be represented by Bimbo, without requiring a login.
-2. When a new manager's paid-expense entry exceeds recorded available cash, should it remain retained/pending while Bimbo identifies the missing funding source, or post with an explicitly flagged negative balance? Recommended: retain pending, preventing automatic personal debt. Pending entries must remain visible to Bimbo as needing reconciliation and must not be described as completed spending or discarded. Once resolved, post the original dated business entry and cash effects once, with the normal closed-day correction controls where applicable.
+1. Direct Bimbo-to-manager funding enters the manager's personal balance only after the manager confirms receipt. Until then, show **Sent, awaiting receipt** in a separate custody/clearing balance. Never make the amount disappear from the CEO reconciliation. The offline procurement person can still be represented by Bimbo, without requiring a login.
+2. An expense exceeding the new manager's recorded available money stays **pending funding confirmation**. Retain the original entry, show its available amount/shortfall to Bimbo and do not create a new negative personal balance. Pending entries are visible as needing reconciliation, not completed spending, and are never discarded. After Bimbo confirms the true payer/funding and sufficient funds are actually acknowledged where required, post the original dated business entry and cash effects once, with normal closed-day correction controls when applicable. Bimbo's resolution does not fabricate a receipt or credit money to the manager without acknowledgement.
 
 These decisions affect only the new manager/custody model. Existing historical expenses, deficits and account balances remain unchanged under either answer.
