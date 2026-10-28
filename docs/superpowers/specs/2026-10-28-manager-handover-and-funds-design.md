@@ -1,6 +1,6 @@
 # Individual manager records, farm handover and funds reconciliation
 
-Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Implementation plan is being prepared; no product implementation or production mutation yet.
+Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Feed-inventory simplification and manager-led entry added by the user during plan review. Plan remains unapproved for implementation; no product implementation or production mutation yet.
 
 ## Purpose and agreed requirements
 
@@ -58,11 +58,34 @@ Steps are generated from real recorded items, approximately 5–10 confirmations
 
 Controls are simple: Confirmed on ground, or Cannot confirm. No mandatory quantity entry or invented inventory form. An unchecked/unconfirmed item is not implicitly accepted. Cannot confirm records a handover issue for Bimbo and leaves acceptance pending; Bimbo resolves the issue through the existing audited correction workflow before final completion. Managers must never be forced to attest to missing stock.
 
-Display only data the app actually has. There is no existing standalone fixed-asset register, so equipment only appears where recorded in inventory/supplies. Unknown feed opening counts appear as unknown and are referred to Bimbo; zero rows must not become a fabricated physical zero or a checkbox claiming an unknown quantity exists.
+Display only data the app actually has. There is no existing standalone fixed-asset register, so equipment only appears where recorded in inventory/supplies. Unknown feed opening counts appear as unknown; the manager can enter an actual starting count through the separate feed-record dialog without requiring Bimbo to type it. Zero rows must not become a fabricated physical zero or a checkbox claiming an unknown quantity exists.
 
 Save progress per account and operating period. Draft ticks can resume, but final acceptance requires online verification. Snapshot source IDs, descriptions, quantities, units, versions/as-of time, manager, start date and final acceptance time. Recheck changed items before completion using the same inventory locking regime as stock writes. If a quantity changes during the walk, ask the manager to recheck that item rather than accept stale stock.
 
 Acceptance writes only handover/confirmation records. It does not insert Add Stock/opening movements, change current quantities, transfer old cash or reopen a closed date. Prevent duplicate final acceptance on retry. After activation, stock is deducted by the existing sale/mortality/feed/supply movements exactly once.
+
+## Feed inventory simplification — user addendum, 28 October 2026
+
+The farm manager performs routine feed entry once; Bimbo observes the synchronized records and acts on requests when needed. Bimbo is not required to enter the starting count or repeat purchases, receipts or opened-bag records. Current CEO-only opening permissions must be deliberately changed for authorised farm managers; this is a proposed update, not the current deployed behavior.
+
+Replace the repeated animal/source card matrix and permanently exposed technical form with one compact stock table. Show recorded/relevant feed combinations, not fourteen speculative empty cards. Before any counts exist, show one clear empty state and an Add feed record action on the manager side. Use plain columns such as Feed, Source, Unopened bags, Last activity and History; show detailed dated events on demand.
+
+The manager clicks **Add feed record**, chooses the action and enters only its required details in a centred dialog:
+
+- **Starting bag count:** actual unopened bags in the store, counted once for an unknown feed/source. A new manager does not reset an already established business count; they confirm it at handover.
+- **Feed received:** bags physically delivered, with the relevant purchase/financial link. Buying/ordering feed is not automatically proof of physical arrival.
+- **Bags opened for feeding:** actual whole bags opened. Deduct each opening once, whether entered here or through Daily Feed. Feeding from an already opened bag must not deduct it again or be confused with the quantity fed.
+- **Report a count problem:** retain the manager's proposed correction and evidence/reason for review through the existing audited correction process. Bimbo can approve or respond; she does not have to retype the manager's entry. Do not expose plus/minus arithmetic as the normal operator workflow.
+
+Each event requires its actual activity date, defaulting to the current farm date in Africa/Lagos. Store the recording timestamp automatically and show both activity date and recorded time, with the named actor, in history. Approval dates never replace activity dates. Counted stock is as of the recorded starting-count point; bags already included in that count must not be added again as a later-entered receipt. Make any needed included-in-starting-count confirmation explicit rather than guessing chronology from a date alone.
+
+Opening bags and ordinary feed work do not require Bimbo's permission. An optional request for Bimbo's review/approval may be linked to an entry. There is no automatic ten-bag threshold or other new mandatory approval rule. Pending optional review does not freeze feeding, suppress actual stock activity or post another stock movement when answered. A declined review flags follow-up; it does not rewrite what physically happened.
+
+The confirmed insufficient-funds rule still applies to money: the financial expense remains pending and cannot create negative personal cash. Independently confirmed physical delivery/opening can be recorded while funding is being resolved, so physical inventory does not falsely exclude bags that are on the farm. Link physical receipt and pending/posted cost explicitly; resolving the cost must reuse the existing physical receipt and never add the same bags a second time. An unconfirmed order/payment-only entry cannot create physical bags. No stock or financial event is fabricated merely to get past an approval step.
+
+Use the existing component library, typography, spacing, colours and accessible Dialog. Keep the page content in a centred constrained container. Centre the modest-width dialog horizontally and vertically, with safe viewport margins, readable labels, visible actions, keyboard/focus handling, retained unsaved values and internal scrolling when needed on a small phone. Avoid oversized cards, side-pushed forms, screen-wide entry panels and clipped controls. CEO feed view defaults to stock/activity and requests rather than a compulsory entry form.
+
+This remains an unopened-bag count. Do not silently add guessed kilograms or partial contents of opened bags. Preserve all original feed purchases, feeding records, stock movements and historical timestamps; any new permissions or physical-event links use forward-only migrations and audited new records.
 
 ## Funds custody and reconciliation
 
@@ -78,7 +101,7 @@ The offline procurement person is a named custodian, not a required login. Bimbo
 | Manager acknowledges NGN 300,000 received | 700,000 | 300,000 | 1,000,000 |
 | Manager records actual feed purchase NGN 300,000 | 700,000 | 0 | 700,000 |
 
-The internal NGN 300,000 is neither another Bimbo transfer nor an expense. Purchasing ten bags at NGN 30,000 each records one NGN 300,000 feed expense and the existing linked feed-stock receipt, without an extra general feed expense.
+The internal NGN 300,000 is neither another Bimbo transfer nor an expense. A funded purchase and confirmed delivery of ten bags at NGN 30,000 each records one NGN 300,000 feed expense and one linked physical receipt, without an extra general feed expense. If delivery was already recorded while funding was pending, posting its cost does not add the bags again.
 
 ### Rules
 
@@ -122,7 +145,7 @@ Required acceptance tests:
 
 1. New accounts in all three apps see zero personal activity/balance and cannot read other managers' rows through URLs, forged IDs, APIs or direct database calls. CEO retains complete totals and individual filters; master records are not duplicated.
 2. Farm onboarding cannot be bypassed, handles no/unknown data honestly, saves ticks, flags missing items, rechecks stale quantities, commits acceptance once, and creates zero stock/cash movements.
-3. NGN 1,000,000 → NGN 300,000 → NGN 300,000 expense yields 700,000/0 custody and 700,000 combined, with one feed receipt/expense. Test partial/multiple sources, concurrent over-allocation, duplicates, lost responses, corrections, voids, sales cash, negative/invalid inputs and mixed currencies.
+3. NGN 1,000,000 → NGN 300,000 → NGN 300,000 expense yields 700,000/0 custody and 700,000 combined, with one feed receipt/expense. Test partial/multiple sources, concurrent over-allocation, duplicates, lost responses, corrections, voids, sales cash, negative/invalid inputs and mixed currencies. Confirm manager-led starting counts, dated feed delivery/opening, optional non-blocking review, and a physically received delivery whose pending cost is later resolved without a second stock addition.
 4. Personal/day/period/CEO numbers agree at exact displayed precision beyond 500 rows; genuine prior-day closing carries forward. Internal transfers do not inflate revenue/expenses. Missing receipts remain explicit.
 5. Account switching and reconnecting cannot submit an old person's queue under a new identity; unowned/uncertain entries survive for resolution. Suspension blocks new writes but preserves records and admin export.
 6. Only the two allowed accounts receive XLSX exports. Round-trip read exports to verify all rows, ownership, original values, voids, corrections, currency and formula-injection safety; no production test records.

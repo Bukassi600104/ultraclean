@@ -40,3 +40,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Internal procurement-to-manager receipts move custody of existing funds; they are neither extra owner funding nor an expense. Only the actual purchase reduces combined unspent funds.
 - Isolate offline queues by authenticated account and operating period. Retain legacy unowned drafts for resolution rather than submitting them under the next login.
 - Special legacy export eligibility is the two user-selected accounts, Farm Manager and Emmanuel Adeolu. Do not assume it applies to one account, Tony, or every manager.
+- Feed operations are manager-led: the CEO observes and responds to requests, without mandatory opening-count entry or duplicate data entry. Routine feeding does not await optional review, and no ten-bag approval threshold was agreed.
+- Keep confirmed physical feed delivery/opening distinct from an unresolved financial expense; later posting must not duplicate the physical receipt. Use actual activity dates plus automatic recorded timestamps, compact tables and centred dialogs.
