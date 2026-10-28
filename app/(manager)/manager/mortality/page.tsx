@@ -25,6 +25,7 @@ export default function MortalityPage() {
   const [cause, setCause] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -44,6 +45,7 @@ export default function MortalityPage() {
       setSavedId(result.id || result.data?.id || null);
       setRequestId(crypto.randomUUID());
       setQuantity(""); setCause(""); setNotes("");
+      setDirty(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       toast.success("Mortality recorded.");
@@ -52,7 +54,7 @@ export default function MortalityPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
       <div className="rounded-2xl px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "#fee2e2", borderLeft: "4px solid #dc2626" }}>
         <Skull className="h-6 w-6 text-red-600 flex-shrink-0" />
         <div>

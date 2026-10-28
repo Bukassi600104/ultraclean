@@ -28,6 +28,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
   const [finances,setFinances] = useState<ReturnType<typeof summarizeProperties>["finances"]>([]);
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(""), [saveError, setSaveError] = useState(""), [notice, setNotice] = useState(""), [saving, setSaving] = useState(false), [conflict, setConflict] = useState(false), [uncertain, setUncertain] = useState(false);
   const [editing, setEditing] = useState<PropertyRow | null>(null), [showForm, setShowForm] = useState(false), [values, setValues] = useState<Record<string, string>>({}), [reason, setReason] = useState(""), [filter, setFilter] = useState("all"), [search, setSearch] = useState("");
+  const [initialValues,setInitialValues]=useState("");
   const retry = useRef<{fingerprint: string; id: string} | null>(null);
   useEffect(() => {
     setShowForm(false);setEditing(null);setSaveError("");setNotice("");setConflict(false);setUncertain(false);setFilter("all");setSearch("");retry.current = null;
@@ -70,7 +71,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
     if (!isPropertySection(section) || uncertain) return;
     const initial: Record<string, string> = {};
     fields[section].forEach(field => {initial[field.key] = row ? String(row[field.key] ?? "") : field.options?.[0] ?? "";});
-    setValues(initial);setEditing(row);setReason("");setSaveError("");setNotice("");setConflict(false);setUncertain(false);retry.current = null;setShowForm(true);
+    setValues(initial);setInitialValues(JSON.stringify(initial));setEditing(row);setReason("");setSaveError("");setNotice("");setConflict(false);setUncertain(false);retry.current = null;setShowForm(true);
     requestAnimationFrame(() => document.getElementById("property-form")?.scrollIntoView({behavior: "smooth", block: "start"}));
   }
   function change(field: Field, value: string) {
@@ -127,7 +128,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
   }
   const title = section === "overview" ? "Property overview" : section === "history" ? "Activity history" : propertyKinds[section].label;
   const rows = isPropertySection(section) ? data[section].filter(row => (filter === "all" || row.status === filter || row.category === filter) && Object.values(row).some(value => String(value ?? "").toLowerCase().includes(search.toLowerCase()))) : [];
-  return <div className="space-y-6">
+  return <div data-unsaved-changes={showForm&&(uncertain||JSON.stringify(values)!==initialValues||!!reason.trim())} className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-bold sm:text-3xl">{title}</h1><p className="mt-2 max-w-2xl text-sm text-slate-600">{section === "history" ? "Every saved change retains its actor, time, reason and original values." : "Manage actual property records. Payments and expenses remain separate from maintenance estimates."}</p></div><div className="flex gap-2"><button onClick={() => void load()} disabled={loading || saving} className="min-h-11 rounded-lg border bg-white px-4 text-sm">{loading ? "Loading…" : "Refresh"}</button>{isPropertySection(section) && <button onClick={() => start(null)} disabled={loading || !!loadError || saving || uncertain} className="min-h-11 rounded-lg bg-[#0BBDB2] px-4 text-sm font-semibold text-slate-950 disabled:opacity-50">Add record</button>}</div></div>
     {loadError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError} Existing data has not been replaced with zero balances. Use Refresh to retry.</div>}
     {notice && <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm text-teal-900">{notice}</p>}

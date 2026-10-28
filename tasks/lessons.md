@@ -26,3 +26,10 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Browser client (`createClient()` from `lib/supabase/client.ts`) handles auth via session cookies — works in dashboard (authenticated)
 - Use `useRef` to hold latest `fetchLeads` so the realtime subscription (set up once in `useEffect([], [])`) always calls the current version without re-subscribing on every filter change
 - Always clean up channel with `supabase.removeChannel(channel)` in the effect's return
+
+### CEO navigation and reporting scope — 28 October 2026
+- CEO Properties and Content Manager menu entries must open reports within the CEO shell. Standalone operational apps retain their own manager workflows and account roles; shared reports read the same authoritative records.
+- Preserve an explicitly cleared start date as all recorded history. Default the current month only when no start was supplied.
+- Group content attribution by currency and content ID; titles are labels and may repeat. Disambiguate duplicate titles without merging the underlying records.
+- Explicit Back navigation must protect unsaved values, including date-only edits. Clear dirty state after confirmed saves; retain unconfirmed offline payloads.
+- Read financial numeric fields as decimal text and aggregate at full stored scale before final display rounding. Never rebuild historical ledgers to resolve a display mismatch.

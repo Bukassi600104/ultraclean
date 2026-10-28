@@ -72,8 +72,8 @@ const NAV_SECTIONS = [
       { href: "/dashboard/farm/feed-stock", label: "Feed Inventory", icon: Package },
       { href: "/dashboard/farm/daily-reports", label: "Daily Reports", icon: FileText },
       { href: "/dashboard/farm/operational-requests", label: "Operational Requests", icon: ClipboardList },
-      { href: "/property", label: "Properties", icon: Building2 },
-      { href: "/content", label: "Content Manager", icon: Radio },
+      { href: "/dashboard/properties", label: "Properties", icon: Building2 },
+      { href: "/dashboard/content", label: "Content Manager", icon: Radio },
     ],
   },
   {

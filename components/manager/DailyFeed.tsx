@@ -36,6 +36,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [localOpened,setLocalOpened]=useState("0"),[foreignOpened,setForeignOpened]=useState("0");
   const [saveError,setSaveError]=useState("");
   const [uncertain,setUncertain]=useState(false);
+  const [dirty,setDirty]=useState(false);
   const lock=useRef(false);
   const pending=useRef<{id:string;payload:Record<string,unknown>}[]>([]);
   const storageKey=profile?`primefield-daily-feed-retry:${profile.id}`:null;
@@ -93,7 +94,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
         if(!response.ok)throw Error(result.error||"Unable to confirm feed submission");
         pending.current.shift();persist();
       }
-      setUncertain(false);setLocalBags("");setForeignBags("");setLocalOpened("0");setForeignOpened("0");setNotes("");setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Feed activity and stock movement saved");await loadRecords();
+      setUncertain(false);setDirty(false);setLocalBags("");setForeignBags("");setLocalOpened("0");setForeignOpened("0");setNotes("");setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Feed activity and stock movement saved");await loadRecords();
     }catch(error){const message=error instanceof Error?error.message:"Unconfirmed submission. Retry the saved entry; its bag count stays locked.";setSaveError(message);toast.error(message);}finally{lock.current=false;setSaving(false);}
   }
 
@@ -107,7 +108,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   }, {});
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty||uncertain} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
       {/* Header */}
       <div className="rounded-2xl px-5 py-4 flex items-center gap-3"
         style={{ backgroundColor: "#e0f2fe", borderLeft: "4px solid #0284c7" }}>

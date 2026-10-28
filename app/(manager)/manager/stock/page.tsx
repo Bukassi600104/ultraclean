@@ -26,6 +26,7 @@ export default function StockPage() {
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -47,6 +48,7 @@ export default function StockPage() {
       setSavedId(result.id || result.data?.id || null);
       setRequestId(crypto.randomUUID());
       setQuantity(""); setReason(""); setNotes("");
+      setDirty(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       toast.success("Stock added!");
@@ -55,7 +57,7 @@ export default function StockPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
       <div className="rounded-2xl px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "#dcfce7", borderLeft: "4px solid #16a34a" }}>
         <PlusSquare className="h-6 w-6 text-green-700 flex-shrink-0" />
         <div>

@@ -17,7 +17,7 @@ const server=http.createServer((req,res)=>{if(req.url.startsWith('/bundle.js')){
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin=`http://127.0.0.1:${server.address().port}`,browser=await chromium.launch({headless:true}),page=await browser.newPage({viewport:{width:1440,height:1100}});
 const faults=[],calls=[];page.on('pageerror',error=>faults.push(error.message));
 
-const routes=['appointments','leads','blog','courses','dba','farm','managers','settings','ultratidy',...['sales','expenses','inventory','supplies','feed-stock','daily-feed','daily-reports','operational-requests'].map(r=>'farm/'+r),...['inflow','expenses','inventory'].map(r=>'ultratidy/'+r),...['products','sales','products/new','products/edit/example'].map(r=>'dba/'+r),'blog/new','blog/edit/example','leads/example'];let checks=0;
+const routes=['appointments','leads','blog','courses','dba','farm','managers','settings','ultratidy','properties','content',...['sales','expenses','inventory','supplies','feed-stock','daily-feed','daily-reports','operational-requests'].map(r=>'farm/'+r),...['inflow','expenses','inventory'].map(r=>'ultratidy/'+r),...['products','sales','products/new','products/edit/example'].map(r=>'dba/'+r),'blog/new','blog/edit/example','leads/example'];let checks=0;
 try {
  for(const width of [390,768,1440]){
   await page.setViewportSize({width,height:900});

@@ -35,7 +35,7 @@ async function test(label, work) {
   try { await work(); checks++; } catch (error) { failures.push(`${label}: ${error.message}`); }
 }
 const domains = { manager: '/manager', property_manager: '/property', content_manager: '/content', admin: '/dashboard' };
-const paths = ['/manager', '/manager/sales', '/property', '/property/units', '/content', '/content/performance', '/dashboard', '/dashboard/leads'];
+const paths = ['/manager', '/manager/sales', '/property', '/property/units', '/content', '/content/performance', '/dashboard', '/dashboard/leads', '/dashboard/properties', '/dashboard/content'];
 for (const role of [null, 'admin', 'manager', 'property_manager', 'content_manager', 'unknown']) {
   profile = role ? { id: 'synthetic-user', role, suspended: false } : null;
   for (const route of paths) await test(`${role || 'anonymous'} ${route}`, async () => {

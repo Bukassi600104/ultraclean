@@ -6,6 +6,7 @@ import { createContext, useContext, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { propertyKinds } from "@/lib/property";
 import {operationalBackLink} from "@/lib/dashboard-navigation";
+import {confirmUnsavedNavigation} from "@/lib/confirm-navigation";
 
 const PropertyActorContext = createContext("");
 export function usePropertyActor() {return useContext(PropertyActorContext);}
@@ -19,7 +20,7 @@ export default function PropertyShell({children, isAdmin, actorId}: {children: R
     try {const db = createClient();if (!db) throw new Error();const {error: failure} = await db.auth.signOut();if (failure) throw failure;router.replace("/property/login");router.refresh();}
     catch {setError("Unable to sign out. Please retry.");}finally {setBusy(false);}
   }
-  return <PropertyActorContext.Provider value={actorId}><div className="min-h-screen bg-slate-50 text-slate-900">
+  return <PropertyActorContext.Provider value={actorId}><div onClickCapture={confirmUnsavedNavigation} className="min-h-screen bg-slate-50 text-slate-900">
     <header className="border-b bg-white px-4 py-4 sm:px-6"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
       <Link href="/property" aria-label="Property Manager home"><Image src="/bossbiz-logo.png" width={48} height={48} alt="BossBimbz" className="h-12 w-auto object-contain" /></Link>
       <span className="font-semibold">Property Manager</span><div className="flex items-center gap-3">{isAdmin && <Link href="/dashboard" className="rounded-lg px-3 py-3 text-sm text-teal-800 hover:bg-teal-50">CEO Dashboard</Link>}<button disabled={busy} onClick={logout} className="min-h-11 rounded-lg border px-3 text-sm">{busy ? "Signing out…" : "Sign out"}</button></div>

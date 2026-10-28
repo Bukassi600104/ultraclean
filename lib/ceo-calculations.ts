@@ -21,7 +21,16 @@ export function summarizeContent(rows: { records: OverviewRow[]; performance: Ov
  const analytics = Array.from(new Set(rows.sales.map(r=>String(r.currency)))).map(currency=>ledgerAnalytics(rows.sales.filter(r=>r.currency===currency).map(r=>({date:String(r.sale_date),amount:amount(r),category:String(r.sale_type),kind:"income" as const})),scope,currency));
  const audience_growth = Array.from(latest.values()).map(row=>{const baseline=rows.performance.filter(r=>!r.content_id&&r.platform===row.platform&&String(r.account_id??"")===String(row.account_id??"")&&String(r.metric_date)<scope.from).sort((a,b)=>String(b.metric_date).localeCompare(String(a.metric_date)))[0];return {platform:row.platform,account_id:row.account_id??"",change:baseline?.followers!=null&&row.followers!=null&&String(row.metric_date)>=scope.from?Number(row.followers)-Number(baseline.followers):null};});
  const leads_by_status = Object.entries(rows.leads.filter(r=>inPeriod(r.lead_date,scope)).reduce<Record<string,number>>((acc,r)=>{const key=String(r.status??"unknown");acc[key]=(acc[key]??0)+1;return acc;},{})).map(([name,value])=>({name,value}));
- const sales_by_content = Object.entries(rows.sales.filter(r=>inPeriod(r.sale_date,scope)).reduce<Record<string,string>>((acc,r)=>{const key=String(r.currency)+" · "+String(r.content_id??"Unattributed");acc[key]=sumMoney([acc[key]??"0",amount(r)]);return acc;},{})).map(([name,value])=>({name,value:moneyNumber(value)}));
+ const attribution=new Map<string,{currency:string;contentId:string|null;value:string}>();
+ for(const row of rows.sales.filter(r=>inPeriod(r.sale_date,scope))) {
+  const currency=String(row.currency),contentId=row.content_id==null?null:String(row.content_id),key=JSON.stringify([currency,contentId]);
+  const group=attribution.get(key)??{currency,contentId,value:"0"};group.value=sumMoney([group.value,amount(row)]);attribution.set(key,group);
+ }
+ const sales_by_content=Array.from(attribution.values(),group=>{
+  const record=rows.records.find(row=>row.id===group.contentId),duplicate=record&&rows.records.some(row=>row.id!==record.id&&row.title===record.title);
+  const title=record?String(record.title)+(duplicate?` (${record.platform??"Unknown platform"} · ${record.id})`:""):group.contentId?`Unknown content (${group.contentId})`:"Unattributed";
+  return {name:group.currency+" · "+title,value:moneyNumber(group.value)};
+ });
  return {analytics,audience_growth,leads_by_status,sales_by_content,published:rows.records.filter(r=>r.status==="published"&&inPeriod(r.published_at,scope)).length,leads:rows.leads.filter(r=>inPeriod(r.lead_date,scope)).length,accounts:Array.from(latest.values()).sort((a,b)=>String(a.platform).localeCompare(String(b.platform))),sales:Array.from(sales.values()).map(group=>({...group,mentorship:moneyNumber(group.mentorship),affiliate:moneyNumber(group.affiliate)})).sort((a,b)=>a.currency.localeCompare(b.currency))};
 }
 /** Rent and expense ledgers are authoritative. Maintenance cost is an estimate, not a second expense. */

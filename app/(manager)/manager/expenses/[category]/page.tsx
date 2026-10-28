@@ -108,6 +108,7 @@ export default function ExpenseCategoryPage() {
   const requestId = useRef<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedItems, setSavedItems] = useState<{ label: string; amount: number }[]>([]);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     const t = getTodayStr();
@@ -174,6 +175,7 @@ export default function ExpenseCategoryPage() {
         }
 
         requestId.current = null;
+        setDirty(false);
         setSavedItems((prev) => [
           ...prev,
           { label: `Feed (${form.feed_type})`, amount: totalCost },
@@ -224,6 +226,7 @@ export default function ExpenseCategoryPage() {
         }
 
         requestId.current = null;
+        setDirty(false);
         setSavedItems((prev) => [
           ...prev,
           { label: form.produce_type, amount: totalCost },
@@ -271,6 +274,7 @@ export default function ExpenseCategoryPage() {
       }
 
       requestId.current = null;
+      setDirty(false);
       setSavedItems((prev) => [
         ...prev,
         { label: savedLabel, amount: Number(form.amount) },
@@ -324,7 +328,7 @@ export default function ExpenseCategoryPage() {
   const IconComponent = config.icon;
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
       {/* Product header */}
       <div
         className="rounded-2xl px-5 py-4"

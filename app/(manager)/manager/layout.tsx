@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {operationalBackLink} from "@/lib/dashboard-navigation";
+import {confirmUnsavedNavigation} from "@/lib/confirm-navigation";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
@@ -60,7 +61,7 @@ export default function ManagerLayout({
   const back=operationalBackLink(pathname,"manager");
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+    <div onClickCapture={confirmUnsavedNavigation} className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
       {/* Sidebar */}
       <ManagerSidebar
         isOpen={sidebarOpen}

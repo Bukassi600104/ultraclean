@@ -207,7 +207,9 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Baseline and reproduction
 - [x] Mortality scopes
 - [x] Exact accounting and reconciliation
-- [ ] Back navigation and layout
+- [x] Back navigation and layout
 - [x] Form accessibility
 - [x] Account UI harness
 - [ ] Verification, review and approved release
+- [x] Internal CEO Properties and Content reports (user addendum), authoritative data and unchanged manager app routes.
+- Independent review: original and addendum Important findings reproduced before fixes; no deferred Minor findings. Exact-money, mortality, account, role/API and backup restore evidence retained in the release report.

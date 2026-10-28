@@ -98,6 +98,7 @@ export default function SaleProductPage() {
   const [saving, setSaving] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [savedItems, setSavedItems] = useState<{ label: string; total: number }[]>([]);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     const t = getTodayStr();
@@ -208,6 +209,7 @@ export default function SaleProductPage() {
       const persistedSale = Array.isArray(result.data) ? result.data[0] : result.data;
       if (!persistedSale || !Number.isFinite(Number(persistedSale.total_amount))) throw new Error("Sale response did not include saved total");
       setSavedItems((prev) => [...prev, { label: config.label, total: Number(persistedSale.total_amount) }]);
+      setDirty(false);
       setRequestId(crypto.randomUUID());
       setForm((prev) => ({
         date: prev.date,
@@ -245,7 +247,7 @@ export default function SaleProductPage() {
   const sessionTotal = savedItems.reduce((s, i) => s + i.total, 0);
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
       {/* Header */}
       <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: config.bg, borderLeft: `4px solid ${config.color}` }}>
         <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: config.color }}>Recording Sale</p>

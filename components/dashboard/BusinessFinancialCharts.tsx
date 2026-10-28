@@ -11,12 +11,12 @@ export type BusinessAnalytics = {
 export function businessMoney(value: number, currency: string | null = "NGN") {
   return currency ? formatCurrency(value, currency) : `${value.toLocaleString("en", {minimumFractionDigits:2,maximumFractionDigits:2})} (currency not recorded)`;
 }
-export function FinancialPeriodForm({from,to}:{from:string;to:string}) {
+export function FinancialPeriodForm({from,to,note="Current stock is a present-day snapshot."}:{from:string;to:string;note?:string}) {
   return <form method="get" className="flex flex-wrap items-end gap-3" key={`${from}:${to}`}>
     <label className="text-xs">From<input aria-label="Financial period start" name="from" type="date" defaultValue={from} className="block border rounded-lg p-2 min-h-11"/></label>
     <label className="text-xs">To<input aria-label="Financial period end" name="to" type="date" defaultValue={to} required className="block border rounded-lg p-2 min-h-11"/></label>
     <button className="border rounded-lg px-4 min-h-11">Apply period</button>
-    <p className="text-xs text-slate-500 w-full">{from ? `Reporting period: ${from} to ${to}` : `All recorded history through ${to}`}. Current stock is a present-day snapshot.</p>
+    <p className="text-xs text-slate-500 w-full">{from ? `Reporting period: ${from} to ${to}` : `All recorded history through ${to}`}. {note}</p>
   </form>;
 }
 export function BusinessFinancialCharts({data,title,incomeOnly=false}:{data:BusinessAnalytics;title:string;incomeOnly?:boolean}) {

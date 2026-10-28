@@ -25,19 +25,20 @@ export default function UltraTidyOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [loadError,setLoadError] = useState(false);
   const [period,setPeriod] = useState({from:"",to:farmDateToday()});
+  const [totals,setTotals]=useState({revenue:0,total_expenses:0,operational_net:0});
 
   useEffect(() => {
     const controller=new AbortController(),params=new URLSearchParams(window.location.search);
     const from=params.get("from")||"0001-01-01",to=params.get("to")||farmDateToday();setPeriod({from:params.get("from")||"",to});
     Promise.all([fetch(`/api/ceo/overview?from=${from}&to=${to}`,{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const result=await r.json();if(result.ultratidy.error)throw Error();return result.ultratidy.data;}),fetch("/api/ultratidy/inventory",{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();return r.json();})])
-      .then(([finance,inv])=>{setInflow(finance.income_breakdown.map((r:{name:string;value:number})=>({service:r.name,amount:r.value})));setExpenses(finance.expense_breakdown.map((r:{name:string;value:number})=>({category:r.name,amount:r.value})));setInventory(Array.isArray(inv)?inv:[]);})
+      .then(([finance,inv])=>{setTotals({revenue:finance.revenue,total_expenses:finance.total_expenses,operational_net:finance.operational_net});setInflow(finance.income_breakdown.map((r:{name:string;value:number})=>({service:r.name,amount:r.value})));setExpenses(finance.expense_breakdown.map((r:{name:string;value:number})=>({category:r.name,amount:r.value})));setInventory(Array.isArray(inv)?inv:[]);})
       .catch(error=>{if(error.name!=="AbortError")setLoadError(true);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return ()=>controller.abort();
   }, []);
 
-  const totalInflow = inflow.reduce((s, r) => s + Number(r.amount), 0);
-  const totalExpenses = expenses.reduce((s, r) => s + Number(r.amount), 0);
-  const netProfit = totalInflow - totalExpenses;
+  const totalInflow = totals.revenue;
+  const totalExpenses = totals.total_expenses;
+  const netProfit = totals.operational_net;
   const lowStock = inventory.filter(
     (i) => Number(i.current_quantity) <= Number(i.reorder_level)
   ).length;

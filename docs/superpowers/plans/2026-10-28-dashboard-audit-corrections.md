@@ -98,3 +98,7 @@
 - Explicit Back actions and accessible controls work on the requested shells and sizes while existing workflows, roles, account history and unsaved/offline behavior remain intact.
 - The isolated account UI and relevant regression suites pass, and production is updated only after explicit release authorization.
 - Real-world reconciliation, social authorization, opening feed counts and mobile installation are described accurately according to available evidence rather than asserted complete.
+
+## Approved navigation addendum during implementation
+
+The user clarified that Properties and Content Manager in the CEO menu must open CEO reporting pages, not the standalone operational apps. Add /dashboard/properties and /dashboard/content, with the existing CEO shell, Back link, date scope, authoritative summaries, charts and report tables from the same saved app records. Update both sidebar and overview section links. Preserve /property and /content for manager workflows. No duplicated ledgers, guessed data, account changes or schema migration. Test actual links, role protection, empty/error states, matching dates/data, narrow layouts and read-only request behavior before the approved release.
