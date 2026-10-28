@@ -1,5 +1,6 @@
 "use client";
 
+import {ManagerHandoverGate} from "@/components/manager/ManagerHandover";
 import {ManagerPeriodProvider} from "@/contexts/ManagerPeriodContext";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -129,4 +130,4 @@ function ManagerShell({
   );
 }
 
-export default function ManagerLayout({children}:{children:React.ReactNode}){return <ManagerPeriodProvider business="farm"><ManagerShell>{children}</ManagerShell></ManagerPeriodProvider>;}
+export default function ManagerLayout({children}:{children:React.ReactNode}){return <ManagerPeriodProvider business="farm"><ManagerHandoverGate><ManagerShell>{children}</ManagerShell></ManagerHandoverGate></ManagerPeriodProvider>;}

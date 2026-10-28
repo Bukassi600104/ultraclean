@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {managerDatabase,ids,scalar,periodWrite,asRole} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase();let checks=0;
+const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+const call=(actor,operation,session=null,items=[],request=null)=>scalar(db,'select handover_write($1,$2,$3::uuid,$4::jsonb,$5::uuid)',[actor,operation,session,JSON.stringify(items),request||(operation==='get'?null:crypto.randomUUID())]);
+const all=state=>state.steps.flatMap(step=>step.items),decision=(item,status='confirmed')=>({itemId:item.itemId,status,version:item.version});
+try{
+ assert.ok(await scalar(db,"select to_regprocedure('handover_write(uuid,text,uuid,jsonb,uuid)')"),'Guarded handover must exist');checks++;
+ await db.exec("insert into farm_inventory(product,current_stock) values('catfish',40),('goat',0)");
+ await scalar(db,"select farm_v2_write($1,'feed','create','{\"date\":\"2026-10-01\",\"feed_type\":\"fish\",\"num_bags\":10,\"weight_unit\":\"kg\",\"weight_amount\":250,\"feed_source\":\"local\",\"cost\":300000}')",[ids.farm]);
+ await periodWrite(db,ids.admin,'activate');
+ const manager='00000000-0000-4000-8000-000000000031';await db.query('insert into auth.users(id) values($1)',[manager]);await db.query("insert into profiles(id,role,name) values($1,'manager','New farm manager')",[manager]);
+ const period=await periodWrite(db,ids.admin,'provision',{manager_id:manager,business:'farm',starts_on:'2026-10-28'});
+ await assert.rejects(()=>scalar(db,"select manager_read_records($1,'farm','farm_sales')",[manager]),e=>e.code==='42501');checks++;
+ const original=await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'stock_moves',(select count(*) from farm_inventory_transactions),'feed_moves',(select count(*) from farm_feed_stock_movements),'purchases',(select jsonb_agg(to_jsonb(t) order by id) from farm_feed_purchases t),'supplies',(select count(*) from farm_supply_transactions))");
+ let state=await call(manager,'get');eq(state.status,'awaiting_handover');eq(all(state).filter(r=>r.resource==='farm_inventory').length,2);
+ const fish=all(state).find(r=>r.label==='catfish'),goat=all(state).find(r=>r.label==='goat'),feed=all(state).find(r=>r.resource==='farm_feed_stock');eq(fish.quantity,'40');eq(feed.quantity,null);eq(goat.quantity,'0');
+ await call(manager,'save',state.sessionId,[decision(goat)]);
+ await call(manager,'save',state.sessionId,[decision(fish)]);state=await call(manager,'get');eq(all(state).find(r=>r.itemId===fish.itemId).status,'confirmed');
+ state=await call(manager,'save',state.sessionId,[decision(feed,'cannot_confirm')]);eq(state.issues.length,1);
+ await assert.rejects(()=>call(manager,'save',state.sessionId,[decision(feed)]),e=>e.code==='22023');checks++;
+ eq(await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'stock_moves',(select count(*) from farm_inventory_transactions),'feed_moves',(select count(*) from farm_feed_stock_movements),'purchases',(select jsonb_agg(to_jsonb(t) order by id) from farm_feed_purchases t),'supplies',(select count(*) from farm_supply_transactions))"),original);
+ await scalar(db,"select farm_v2_write($1,'inventory','update','{\"date\":\"2026-10-28\",\"target_quantity\":39,\"expected_current_stock\":40}',(select id from farm_inventory where product='catfish'),'Verified physical correction')",[ids.admin]);
+ state=await call(manager,'finalize',state.sessionId,all(state).map(item=>decision(item)));eq(state.status,'awaiting_handover');eq(state.conflict,'inventory_changed');
+ eq(all(state).find(r=>r.itemId===fish.itemId).status,'pending');eq(all(state).find(r=>r.itemId===feed.itemId).status,'cannot_confirm');
+ eq(all(state).find(r=>r.itemId===goat.itemId).status,'confirmed');
+ // Model a genuine physical count through the existing admin opening routine in this isolated fixture.
+ await scalar(db,"select farm_feed_stock_write($1,'opening','{\"date\":\"2026-10-28\",\"feed_type\":\"fish\",\"feed_source\":\"local\",\"bags_available\":4}',null,'Actual physical count')",[ids.admin]);
+ state=await call(manager,'get');eq(all(state).find(r=>r.itemId===feed.itemId).quantity,'4');
+ const beforeAcceptance=await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'stock_moves',(select count(*) from farm_inventory_transactions),'feed_moves',(select count(*) from farm_feed_stock_movements),'purchases',(select jsonb_agg(to_jsonb(t) order by id) from farm_feed_purchases t),'supplies',(select count(*) from farm_supply_transactions))");
+ state=await call(manager,'save',state.sessionId,all(state).map(item=>decision(item)));
+ state=await call(manager,'finalize',state.sessionId,all(state).map(item=>decision(item)),'00000000-0000-4000-8000-000000000099');eq(state.status,'active');eq(state.periodId,period.id);
+ const acceptedAt=await scalar(db,'select accepted_at::text from manager_handover_sessions where id=$1',[state.sessionId]);
+ eq((await call(manager,'finalize',state.sessionId,[])).status,'active');eq(await scalar(db,'select accepted_at::text from manager_handover_sessions where id=$1',[state.sessionId]),acceptedAt);
+ eq(await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'stock_moves',(select count(*) from farm_inventory_transactions),'feed_moves',(select count(*) from farm_feed_stock_movements),'purchases',(select jsonb_agg(to_jsonb(t) order by id) from farm_feed_purchases t),'supplies',(select count(*) from farm_supply_transactions))"),beforeAcceptance);
+ eq(await scalar(db,"select count(*)::int from manager_asset_assignments where period_id=$1",[period.id]),3);
+ eq(await scalar(db,"select count(*)::int from farm_sales"),0);eq(await scalar(db,"select count(*)::int from farm_fund_transfers"),0);
+ eq(await scalar(db,"select count(*)::int from farm_livestock_groups"),0);
+ eq((await scalar(db,"select manager_read_records($1,'farm','farm_feed_purchases')",[manager])).data,[]);
+ eq((await scalar(db,"select manager_read_records($1,'farm','farm_inventory')",[manager])).data.length,2);
+ await assert.rejects(()=>asRole(db,'authenticated',manager,()=>call(ids.admin,'get')),e=>e.code==='42501');checks++;
+ const peer='00000000-0000-4000-8000-000000000032';await db.query('insert into auth.users(id) values($1)',[peer]);await db.query("insert into profiles(id,role) values($1,'manager')",[peer]);await periodWrite(db,ids.admin,'provision',{manager_id:peer,business:'farm',starts_on:'2026-10-28'});
+ await assert.rejects(()=>call(peer,'save',state.sessionId,[]),e=>e.code==='42501');checks++;
+ await db.query('update profiles set suspended=true where id=$1',[peer]);await assert.rejects(()=>call(peer,'get'),e=>e.code==='42501');checks++;
+ assert.ok(original.inventory.length===2);checks++;
+ console.log('PASS '+checks+' handover checks: preserved source records, resumed decisions, unknown/zero distinction, stale snapshots and one-time acceptance without stock/cash');
+}finally{await db.close();}

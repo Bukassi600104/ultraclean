@@ -224,7 +224,7 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Write and self-review the implementation plan against the reviewed design and confirmed policies.
 - [x] Complete plan approved by user on 28 October 2026.
 - [ ] Implement individual reporting/access and account-scoped offline handling.
-- [ ] Implement farm inventory handover without inserting opening stock or changing existing quantities.
+- [x] Implement farm inventory handover without inserting opening stock or changing existing quantities.
 - [ ] Simplify Feed Inventory: compact table, manager-led dated starting/received/opened entries in a centred dialog, synchronized CEO oversight, optional non-blocking review and no double stock when pending costs resolve.
 - [ ] Implement linked funds custody/receipts and exact reconciliation.
 - [ ] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
@@ -235,3 +235,5 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; approved for isolated implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
 
 Execution: Tasks 1 and 2 implemented in the isolated branch. Manager periods, restrictive access, guarded linked writes, separate day closure, complete scoped finance reads, start-date provisioning and account/business/period offline boundaries verified. Individual CEO reporting remains Task 6. All 17 isolation/legacy-workflow suites passed; lint and TypeScript clean. No production records, figures, accounts or deployment changed.
+
+Task 3 verification: actual-source snapshots, saved ticks, unknown versus zero, per-item stale versions, one-time acceptance and original source-row/count preservation pass isolated SQL/API/browser checks. Feed starting-count setup during handover is the next Task 3A integration. No production migration or deployment performed.

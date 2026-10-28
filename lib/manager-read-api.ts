@@ -52,7 +52,9 @@ export async function managerReadResponse(request:Request,business:Business,reso
   if(shape==="array"||params.get("all")==="1")result.total=result.data.length;
   if(shape==="livestock"){
    const db=createServerClient();if(!db)throw Error();const {data,error}=await db.rpc("farm_livestock_balances");if(error)throw error;
-   const visible=new Set(result.data.map(row=>row.id));result={...result,data:(data||[]).filter((row:{id:string})=>visible.has(row.id))};
+   const visible=new Set(result.data.map(row=>row.id));
+   const inventory=await allManagerRecords(scope,"farm_inventory"),products=new Set(inventory.map(row=>row.product));
+   result={...result,data:(data||[]).filter((row:{id:string|null;product:string})=>row.id?visible.has(row.id):products.has(row.product))};
   }
   if(shape==="expenses"){
    const expenses=await allManagerRecords(scope,"farm_expenses",{...filters,active:true}),feed=await allManagerRecords(scope,"farm_feed_purchases",{from:filters.from,to:filters.to});

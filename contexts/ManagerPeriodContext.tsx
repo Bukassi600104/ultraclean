@@ -15,7 +15,7 @@ export function useManagerFetch(){
   if(controller.current.signal.aborted)controller.current=new AbortController();
   const headers=new Headers(init.headers);
   if(scope){headers.set("X-Manager-Actor",scope.actorId);headers.set("X-Manager-Period",scope.periodId||"legacy");}
-  const response=await fetch(input,{...init,headers,signal:AbortSignal.any([controller.current.signal,...(init.signal?[init.signal]:[])])});
+  const response=await fetch(input,{...init,cache:"no-store",headers,signal:AbortSignal.any([controller.current.signal,...(init.signal?[init.signal]:[])])});
   if(current.current!==key)throw new DOMException("Manager changed","AbortError");return response;
  },[key,scope]);
 }
