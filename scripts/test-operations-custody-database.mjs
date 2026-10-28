@@ -55,6 +55,8 @@ try{
  const allocate=await write(actor,'handoff',{date:'2026-10-28',amount:'0.01',source_account_id:competing.data.target_account_id,allocations:[{lot_id:competing.data.id,amount:'0.01'}]});eq(allocate.data.amount,'0.01');eq(await balance(competing.data.target_account_id),'299999.99');
  await assert.rejects(()=>write(actor,'handoff',{date:'2026-10-28',amount:'1',source_account_id:competing.data.target_account_id,allocations:[{lot_id:property.data.id,amount:'1'}]}),e=>e.code==='23514');checks++;
  const centTotals=await scalar(db,'select count(*)::int from (select event_id from operations_cash_postings group by event_id having sum(amount)<>0) t');eq(centTotals,0);
+ const outgoing=await write(ids.admin,'handoff',{date:'2026-10-28',amount:'1',source_account_id:handoff.data.target_account_id,recipient:{type:'manager',period_id:otherPeriod}});eq((await summary(actor)).history.some(e=>e.id===outgoing.data.id),true);
+ await write(ids.admin,'fund',{date:'2026-10-28',amount:'10',recipient:{type:'ceo'}});eq((await summary(ids.admin,'farm',p.id)).sources.some(a=>a.holder_type==='ceo'),true);
  await assert.rejects(()=>summary(ids.farm,'farm',p.id),e=>e.code==='42501');checks++;
  await db.query('update profiles set suspended=true where id=$1',[actor]);await assert.rejects(()=>write(actor,'handoff',{date:'2026-10-28',amount:'1',source_account_id:fund.data.target_account_id}),e=>e.code==='42501');checks++;
  console.log('PASS '+checks+' cash custody checks: balanced exact funding, procurement handoff, partial direct receipt, retry scope, source/currency boundaries, audited correction/void and original preservation');

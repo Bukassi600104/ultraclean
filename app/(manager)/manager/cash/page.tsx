@@ -1,5 +1,6 @@
 "use client";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {ManagerFunds} from "@/components/manager/ManagerFunds";
 
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
@@ -55,7 +56,8 @@ export default function ManagerCashPage() {
   const isPositive = net >= 0;
 
   return (
-    <div className="mx-auto max-w-lg px-4">
+    <div className="mx-auto max-w-lg space-y-6 px-4">
+      <ManagerFunds business="farm"/>
       {/* Page header with refresh */}
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-xl font-bold" style={{ color: "#1B4332" }}>

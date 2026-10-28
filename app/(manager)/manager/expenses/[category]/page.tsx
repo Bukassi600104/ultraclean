@@ -1,5 +1,8 @@
 "use client";
-import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
+import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
+import {CashPayerSelect} from "@/components/manager/CashPartySelect";
+import {multiplyMoney,moneyNumber} from "@/lib/money";
 
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
@@ -84,6 +87,8 @@ function getTodayStr() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type ExpenseDraft={form:FormValues;feedSource:string;delivery:string;deliveryDate:string;deliveryId:string;included:string;payer:string};
+
 export default function ExpenseCategoryPage() {
  const managerFetch=useManagerFetch();
   const { category } = useParams<{ category: string }>();
@@ -116,6 +121,10 @@ export default function ExpenseCategoryPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [savedItems, setSavedItems] = useState<{ label: string; amount: number }[]>([]);
   const [dirty, setDirty] = useState(false);
+  const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<ExpenseDraft>("expense:"+categoryKey);
+  const [payerChoice,setPayerChoice]=useState(""),[fundingNotice,setFundingNotice]=useState("");
+  useEffect(()=>{if(!submission.pending)return;const draft=submission.pending.draft;setForm(draft.form);setFeedSource(draft.feedSource);setDelivery(draft.delivery);setDeliveryDate(draft.deliveryDate);setDeliveryId(draft.deliveryId);setIncluded(draft.included);setPayerChoice(draft.payer);requestId.current=submission.pending.id;},[submission.pending]);
+
 
   useEffect(() => {
     const t = getTodayStr();
@@ -124,204 +133,61 @@ export default function ExpenseCategoryPage() {
   }, []);
 
   useEffect(() => {
-    if (!today) return;
-    managerFetch(`/api/farm/daily-record?date=${today}`)
+    if (!form.date) return;
+    managerFetch(`/api/farm/daily-record?date=${form.date}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.record?.status === "closed") setIsDayClosed(true);
+        setIsDayClosed(d.record?.status === "closed");
       })
       .catch(() => {});
-  }, [today,managerFetch]);
+  }, [form.date,managerFetch]);
 
   function updateField(field: keyof FormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
   async function handleSave() {
-    if (categoryKey === "feed") {
-      if (!form.num_bags || Number(form.num_bags) <= 0) return toast.error("Enter number of bags");
-      if (!form.cost_per_bag || Number(form.cost_per_bag) <= 0) return toast.error("Enter cost per bag");
-      if(delivery==="linked"&&!deliveryId)return toast.error("Choose the received delivery being paid for");
-      if(delivery==="received"&&!deliveryDate)return toast.error("Choose the actual delivery date");
-      const stock=feedStocks.find(r=>r.feed_type===form.feed_type&&r.feed_source===feedSource);
-      if(delivery==="received"&&stock?.opening_date&&deliveryDate<=stock.opening_date&&!included)return toast.error("Confirm whether these bags were included in the starting count");
-    } else if (categoryKey === "produce") {
-      if (!form.produce_quantity || Number(form.produce_quantity) <= 0) return toast.error("Enter quantity");
-      if (!form.produce_unit_price || Number(form.produce_unit_price) <= 0) return toast.error("Enter unit price");
-    } else {
-      if (!form.amount || Number(form.amount) <= 0) return toast.error("Enter a valid amount");
-    }
-    if (categoryKey === "equipment" && !form.item_name.trim()) {
-      return toast.error("Enter item name");
-    }
-
-    requestId.current ??= crypto.randomUUID();
-    setSaving(true);
+    if(saving)return;
+    setSaving(true);setFundingNotice("");
     try {
-      let savedLabel: string;
-
-      if (categoryKey === "feed") {
-        const totalCost = Number(form.num_bags) * Number(form.cost_per_bag);
-        // Feed goes to feed-purchases endpoint
-        const payload = [{
-          date: form.date,
-          feed_type: form.feed_type,
-          feed_source: feedSource,
-          delivery_received:delivery!=="order",
-          ...(delivery==="linked"?{feed_activity_id:deliveryId}:{}),
-          ...(delivery==="received"?{delivery_date:deliveryDate,...(included?{included_in_starting_count:included==="yes"}:{})}:{}),
-          weight_unit: "tons",
-          weight_amount: 1,
-          num_bags: Number(form.num_bags),
-          cost: totalCost,
-          notes: form.notes.trim() || undefined,
-        }];
-
-        const res = await managerFetch("/api/farm/feed-purchases", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Failed to save");
-        }
-
-        requestId.current = null;
-        setDelivery("order");setDeliveryId("");setDeliveryDate("");setIncluded("");
-        setDirty(false);
-        setSavedItems((prev) => [
-          ...prev,
-          { label: `Feed (${form.feed_type})`, amount: totalCost },
-        ]);
-
-        setForm((prev) => ({
-          date: prev.date,
-          amount: "",
-          item_name: "",
-          paid_to: "",
-          payment_method: prev.payment_method,
-          expense_source: prev.expense_source,
-          notes: "",
-          feed_type: prev.feed_type,
-          num_bags: "",
-          cost_per_bag: "",
-          produce_type: prev.produce_type,
-          produce_quantity: "",
-          produce_unit_price: "",
-        }));
-
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
-        toast.success("Feed purchase recorded!");
-        return;
-      } else if (categoryKey === "produce") {
-        const totalCost = Number(form.produce_quantity) * Number(form.produce_unit_price);
-        const payload = [{
-          date: form.date,
-          category: "produce",
-          amount: totalCost,
-          item_name: form.produce_type,
-          paid_to: form.paid_to.trim() || undefined,
-          payment_method: form.payment_method,
-          expense_source: form.expense_source,
-          notes: `${form.produce_quantity} units @ ₦${Number(form.produce_unit_price).toLocaleString("en-NG")}${form.notes.trim() ? ` — ${form.notes.trim()}` : ""}`,
-        }];
-
-        const res = await managerFetch("/api/farm/expenses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Failed to save");
-        }
-
-        requestId.current = null;
-        setDirty(false);
-        setSavedItems((prev) => [
-          ...prev,
-          { label: form.produce_type, amount: totalCost },
-        ]);
-
-        setForm((prev) => ({
-          ...prev,
-          produce_quantity: "",
-          produce_unit_price: "",
-          paid_to: "",
-          notes: "",
-        }));
-
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
-        toast.success("Produce purchase recorded!");
-        return;
-      } else {
-        const payload: Record<string, unknown> = {
-          date: form.date,
-          category: categoryKey,
-          amount: Number(form.amount),
-          paid_to: form.paid_to.trim() || undefined,
-          payment_method: form.payment_method,
-          expense_source: form.expense_source,
-          notes: form.notes.trim() || undefined,
-        };
-
-        if (categoryKey === "equipment") {
-          payload.item_name = form.item_name.trim();
-        }
-
-        const res = await managerFetch("/api/farm/expenses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
-          body: JSON.stringify([payload]),
-        });
-
-        if (!res.ok) {
-          const error = await res.json().catch(() => ({}));
-          throw new Error(error.error || "Failed to save expense");
-        }
-
-        savedLabel = config.label;
+      if(!submission.pending){
+        if(!form.date)throw Error("Select the actual expense date");
+        if(categoryKey==="feed"){
+          if(!Number.isInteger(Number(form.num_bags))||Number(form.num_bags)<=0||Number(form.cost_per_bag)<=0)throw Error("Enter a whole bag count and the cost per bag");
+          if(delivery==="linked"&&!deliveryId)throw Error("Choose the received delivery being paid for");
+          if(delivery==="received"&&!deliveryDate)throw Error("Choose the actual delivery date");
+          const stock=feedStocks.find(row=>row.feed_type===form.feed_type&&row.feed_source===feedSource);
+          if(delivery==="received"&&stock?.opening_date&&deliveryDate<=stock.opening_date&&!included)throw Error("Confirm whether these bags were included in the starting count");
+        }else if(categoryKey==="produce"){
+          if(Number(form.produce_quantity)<=0||Number(form.produce_unit_price)<=0)throw Error("Enter the quantity and unit price");
+        }else if(Number(form.amount)<=0)throw Error("Enter the actual amount paid");
+        if(categoryKey==="equipment"&&!form.item_name.trim())throw Error("Enter the item name");
       }
-
-      requestId.current = null;
-      setDirty(false);
-      setSavedItems((prev) => [
-        ...prev,
-        { label: savedLabel, amount: Number(form.amount) },
-      ]);
-
-      setForm((prev) => ({
-        date: prev.date,
-        amount: "",
-        item_name: "",
-        paid_to: "",
-        payment_method: prev.payment_method,
-          expense_source: prev.expense_source,
-        notes: "",
-        feed_type: prev.feed_type,
-        num_bags: "",
-        cost_per_bag: "",
-        produce_type: prev.produce_type,
-        produce_quantity: "",
-        produce_unit_price: "",
-      }));
-
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 2000);
-      toast.success("Expense recorded!");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+      const payer=personal?(payerChoice==="review"?{cash_payer_review:true}:payerChoice?{cash_payer_account_id:payerChoice}:{}):{};
+      let payload:Record<string,unknown>,label:string,endpoint:string;
+      if(categoryKey==="feed"){
+        payload={date:form.date,feed_type:form.feed_type,feed_source:feedSource,weight_unit:"tons",weight_amount:1,num_bags:Number(form.num_bags),cost:moneyNumber(multiplyMoney(form.num_bags||"0",form.cost_per_bag||"0")),notes:form.notes.trim()||undefined,delivery_received:delivery!=="order",...(delivery==="linked"?{feed_activity_id:deliveryId}:{}),...(delivery==="received"?{delivery_date:deliveryDate,...(included?{included_in_starting_count:included==="yes"}:{})}:{}),...payer};
+        label=`Feed (${form.feed_type})`;endpoint="/api/farm/feed-purchases";
+      }else{
+        const produce=categoryKey==="produce";
+        payload={date:form.date,category:categoryKey,amount:produce?moneyNumber(multiplyMoney(form.produce_quantity||"0",form.produce_unit_price||"0")):moneyNumber(form.amount||"0"),paid_to:form.paid_to.trim()||undefined,payment_method:form.payment_method,expense_source:form.expense_source,notes:produce?`${form.produce_quantity} units @ ₦${form.produce_unit_price}${form.notes.trim()?" — "+form.notes.trim():""}`:form.notes.trim()||undefined,...(produce?{item_name:form.produce_type}:categoryKey==="equipment"?{item_name:form.item_name.trim()}:{}),...payer};
+        label=produce?form.produce_type:config.label;endpoint="/api/farm/expenses";
+      }
+      requestId.current??=crypto.randomUUID();
+      const response=await submission.send(endpoint,[payload],{form,feedSource,delivery,deliveryDate,deliveryId,included,payer:payerChoice},requestId.current),result=await response.json();
+      if(!response.ok)throw Error(result.error||"Unable to confirm this saved expense");
+      requestId.current=null;setDirty(false);
+      if(response.status===202){setFundingNotice("Saved for Bimbo’s funding review; not yet posted.");setShowSuccess(false);}
+      else{
+        const saved=Array.isArray(result.data)?result.data[0]:result.data||result,actual=Number(categoryKey==="feed"?saved?.cost:saved?.amount);
+        if(!Number.isFinite(actual))throw Error("The saved response did not include the persisted cost. Check records before entering it again.");
+        setSavedItems(previous=>[...previous,{label,amount:actual}]);setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Expense recorded");
+      }
+      setForm(previous=>({...previous,amount:"",item_name:"",paid_to:"",notes:"",num_bags:"",cost_per_bag:"",produce_quantity:"",produce_unit_price:""}));setDelivery("order");setDeliveryId("");setDeliveryDate("");setIncluded("");setPayerChoice("");
+    }catch(error){if((error as Error).name!=="AbortError")toast.error((error as Error).message||"Unable to save this expense");}finally{setSaving(false);}
   }
 
-  if (isDayClosed) {
+  if (isDayClosed&&!submission.pending) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
         <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
@@ -343,7 +209,7 @@ export default function ExpenseCategoryPage() {
   const IconComponent = config.icon;
 
   return (
-    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="mx-auto w-full max-w-lg space-y-4">
       {/* Product header */}
       <div
         className="rounded-2xl px-5 py-4"
@@ -374,6 +240,10 @@ export default function ExpenseCategoryPage() {
         </div>
       )}
 
+      {fundingNotice&&<p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">{fundingNotice}</p>}
+      {submission.error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900">{submission.error}</p>}
+      {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">A saved expense is awaiting confirmation. Its original date and values are retained. Retry it before entering another expense here.</p>}
+      <fieldset disabled={saving||!!submission.pending} className="min-w-0">
       {/* Form */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
 
@@ -568,6 +438,7 @@ export default function ExpenseCategoryPage() {
             <option value="bimbo_transfer">Bimbo’s funds</option><option value="sales_cash">Farm sales proceeds</option>
           </select>
         </div> : <p className="text-sm text-gray-500">Feed purchases are paid from Bimbo’s funds.</p>}
+        {personal&&<CashPayerSelect business="farm" currency="NGN" bucket={categoryKey!=="feed"&&form.expense_source==="sales_cash"?"sales":"owner"} value={payerChoice} onChange={setPayerChoice} disabled={saving||!!submission.pending}/>}
         {/* Payment method */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Payment Method</label>
@@ -601,6 +472,7 @@ export default function ExpenseCategoryPage() {
         </div>
       </div>
 
+      </fieldset>
       {/* Buttons */}
       <div className="flex gap-2">
         <button
@@ -617,7 +489,7 @@ export default function ExpenseCategoryPage() {
           ) : saving ? (
             "Saving..."
           ) : (
-            "Save to Record"
+            submission.pending?"Retry saved expense":"Save to Record"
           )}
         </button>
         <button

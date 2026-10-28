@@ -1,4 +1,5 @@
 import { z } from "zod";
+import {cashReceiver,cashPayerFields} from "@/lib/operations-cash-validation";
 
 const text = z.string().trim().min(1).max(3000);
 const optionalText = z.string().max(3000).nullable().optional();
@@ -33,7 +34,8 @@ export function parsePropertyWrite(section: PropertySection, body: unknown) {
   const {operation, id: targetId, reason, request_id, expected_revision, ...fields} = envelope;
   if (operation === "update" && (!targetId || !reason || expected_revision === undefined)) throw new Error("A record, revision and correction reason are required");
   if (operation === "create" && (targetId || expected_revision !== undefined)) throw new Error("Creation cannot supply a saved record or revision");
-  const payload = (operation === "create" ? base[section].strict() : base[section].partial().strict()).parse(fields);
+  const scoped=base[section].extend(section==="rent"?{cash_receiver:cashReceiver.optional()}:section==="expenses"?{...cashPayerFields,cash_bucket:z.enum(["owner","sales"]).optional()}:{});
+  const payload = (operation === "create" ? scoped.strict() : scoped.partial().strict()).parse(fields);
   if (section === "units" && operation === "create" && "status" in payload && payload.status === "occupied") throw new Error("Create a tenancy to occupy a unit");
   if (!Object.keys(payload).length) throw new Error("Supply the fields to save");
   return {operation, targetId, reason, request_id, payload: {...payload, ...(operation === "update" ? {expected_revision} : {})}};

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {load} from './load-pure-typescript.mjs';
 const {calculateFarmFinance}=load('lib/farm-finance-calculations.ts');
-const {sumMoney,subtractMoney,moneyNumber}=load('lib/money.ts');
+const {sumMoney,subtractMoney,multiplyMoney,moneyNumber,formatExactCurrency}=load('lib/money.ts');
+assert.equal(multiplyMoney('3','0.10'),'0.30');assert.equal(multiplyMoney('0.25','150.99'),'37.7475');
+assert.equal(formatExactCurrency('9999999999999999.99','NGN'),'NGN 9,999,999,999,999,999.99');assert.equal(formatExactCurrency('-12.3','GBP'),'GBP -12.30');
 assert.equal(sumMoney(['999999999999999999.01','0.09']),'999999999999999999.10');
 assert.equal(subtractMoney('+1','+0.1'),'0.9');
 assert.equal(moneyNumber('-0.005'),-0.01);assert.equal(moneyNumber('1e-7'),0);

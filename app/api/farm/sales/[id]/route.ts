@@ -4,8 +4,10 @@ import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import { z } from "zod";
 import { FARM_PRODUCT_KEYS } from "@/lib/farm-products";
+import {cashReceiver} from "@/lib/operations-cash-validation";
 export const runtime = "nodejs";
 const schema = z.object({
+  cash_receiver:cashReceiver.optional(),
   product: z.enum(FARM_PRODUCT_KEYS).optional(),
   quantity: z.number().positive().optional(), unit_price: z.number().positive().optional(),
   weight_kg: z.number().positive().nullable().optional(), pricing_basis: z.enum(["per_kg", "per_unit", "per_head"]).nullable().optional(),

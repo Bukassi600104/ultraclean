@@ -6,10 +6,13 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import {cashPayerFields} from "@/lib/operations-cash-validation";
+import {financialResponse} from "@/lib/operations-cash";
 
 export const runtime = "nodejs";
 
 const feedItemSchema = z.object({
+  ...cashPayerFields,
   feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]),
   feed_source: z.enum(["local", "foreign"]).default("local"),
   weight_unit: z.enum(["tons", "kg"]).default("tons"),
@@ -105,7 +108,7 @@ async function legacyPOST(request: NextRequest) {
   const rows = parsed.data;
   const { data, error } = await farmWrite(profile, "feed", "create", rows, { requestId: request.headers.get("X-Request-ID") || (Array.isArray(body) ? body[0]?.request_id : (body as { request_id?: string })?.request_id) || undefined });
   if (error) return farmErrorResponse(error);
-  return NextResponse.json({ data }, { status: 201 });
+  return financialResponse(data);
 }
 
 export async function GET(request: NextRequest) {

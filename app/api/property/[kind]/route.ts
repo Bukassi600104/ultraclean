@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePropertyManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { isPropertySection, parsePropertyWrite, propertyKinds } from "@/lib/property";
+import {financialResponse} from "@/lib/operations-cash";
 
 export const dynamic = "force-dynamic";
 type Context = {params: {kind: string}};
@@ -42,7 +43,7 @@ async function legacyPOST(request: NextRequest, {params}: Context) {
     const invalid = ["22023", "23514", "23503", "23502", "22P02", "22007", "22008"].includes(error.code);
     return NextResponse.json({error: conflict ? "This record changed or conflicts with an existing record. Refresh and review before saving." : error.code === "42501" ? "Property access required" : error.code === "P0002" ? "The property record no longer exists. Refresh and review." : invalid ? error.message : "Unable to save. Your entry is retained; please retry."}, {status: conflict ? 409 : error.code === "42501" ? 403 : error.code === "P0002" ? 404 : invalid ? 400 : 500});
   }
-  return NextResponse.json({data});
+  return financialResponse(data,200);
 }
 
 export async function POST(request: NextRequest, {params}: Context) { return withManagerWrite(request,"property",()=>legacyPOST(request, {params})); }

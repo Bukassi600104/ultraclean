@@ -11,16 +11,25 @@ function decimal(value: MoneyInput): {units: bigint; scale: number} {
   return {units, scale};
 }
 
+function decimalText(units:bigint,scale:number):string {
+  const negative = units < BigInt(0), digits = (negative ? -units : units).toString().padStart(scale + 1,"0");
+  return (negative ? "-" : "") + (scale ? digits.slice(0,-scale) + "." + digits.slice(-scale) : digits);
+}
 /** Preserve legacy fractional digits until the final display boundary. */
 export function sumMoney(values: MoneyInput[]): string {
   const rows = values.map(decimal), scale = rows.reduce((max,row)=>Math.max(max,row.scale),0);
-  const units = rows.reduce((sum,row) => sum + row.units * powerOfTen(scale - row.scale), BigInt(0));
-  const negative = units < BigInt(0), digits = (negative ? -units : units).toString().padStart(scale + 1,"0");
-  return (negative ? "-" : "") + (scale ? digits.slice(0,-scale) + "." + digits.slice(-scale) : digits);
+  return decimalText(rows.reduce((sum,row) => sum + row.units * powerOfTen(scale - row.scale), BigInt(0)),scale);
+}
+export function multiplyMoney(left:MoneyInput,right:MoneyInput):string {
+ const a=decimal(left),b=decimal(right);if(a.scale+b.scale>16383)throw Error("Amount exceeds supported precision");return decimalText(a.units*b.units,a.scale+b.scale);
 }
 
 export function subtractMoney(value: MoneyInput, ...costs: MoneyInput[]): string {
   return sumMoney([value, ...costs.map(cost => {const normalized=sumMoney([cost]);return normalized.startsWith("-")?normalized.slice(1):"-"+normalized;})]);
+}
+export function formatExactCurrency(value:MoneyInput,currency:string):string{
+ const exact=sumMoney([value]),negative=exact.startsWith("-"),[whole,fraction=""]=exact.replace(/^-/,"").split(".");
+ return `${currency} ${negative?"-":""}${BigInt(whole).toLocaleString("en-NG")}.${fraction.padEnd(2,"0")}`;
 }
 
 /** Round ties away from zero; reject numbers whose cents cannot survive JSON transport. */

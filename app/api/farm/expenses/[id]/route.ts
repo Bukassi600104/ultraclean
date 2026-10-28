@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import { z } from "zod";
+import {cashPayerFields} from "@/lib/operations-cash-validation";
 export const runtime = "nodejs";
 const schema = z.object({
+  ...cashPayerFields,
   category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]).optional(),
   amount: z.number().positive().optional(), paid_to: z.string().max(200).nullable().optional(),
   expense_source: z.enum(["bimbo_transfer", "sales_cash"]).optional(), item_name: z.string().max(200).nullable().optional(),

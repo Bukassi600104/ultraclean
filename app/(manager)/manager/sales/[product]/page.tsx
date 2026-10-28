@@ -1,5 +1,7 @@
 "use client";
-import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
+import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
+import {CashReceiverSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
 
 import { formatCurrency } from "@/lib/utils";
 
@@ -75,6 +77,8 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type SaleDraft={form:FormValues;stockGroup:string;receiver:string};
+
 export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
   const { product } = useParams<{ product: string }>();
@@ -102,6 +106,10 @@ export default function SaleProductPage() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [savedItems, setSavedItems] = useState<{ label: string; total: number }[]>([]);
   const [dirty, setDirty] = useState(false);
+  const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
+  const [receiver,setReceiver]=useState("");
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
+
 
   useEffect(() => {
     const t = getTodayStr();
@@ -135,6 +143,7 @@ export default function SaleProductPage() {
 
   function validate(): string | null {
     if (!form.date) return "Select a date";
+    if(personal&&!receiver)return "Choose who actually received the payment";
     if (productKey === "crops" && !form.crop_type.trim()) return "Enter crop type";
     if (productKey === "catfish") {
       if (!form.quantity || Number(form.quantity) <= 0) return "Enter number of fish";
@@ -148,6 +157,7 @@ export default function SaleProductPage() {
   }
 
   function handleSavePress() {
+    if(submission.pending){void handleConfirmedSave();return;}
     const err = validate();
     if (err) return toast.error(err);
     setShowConfirm(true);
@@ -185,6 +195,7 @@ export default function SaleProductPage() {
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: form.customer_name.trim() || undefined,
+        ...(personal?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
 
       if (productKey === "catfish") {
@@ -197,11 +208,7 @@ export default function SaleProductPage() {
         if (productKey === "crops") payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await managerFetch("/api/farm/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify([payload]),
-      });
+      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver},requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -220,9 +227,10 @@ export default function SaleProductPage() {
         crop_type: "", payment_method: prev.payment_method,
         customer_name: "", notes: "",
       }));
-      setShowConfirm(false);
+      setShowConfirm(false);setReceiver("");
       toast.success("Sale recorded!");
     } catch (e) {
+      if((e as Error).name==="AbortError")return;
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Failed to save. Please try again.");
     } finally {
@@ -232,7 +240,7 @@ export default function SaleProductPage() {
 
   if (!selectedProduct || productKey === "other") return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
 
-  if (isDayClosed) {
+  if (isDayClosed&&!submission.pending) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
         <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mb-4">
@@ -250,7 +258,7 @@ export default function SaleProductPage() {
   const sessionTotal = savedItems.reduce((s, i) => s + i.total, 0);
 
   return (
-    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="mx-auto w-full max-w-lg space-y-4">
       {/* Header */}
       <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: config.bg, borderLeft: `4px solid ${config.color}` }}>
         <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: config.color }}>Recording Sale</p>
@@ -265,6 +273,9 @@ export default function SaleProductPage() {
         </div>
       )}
 
+      {submission.error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900">{submission.error}</p>}
+      {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">This sale is awaiting confirmation. Its original date and values are retained. Retry this saved sale before entering another here.</p>}
+      <fieldset disabled={saving||!!submission.pending} className="min-w-0 space-y-4">
       {/* Form */}
       <LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
@@ -341,6 +352,7 @@ export default function SaleProductPage() {
           </div>
         )}
 
+        {personal&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {/* 4. Payment method */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Payment Method</label>
@@ -374,12 +386,13 @@ export default function SaleProductPage() {
         </div>
       </div>
 
+      </fieldset>
       {/* Buttons */}
       <div className="flex gap-2">
         <button onClick={handleSavePress}
           className="flex-1 rounded-2xl py-4 font-bold text-sm text-white transition-all active:scale-[0.98]"
           style={{ backgroundColor: config.color }}>
-          Save Sale
+          {submission.pending?"Retry saved sale":"Save Sale"}
         </button>
         <button onClick={() => router.push("/sales")}
           className="rounded-2xl px-5 py-4 font-semibold text-sm border border-gray-200 text-gray-600">

@@ -251,17 +251,20 @@ begin
   'receipts',coalesce((select sum(greatest(p.amount,0)) from operations_cash_postings p where p.account_id=a.id and p.operational_date between first_date and last_date),0)::text,
   'outgoing',coalesce((select sum(greatest(-p.amount,0)) from operations_cash_postings p where p.account_id=a.id and p.operational_date between first_date and last_date),0)::text,
   'paid_spending',coalesce((select sum(-p.amount) from operations_cash_postings p join operations_cash_events e on e.id=p.event_id where p.account_id=a.id and e.cash_kind='spend' and p.operational_date between first_date and last_date),0)::text
+  ,'paid_spending_total',coalesce((select sum(-p.amount) from operations_cash_postings p join operations_cash_events e on e.id=p.event_id where p.account_id=a.id and e.cash_kind='spend' and p.operational_date<=last_date),0)::text
+  ,'funds_received',coalesce((select sum(p.amount) from operations_cash_postings p join operations_cash_events e on e.id=p.event_id where p.account_id=a.id and e.target_account_id=a.id and e.cash_kind in ('fund','handoff','receive') and p.operational_date between first_date and last_date),0)::text
+  ,'funds_received_total',coalesce((select sum(p.amount) from operations_cash_postings p join operations_cash_events e on e.id=p.event_id where p.account_id=a.id and e.target_account_id=a.id and e.cash_kind in ('fund','handoff','receive') and p.operational_date<=last_date),0)::text
  ) order by a.currency,a.bucket,a.holder_type,a.name,a.id),'[]'::jsonb) into accounts from visible a;
  select coalesce(jsonb_agg(jsonb_build_object('id',a.id,'name',a.name,'currency',a.currency,'bucket',a.bucket,'holder_type',a.holder_type,
   'available',operations_private.cash_available(a.id,last_date)::text) order by a.currency,a.bucket,a.name,a.id),'[]'::jsonb) into sources
- from operations_cash_accounts a where a.business=p_business and (a.holder_type='custodian' or (c->>'mode'='admin_all' and a.holder_type in ('ceo','manager')));
+ from operations_cash_accounts a where a.business=p_business and (a.holder_type='custodian' or (exists(select 1 from profiles where id=p_actor and role='admin' and not suspended) and a.holder_type in ('ceo','manager')));
  select coalesce(jsonb_agg(to_jsonb(e)||jsonb_build_object('amount',e.amount::text,'remaining',operations_private.cash_balance(a.id,(now() at time zone 'Africa/Lagos')::date)::text,'recipient_name',a.name,'source_name',s.name) order by e.event_date,e.recorded_at,e.id),'[]'::jsonb) into receipts
  from operations_cash_events e join operations_cash_accounts a on a.id=e.target_account_id join operations_cash_accounts s on s.id=e.source_account_id
  where e.business=p_business and a.holder_type='awaiting' and (c->>'mode'='admin_all' or a.period_id=(c->>'periodId')::uuid)
  and e.operation<>'void' and not exists(select 1 from operations_cash_events replacement where replacement.corrects_id=e.id)
  and operations_private.cash_balance(a.id,(now() at time zone 'Africa/Lagos')::date)>0;
  with visible as(select e.*,source.name source_name,target.name target_name from operations_cash_events e join operations_cash_accounts source on source.id=e.source_account_id join operations_cash_accounts target on target.id=e.target_account_id
- where e.business=p_business and e.event_date between first_date and last_date and (c->>'mode'='admin_all' or e.period_id=(c->>'periodId')::uuid)),
+ where e.business=p_business and e.event_date between first_date and last_date and (c->>'mode'='admin_all' or e.period_id=(c->>'periodId')::uuid or source.period_id=(c->>'periodId')::uuid or target.period_id=(c->>'periodId')::uuid)),
  page as(select * from visible order by recorded_at desc,id desc limit p_limit offset p_page*p_limit)
  select coalesce((select jsonb_agg(to_jsonb(t)||jsonb_build_object('amount',t.amount::text)) from page t),'[]'::jsonb),(select count(*) from visible) into history,total;
  return jsonb_build_object('business',p_business,'periodId',c->'periodId','from',first_date,'to',last_date,'accounts',accounts,'sources',sources,'receipts',receipts,'history',history,'total',total,'has_more',total>(p_page+1)*p_limit);

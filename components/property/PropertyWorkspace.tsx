@@ -1,11 +1,13 @@
 "use client";
-import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerStorageKey,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { isPropertySection, parsePropertyWrite, propertyKinds, PropertyRow, PropertySection, propertyMoney } from "@/lib/property";
 import { usePropertyActor } from "@/components/property/PropertyShell";
 import {summarizeProperties} from "@/lib/ceo-calculations";
+import {CashReceiverSelect,CashPayerSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
+import {ManagerFunds} from "@/components/manager/ManagerFunds";
 
 type Field = {key: string; label: string; type?: "date" | "number" | "textarea"; options?: string[]; lookup?: PropertySection; optional?: boolean; fixed?: boolean; max?: number};
 const fields: Record<PropertySection, Field[]> = {
@@ -24,7 +26,7 @@ const inputClass = "mt-1 block min-h-11 w-full rounded-lg border border-slate-30
 function rowName(section: PropertySection, row: PropertyRow) {return String(section === "tenancies" ? row.tenant_name : section === "maintenance" ? row.issue : section === "rent" ? `Payment · ${row.payment_date}` : section === "expenses" ? row.category : row.name);}
 
 export default function PropertyWorkspace({section}: {section: PropertySection | "overview" | "history"}) {
- const managerFetch=useManagerFetch();
+ const managerFetch=useManagerFetch(),scope=useManagerPeriod(),personal=scope?.mode==="personal";
   const actorId = usePropertyActor();
   const pendingKey = useManagerStorageKey(actorId && isPropertySection(section) ? `bossbimbz-property-pending:${actorId}:${section}` : null);
   const [data, setData] = useState<Data>(emptyData), [history, setHistory] = useState<EventRow[]>([]), [historyPage, setHistoryPage] = useState(0), [historyMore, setHistoryMore] = useState(false);
@@ -95,6 +97,14 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
     try {
       const payload: Record<string, unknown> = {};
       fields[section].forEach(field => {const value = values[field.key]?.trim() ?? "";payload[field.key] = field.optional && !value ? null : field.type === "number" ? Number(value) : value;});
+      if(personal&&section==="rent"){
+        if(!editing&&!values.cash_receiver_choice)throw Error("Choose who actually received this rent payment");
+        if(values.cash_receiver_choice)payload.cash_receiver=selectedCashReceiver(values.cash_receiver_choice);
+      }
+      if(personal&&section==="expenses"){
+        if(values.cash_bucket)payload.cash_bucket=values.cash_bucket;
+        if(values.cash_payer_choice==="review")payload.cash_payer_review=true;else if(values.cash_payer_choice)payload.cash_payer_account_id=values.cash_payer_choice;
+      }
       const body = {...payload, operation: editing ? "update" : "create", ...(editing ? {id: editing.id, expected_revision: editing.revision, reason} : {})};
       const fingerprint = JSON.stringify(body);
       if (!retry.current || retry.current.fingerprint !== fingerprint) retry.current = {fingerprint, id: crypto.randomUUID()};
@@ -109,8 +119,9 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
         else {setUncertain(false);if (pendingKey) {try {localStorage.removeItem(pendingKey);} catch {/* No pending server write remains. */}}}
         throw new Error(result.error || "Unable to save. Please retry.");
       }
+      if(response.status===202&&pendingKey){setUncertain(true);localStorage.setItem(`${pendingKey}:funding-review:${retry.current.id}`,JSON.stringify({values,editing,reason,retry:retry.current,outcome:result}));}
       if (pendingKey) {try {localStorage.removeItem(pendingKey);} catch {/* The server receipt confirms this submission. */}}
-      setShowForm(false);setEditing(null);setUncertain(false);retry.current = null;setNotice("Saved. The record and activity history have been updated.");await load();
+      setShowForm(false);setEditing(null);setUncertain(false);retry.current = null;setNotice(response.status===202?"Saved for Bimbo’s funding review; not yet posted.":"Saved. The record and activity history have been updated.");window.dispatchEvent(new Event("operations-cash-updated"));await load();
     } catch (failure) {
       const unconfirmed = failure instanceof TypeError || failure instanceof SyntaxError;
       if (unconfirmed) setUncertain(true);
@@ -137,6 +148,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
     {notice && <p role="status" className="rounded-lg bg-teal-50 p-3 text-sm text-teal-900">{notice}</p>}
     {loading && <p role="status" className="text-sm text-slate-600">Loading saved property records…</p>}
     {!loading && !loadError && section === "overview" && <>
+      <ManagerFunds business="property"/>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Properties", data.properties.length], ["Occupied units", data.units.filter(row => row.status === "occupied").length], ["Vacant units", data.units.filter(row => row.status === "vacant").length], ["Unavailable units", data.units.filter(row => row.status === "unavailable").length]].map(([label, value]) => <div key={label} className="rounded-xl border bg-white p-5"><p className="text-sm text-slate-600">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div>)}</div>
       <section className="rounded-xl border bg-white p-5"><h2 className="text-lg font-semibold">Recorded money · all dates</h2><p className="mt-1 text-sm text-slate-600">Received rent less recorded expenses, grouped by currency. Agreed rent and work costs are excluded from cash totals.</p>
         {!data.rent.length && !data.expenses.length ? <p className="mt-4 text-sm text-slate-500">No payments or expenses recorded yet.</p> : <div className="mt-4 grid gap-4 sm:grid-cols-2">{finances.map(({currency:code,rent,expenses,net}) => <dl key={code} className="rounded-lg bg-slate-50 p-4 text-sm"><div className="flex flex-wrap justify-between gap-2"><dt>Rent received</dt><dd>{propertyMoney(rent, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2"><dt>Expenses</dt><dd>{propertyMoney(expenses, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2 font-semibold"><dt>Recorded net</dt><dd>{propertyMoney(net, code)}</dd></div></dl>)}</div>}
@@ -158,6 +170,8 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
         </select> : field.type === "textarea" ? <textarea id={`property-${field.key}`} value={values[field.key] ?? ""} onChange={event => change(field, event.target.value)} required={!field.optional} maxLength={field.max ?? 3000} disabled={disabled} rows={3} className={inputClass} /> : <input id={`property-${field.key}`} type={field.type ?? "text"} value={values[field.key] ?? ""} onChange={event => change(field, event.target.value)} required={!field.optional} maxLength={field.max ?? 3000} min={field.type === "number" ? field.key === "cost" || field.key === "rent_amount" ? 0 : 0.01 : undefined} step={field.type === "number" ? "0.01" : undefined} inputMode={field.type === "number" ? "decimal" : undefined} disabled={disabled} className={inputClass} />;
         return <div key={field.key} className={`text-sm font-medium ${field.type === "textarea" ? "sm:col-span-2" : ""}`}><label htmlFor={`property-${field.key}`}>{field.label}</label>{control}{inheritedCurrency && <span className="mt-1 block text-xs font-normal text-slate-500">Inherited from the selected property or tenancy.</span>}</div>;
       })}</div>
+      {personal&&section==="rent"&&<div className="mt-4"><CashReceiverSelect business="property" value={values.cash_receiver_choice||""} onChange={value=>setValues(previous=>({...previous,cash_receiver_choice:value}))} disabled={saving||uncertain||conflict} keepExisting={!!editing}/></div>}
+      {personal&&section==="expenses"&&<div className="mt-4 space-y-4"><label className="block text-sm font-semibold">Funding source<select aria-label="Funding source" className="mt-1 min-h-11 w-full rounded-lg border p-3" disabled={saving||uncertain||conflict} value={values.cash_bucket||(editing?"":"owner")} onChange={e=>setValues(previous=>({...previous,cash_bucket:e.target.value}))}>{editing&&<option value="">Keep the recorded funding source</option>}<option value="owner">Owner funds</option><option value="sales">Rent and sales money</option></select></label><CashPayerSelect business="property" currency={values.currency||""} bucket={values.cash_bucket==="sales"?"sales":"owner"} value={values.cash_payer_choice||""} onChange={value=>setValues(previous=>({...previous,cash_payer_choice:value}))} disabled={saving||uncertain||conflict} keepExisting={!!editing}/></div>}
       {editing && <label className="block text-sm font-medium">Reason for correction<textarea value={reason} onChange={event => setReason(event.target.value)} required maxLength={2000} rows={2} disabled={saving || conflict || uncertain} className={inputClass} /></label>}
       {saveError && <p role="alert" className="text-sm text-red-700">{saveError}</p>}
       {conflict && editing && <button type="button" disabled={loading || !data[section].some(row => row.id === editing.id)} className="min-h-11 rounded-lg border px-4 text-sm disabled:opacity-50" onClick={() => {const latest = data[section].find(row => row.id === editing.id);if (latest) start(latest);}}>Load latest saved version</button>}

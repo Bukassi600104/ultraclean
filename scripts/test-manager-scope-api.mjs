@@ -5,7 +5,7 @@ const auth={requireManager:async()=>actor,requireAdmin:async()=>{if(actor.role!=
 const db={from(){throw Error('Unscoped table access is forbidden for a personal manager')},async rpc(name,args){calls.push([name,args]);if(name==='manager_context'){
  if(args.p_period_id&&actor.role!=='admin'&&args.p_period_id!=='period-a')return {error:{code:'42501',message:'Own manager period only'}};
  return {data:{business:args.p_business,actorId:actor.id,managerId:actor.role==='admin'?null:actor.id,periodId:args.p_period_id||'period-a',mode:'personal',status:'active',startsOn:'2026-10-28'}};
- }if(name==='manager_read_records'){const rows=scopedRows[args.p_resource]||[];return {data:{data:rows,total:rows.length,has_more:false}};}if(name==='farm_feed_inventory_read')return {data:{data:[],total:0}};if(name==='manager_day_read')return {data:null};if(name==='farm_v2_write')return {data:[{id:'saved',total_amount:240000}]};if(name==='farm_livestock_balances')return {data:balanceRows};throw Error(name)}};
+ }if(name==='manager_read_records'){const rows=scopedRows[args.p_resource]||[];return {data:{data:rows,total:rows.length,has_more:false}};}if(name==='operations_cash_summary')return {data:{accounts:[],sources:[],receipts:[],history:[],pending_expenses:[],ceo_receivers:[]}};if(name==='farm_feed_inventory_read')return {data:{data:[],total:0}};if(name==='manager_day_read')return {data:null};if(name==='farm_v2_write')return {data:[{id:'saved',total_amount:240000}]};if(name==='farm_livestock_balances')return {data:balanceRows};throw Error(name)}};
 const load=typescriptLoader({'@/lib/auth':auth,'@/lib/supabase/server':{createServerClient:()=>db}});
 const req=(url)=>new Request('http://localhost'+url);
 for(const [file,url,context]of[

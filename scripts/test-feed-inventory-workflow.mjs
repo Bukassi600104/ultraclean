@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {managerDatabase,ids,scalar,periodWrite} from '../tests/helpers/manager-db.mjs';
-const db=await managerDatabase();let checks=0;
+const db=await managerDatabase({through:"20261028140421_manager_feed_activity.sql"});let checks=0;
 const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 const feed=(actor,operation,payload,id=null,reason=null,request=crypto.randomUUID())=>scalar(db,'select farm_feed_stock_write($1,$2,$3::jsonb,$4::uuid,$5,$6::uuid)',[actor,operation,JSON.stringify(payload),id,reason,request]);
 const value=(feed_type,bags,date='2026-10-28')=>({date,feed_type,feed_source:'local',bags});

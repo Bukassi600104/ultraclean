@@ -86,6 +86,7 @@ await test('suspended farm host signs out', async () => {
   assert.equal(result.kind, 'redirect'); assert.equal(signedOut, 1);
 });
 profile=null;for(const host of ['localhost','farm.primefieldagric.com','leads.ultratidycleaning.com'])for(const asset of ['/farm-manifest.json','/property-manifest.json','/content-manifest.json','/property-sw.js','/content-sw.js'])await test('public install asset '+host+asset,async()=>{assert.equal((await module.exports.middleware(request(asset,host))).kind,'next')});
+for(const role of ['manager','admin','property_manager',null]){profile=role?{id:'synthetic-user',role,suspended:false}:null;for(const route of ['/manager','/manager/feed-stock','/manager/onboarding'])await test('farm canonical '+role+route,async()=>{const result=await module.exports.middleware(request(route,'farm.primefieldagric.com'));assert.equal(result.kind,role==='manager'||role==='admin'?'next':'redirect');});}
 if (failures.length) {
   console.error(`FAIL: ${failures.length} route checks; ${checks} passed. Actual middleware with synthetic sessions only.`);
   for (const failure of failures) console.error(failure);

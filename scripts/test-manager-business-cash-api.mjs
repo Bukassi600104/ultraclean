@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const id='00000000-0000-4000-8000-000000000086';let role='manager',calls=[],outcome={status:'pending_funding',id,currency:'NGN',shortfall:'300000'},checks=0;
+const actor=()=>({id,role}),auth={requireManager:async()=>actor(),requirePropertyManager:async()=>actor(),requireContentManager:async()=>actor(),requireAdmin:async()=>{if(role!=='admin')throw Error('Unauthorized');return actor();}};
+const db={rpc:async(name,args)=>{calls.push([name,args]);return name==='manager_context'?{data:{actorId:id,business:args.p_business,periodId:id,mode:role==='admin'?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}}:{data:outcome,error:null};}};
+const load=typescriptLoader({'@/lib/auth':auth,'@/lib/supabase/server':{createServerClient:()=>db}}),headers={'Content-Type':'application/json','X-Request-ID':id,'X-Manager-Actor':id,'X-Manager-Period':id};
+const req=(body,path)=>new Request('http://localhost'+path,{method:'POST',headers,body:JSON.stringify(body)}),eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+for(const [file,payload]of[
+ ['expenses',{date:'2026-10-28',category:'labor',amount:300000,cash_payer_account_id:id}],
+ ['feed-purchases',[{date:'2026-10-28',feed_type:'fish',num_bags:10,cost:300000,delivery_received:true,cash_payer_account_id:id}]]
+]){const response=await load('app/api/farm/'+file+'/route.ts').POST(req(payload,'/api/farm/'+file));eq(response.status,202);eq((await response.json()).id,id);const sent=calls.at(-1)[1].p_payload;eq((Array.isArray(sent)?sent[0]:sent).cash_payer_account_id,id);}
+const sale={date:'2026-10-28',product:'goat',quantity:1,unit_price:200,cash_receiver:{type:'ceo',profile_id:id}};outcome=[{id,total_amount:200}];eq((await load('app/api/farm/sales/route.ts').POST(req([sale],'/api/farm/sales'))).status,201);eq(calls.at(-1)[1].p_payload[0].cash_receiver,sale.cash_receiver);
+role='property_manager';outcome={status:'pending_funding',id,currency:'GBP',shortfall:'100'};const property=load('app/api/property/[kind]/route.ts');const propertyResponse=await property.POST(req({property_id:id,category:'Repairs',amount:100,currency:'GBP',expense_date:'2026-10-28',cash_bucket:'sales',cash_payer_account_id:id,request_id:id},'/api/property/expenses'),{params:{kind:'expenses'}});eq(propertyResponse.status,202);eq(calls.at(-1)[1].p_payload.cash_bucket,'sales');
+role='content_manager';outcome={id,amount:55.33};const content=load('app/api/content/[kind]/route.ts');eq((await content.POST(req({request_id:id,data:{sale_type:'affiliate',amount:55.33,currency:'GBP',sale_date:'2026-10-28',cash_receiver:{type:'self'}}},'/api/content/sales'),{params:{kind:'sales'}})).status,201);eq(calls.at(-1)[1].p_payload.cash_receiver,{type:'self'});
+role='admin';outcome={status:'posted',data:{id}};const pending=load('app/api/operations/funds/pending-expenses/[id]/route.ts');eq((await pending.POST(req({action:'post',business:'farm',payer_account_id:id,reason:'Verified actual procurement payment',expected_revision:0,request_id:id},'/api/operations/funds/pending-expenses/'+id),{params:{id}})).status,200);eq(calls.at(-1)[0],'operations_pending_expense_write');eq(calls.at(-1)[1].p_actor,id);
+role='manager';eq((await pending.POST(req({action:'decline',business:'farm',reason:'Forged',expected_revision:0,request_id:id},'/api/operations/funds/pending-expenses/'+id),{params:{id}})).status,403);
+const corrections=load('lib/farm-corrections.ts');eq(corrections.parseFarmCorrection('daily_feed',{expected_revision:0,num_bags:0.5}).success,true);
+eq(corrections.parseFarmCorrection('sale',{expected_revision:0,cash_receiver:{type:'ceo',profile_id:id}}).data.cash_receiver,{type:'ceo',profile_id:id});
+console.log('PASS '+checks+' actual financial APIs: explicit 202 funding review, retained request identity, trusted cash fields, true receiver, cross-app currency and admin-only resolution');

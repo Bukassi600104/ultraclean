@@ -2,6 +2,7 @@ import {withManagerWrite} from "@/lib/manager-write-api";
 import {managerRpc} from "@/lib/manager-write-api";
 import {managerReadResponse} from "@/lib/manager-read-api";
 import { z } from "zod";
+import {cashReceiver} from "@/lib/operations-cash-validation";
 import { NextResponse } from "next/server";
 import { requireContentManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
@@ -16,7 +17,7 @@ export const contentSchemas={
  records:z.object({title:z.string().trim().min(1).max(300),platform,content_type:z.string().trim().min(1).max(100),status:z.enum(["draft","scheduled","published","archived"]),published_at:timestamp,scheduled_at:timestamp,url:link,notes}).strict().refine(v=>v.status!=="published"||!!v.published_at,"Publication date required").refine(v=>v.status!=="scheduled"||!!v.scheduled_at,"Schedule date required"),
  performance:z.object({content_id:uuid,platform,account_id:z.string().max(200).optional(),metric_date:date,followers:count,reach:count,impressions:count,engagements:count,source:z.literal("manual").optional(),notes}).strict().refine(v=>[v.followers,v.reach,v.impressions,v.engagements].some(x=>x!=null),"Enter at least one measured metric"),
  leads:z.object({content_id:uuid,platform,name:z.string().trim().min(1).max(200),contact:z.string().max(500).nullable().optional(),status:z.enum(["new","contacted","converted","closed"]),lead_date:date,notes}).strict(),
- sales:z.object({content_id:uuid,lead_id:uuid,sale_type:z.enum(["mentorship","affiliate"]),amount:z.number().positive().max(99999999999999.99),currency:z.string().regex(/^[A-Z]{3}$/),sale_date:date,customer_name:z.string().max(200).nullable().optional(),notes}).strict()
+ sales:z.object({cash_receiver:cashReceiver.optional(),content_id:uuid,lead_id:uuid,sale_type:z.enum(["mentorship","affiliate"]),amount:z.number().positive().max(99999999999999.99),currency:z.string().regex(/^[A-Z]{3}$/),sale_date:date,customer_name:z.string().max(200).nullable().optional(),notes}).strict()
 };
 export const contentTables={records:"content_records",performance:"content_performance",leads:"content_leads",sales:"content_sales",integrations:"content_social_integrations",history:"content_audit"} as const;
 export type ContentKind=keyof typeof contentSchemas;

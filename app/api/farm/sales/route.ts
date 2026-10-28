@@ -8,10 +8,12 @@ import { z } from "zod";
 import { classificationFields } from "@/lib/farm-livestock-validation";
 import { FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import {cashReceiver} from "@/lib/operations-cash-validation";
 
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
+  cash_receiver:cashReceiver.optional(),
   ...classificationFields,
   product: z.enum(FARM_PRODUCT_KEYS),
   quantity: z.number().positive("Quantity must be positive"),

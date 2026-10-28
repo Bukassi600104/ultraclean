@@ -3,7 +3,7 @@ import type {Profile} from "@/lib/auth";
 import type {ManagerScope,WriteOutcome} from "@/lib/manager-period-types";
 import {createServerClient} from "@/lib/supabase/server";
 import {managerRpc,withManagerWrite} from "@/lib/manager-write-api";
-import {cashRequestSchema,type CashRequest,type CashSummary} from "@/lib/operations-cash-validation";
+import {cashRequestSchema,isPendingFunding,type CashRequest,type CashSummary} from "@/lib/operations-cash-validation";
 import {requestManagerScope} from "@/lib/manager-read-api";
 export async function cashWrite(actor:Pick<Profile,"id">,operation:CashRequest["operation"],payload:CashRequest["payload"],requestId:string):Promise<WriteOutcome<Record<string,unknown>>>{
  const db=createServerClient();if(!db)throw Error("Database unavailable");
@@ -23,4 +23,8 @@ export async function postCash(request:Request,receiptsOnly=false){
  return withManagerWrite(request,payload.business,async()=>{
   try{const scope=await requestManagerScope(request,payload.business);const result=await cashWrite({id:scope.actorId},operation,payload,request_id);return NextResponse.json(result,{status:result.status==="posted"?201:202,headers:{"Cache-Control":"private, no-store"}});}catch(e){return cashError(e);}
  },["fund","correct","void"].includes(operation));
+}
+export function financialResponse(data:unknown,status=201,envelope=true){return isPendingFunding(data)?NextResponse.json(data,{status:202,headers:{"Cache-Control":"private, no-store"}}):NextResponse.json(envelope?{data}:data,{status});}
+export async function resolvePendingExpense(actor:Pick<Profile,"id">,id:string,decision:{action:"post"|"decline";payer_account_id?:string;reason:string;expected_revision:number;business:string},requestId:string):Promise<WriteOutcome<Record<string,unknown>>>{
+ const db=createServerClient();if(!db)throw Error("Database unavailable");const {data,error}=await managerRpc(db,"operations_pending_expense_write",{p_actor:actor.id,p_id:id,p_payload:decision,p_request_id:requestId});if(error)throw error;return data;
 }

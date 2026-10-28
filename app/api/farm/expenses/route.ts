@@ -6,10 +6,13 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
+import {cashPayerFields} from "@/lib/operations-cash-validation";
+import {financialResponse} from "@/lib/operations-cash";
 
 export const runtime = "nodejs";
 
 const expenseItemSchema = z.object({
+  ...cashPayerFields,
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]),
   expense_source: z.enum(["bimbo_transfer", "sales_cash"]).default("bimbo_transfer"),
@@ -94,7 +97,7 @@ async function legacyPOST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   const { data, error } = await farmWrite(profile, "expense", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || (Array.isArray(body) ? body[0]?.request_id : (body as { request_id?: string })?.request_id) || undefined });
   if (error) return farmErrorResponse(error);
-  return NextResponse.json(isBatch ? { data } : data, { status: 201 });
+  return financialResponse(data,201,isBatch);
 }
 
 export async function GET(request: NextRequest) {

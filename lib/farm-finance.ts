@@ -2,6 +2,8 @@ import { createServerClient } from "@/lib/supabase/server";
 import { calculateFarmFinance, type FinancialRow } from "./farm-finance-calculations";
 import {allManagerRecords} from "./manager-read-api";
 import type {ManagerScope} from "./manager-period-types";
+import {getCashSummary} from "./operations-cash";
+import {sumMoney,subtractMoney,moneyNumber} from "./money";
 export { calculateFarmFinance } from "./farm-finance-calculations";
 export async function getFarmFinance(scope: { date: string; from?: string; to?: string },manager?:ManagerScope) {
  const supabase = createServerClient(); if (!supabase) throw new Error("Database not configured");
@@ -19,5 +21,10 @@ export async function getFarmFinance(scope: { date: string; from?: string; to?: 
   }
  }
  const [transfers, expenses, feed, sales] = await Promise.all([all("farm_fund_transfers"), all("farm_expenses"), all("farm_feed_purchases"), all("farm_sales")]);
- return calculateFarmFinance({ transfers, expenses, feed, sales }, scope);
+ const result=calculateFarmFinance({ transfers, expenses, feed, sales }, scope);
+ if(manager?.mode!=="personal")return result;
+ const cash=await getCashSummary(manager,{from:scope.date,to:scope.date}),own=cash.accounts.filter(a=>a.holder_type==="manager"&&a.currency==="NGN"),owner=own.filter(a=>a.bucket==="owner");
+ const sum=(key:"opening"|"closing"|"funds_received"|"funds_received_total"|"paid_spending"|"paid_spending_total")=>sumMoney(owner.map(a=>a[key]));
+ const closing=sum("closing"),salesHeld=sumMoney(own.filter(a=>a.bucket==="sales").map(a=>a.closing));
+ return {...result,opening_balance:moneyNumber(sum("opening")),closing_balance:moneyNumber(closing),transferred_today:moneyNumber(sum("funds_received")),total_transferred:moneyNumber(sum("funds_received_total")),total_spent_today:moneyNumber(sum("paid_spending")),total_spent_before:moneyNumber(subtractMoney(sum("paid_spending_total"),sum("paid_spending"))),total_owner_spent:moneyNumber(sum("paid_spending_total")),sales_cash_balance:moneyNumber(salesHeld),net_position:moneyNumber(sumMoney([closing,salesHeld])),personal_cash:cash};
 }

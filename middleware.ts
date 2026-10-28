@@ -70,7 +70,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // API routes pass through as-is (don't rewrite /api/* to /manager/api/*)
-    if (!pathname.startsWith("/api/")) {
+    if (!pathname.startsWith("/api/") && pathname !== "/manager" && !pathname.startsWith("/manager/")) {
       const url = request.nextUrl.clone();
       url.pathname = `/manager${pathname === "/" ? "" : pathname}`;
       return NextResponse.rewrite(url);
