@@ -24,7 +24,7 @@ Legacy feed total `2716231.9999999` is retained at full stored scale. Tests cove
 
 Completed checks include exact-money and analytics assertions; farm calculations; CEO data/API25; farm API38; manager-account API62 and UI12; middleware100; Property API50/UI38; Content API24/UI51; operational shells87; CEO header87 and overview42; internal CEO reports24; farm UI29; feed UI26; report UI74; livestock catalogue16/API18/UI22; farm operations API44; feed API25/daily-feed API18. Actual forms and Back clicks retain unsaved date/value edits and pending offline submissions, with zero writes. Isolated SQL suites passed V2 67, livestock43, operations308 and feed/report47 checks.
 
-ESLint and the production build pass, generating 120 static pages. Public-site suite and built/live release verification are recorded below when completed. Responsive tests use 390, 768 and 1440 pixel widths; desktop/browser results do not claim physical-phone installation testing.
+ESLint and the production build pass, generating 120 static pages. All 81 public-site tests passed against the current production build at an isolated port. Built-application GET checks passed 25 + 13, staged production checks passed six, and live branded-domain GET checks passed 17. Anonymous routes retain their existing login redirects or forbidden responses. Responsive tests use 390, 768 and 1440 pixel widths; desktop/browser results do not claim physical-phone installation testing.
 
 ## Independent review and decisions
 
@@ -45,7 +45,15 @@ Execution rulings, in order:
 
 ## Release execution
 
-Pending final public regression, source commit, staged production metadata, promotion, GitHub synchronization, live visual checks and post-release preservation comparison. Do not treat this section as a completed deployment until those results are recorded.
+Implementation commit: `512d473dde230fa116a5ad6581de16b819398114`, following the exact-accounting/mortality/navigation commit `dae1a77`.
+
+Staged production deployment `dpl_1JvdMfEuENcQa9N2fWjob7jRHcdC` reached READY on that exact implementation commit. Its URL is `https://ultratidy-b6ibk2nxr-bukassi-gmailcoms-projects.vercel.app`. It initially had no aliases, as requested. After six GET/protection checks passed, the authenticated Vercel connector promoted it. The CEO branded domain resolved to the tested build.
+
+The signed-in production walkthrough verified the CEO sidebar's new internal Properties and Content destinations, the Properties Back action, readable report layout and truthful empty-ledger states. CEO and Farm Overview agree on October revenue NGN 2,681,800.00, owner funds NGN 2,974,500.00 and mortality 7 (goat 5, turkey 2). CEO sales cash remains NGN 2,808,800.00. Manager Cash uses the recorded daily result. The account-create dialog opens and lists Farm, Property and Content; it was canceled without submitting. No live sale, expense, stock, transfer, account or closure action was submitted.
+
+Post-activation fingerprints match all 49 application tables exactly. Of 84 total tables, 81 match; only ordinary authentication refresh/session/user metadata changed. A UTC-normalized column comparison across all eight users confirms that only `updated_at` differs, preserving identity and credential fields. The original untracked plan from the primary checkout was preserved privately before a clean fast-forward. The temporary tester remains active.
+
+GitHub main synchronization and its automatic Vercel build are verified separately as the final release bookkeeping step. Their exact commit/deployment metadata is retained in the private release evidence; the product code is identical to the tested implementation above. Application rollback remains the previous compatible deployment specified above.
 
 ## Remaining inputs
 

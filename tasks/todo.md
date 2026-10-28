@@ -210,6 +210,8 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Back navigation and layout
 - [x] Form accessibility
 - [x] Account UI harness
-- [ ] Verification, review and approved release
+- [x] Verification, review and approved release
 - [x] Internal CEO Properties and Content reports (user addendum), authoritative data and unchanged manager app routes.
 - Independent review: original and addendum Important findings reproduced before fixes; no deferred Minor findings. Exact-money, mortality, account, role/API and backup restore evidence retained in the release report.
+- Production verification: all49 application tables unchanged,8 accounts retained; live internal CEO links and Back work. Public81 and liveGET17 PASS; staged/activated deployment dpl_1JvdMfEuENcQa9N2fWjob7jRHcdC on512d473. Final main push/build metadata retained in private release evidence.
+- Release report: docs/superpowers/plans/2026-10-28-dashboard-audit-corrections-release.md. Missing records remain untouched; the temporary tester remains active.
