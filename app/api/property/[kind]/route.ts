@@ -14,7 +14,8 @@ export async function GET(request: NextRequest, {params}: Context) {
   if (!/^\d{1,6}$/.test(raw)) return NextResponse.json({error: "Invalid page"}, {status: 400});
   const page = Number(raw), size = 100;
   const table = params.kind === "history" ? "property_events" : propertyKinds[params.kind as keyof typeof propertyKinds].table;
-  const {data, error} = await db.from(table).select(params.kind === "history" ? "*,actor:profiles!actor_id(name)" : "*").order(params.kind === "history" ? "happened_at" : "created_at", {ascending: false}).order("id", {ascending: false}).range(page * size, (page + 1) * size - 1);
+  const select=params.kind==="history"?"*,actor:profiles!actor_id(name)":["rent","expenses"].includes(params.kind)?"*,amount_exact:amount::text":"*";
+  const {data, error} = await db.from(table).select(select).order(params.kind === "history" ? "happened_at" : "created_at", {ascending: false}).order("id", {ascending: false}).range(page * size, (page + 1) * size - 1);
   if (error) return NextResponse.json({error: "Unable to load property records. Please retry."}, {status: 500});
   return NextResponse.json({data: data ?? [], page, has_more: data?.length === size});
 }

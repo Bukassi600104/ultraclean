@@ -265,8 +265,8 @@ export default function SaleProductPage() {
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
         {/* 1. Date */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
-          <input type="date" max={today}
+          <label htmlFor="sale-date" className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
+          <input id="sale-date" type="date" max={today}
             className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
             value={form.date} onChange={(e) => updateField("date", e.target.value)} />
         </div>
@@ -274,8 +274,8 @@ export default function SaleProductPage() {
         {/* 2. Crops: crop type */}
         {productKey === "crops" && (
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Crop Type *</label>
-            <input className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+            <label htmlFor="sale-crop" className="text-xs font-bold uppercase tracking-wider text-gray-500">Crop Type *</label>
+            <input id="sale-crop" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
               placeholder="e.g. Maize, Cassava, Yam..." value={form.crop_type} onChange={(e) => updateField("crop_type", e.target.value)} />
           </div>
         )}
@@ -285,21 +285,21 @@ export default function SaleProductPage() {
           <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">No. of Fish *</label>
-                <input type="number" inputMode="numeric"
+                <label htmlFor="sale-quantity" className="text-xs font-bold uppercase tracking-wider text-gray-500">No. of Fish *</label>
+                <input id="sale-quantity" type="number" inputMode="numeric"
                   className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
                   placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
               </div>
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Weight (kg) *</label>
-                <input type="number" inputMode="numeric"
+                <label htmlFor="sale-weight" className="text-xs font-bold uppercase tracking-wider text-gray-500">Weight (kg) *</label>
+                <input id="sale-weight" type="number" inputMode="numeric"
                   className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
                   placeholder="0.0" value={form.kg} onChange={(e) => updateField("kg", e.target.value)} />
               </div>
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount per kg (₦) *</label>
-              <input type="number" inputMode="numeric"
+              <label htmlFor="sale-price" className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount per kg (₦) *</label>
+              <input id="sale-price" type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.amount_per_kg} onChange={(e) => updateField("amount_per_kg", e.target.value)} />
             </div>
@@ -310,18 +310,18 @@ export default function SaleProductPage() {
         {productKey !== "catfish" && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              <label htmlFor="sale-quantity" className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {productKey === "cattle" ? "No. of Cattle *" : productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
               </label>
-              <input type="number" inputMode="numeric"
+              <input id="sale-quantity" type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              <label htmlFor="sale-price" className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {productKey === "cattle" ? "Price per Head (₦) *" : productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
               </label>
-              <input type="number" inputMode="numeric"
+              <input id="sale-price" type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.unit_price} onChange={(e) => updateField("unit_price", e.target.value)} />
             </div>
@@ -356,15 +356,15 @@ export default function SaleProductPage() {
 
         {/* 5. Customer name — optional, at bottom */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Customer Name <span className="font-normal normal-case text-gray-400">(optional)</span></label>
-          <input className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+          <label htmlFor="sale-customer" className="text-xs font-bold uppercase tracking-wider text-gray-500">Customer Name <span className="font-normal normal-case text-gray-400">(optional)</span></label>
+          <input id="sale-customer" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
             placeholder="Enter customer name" value={form.customer_name} onChange={(e) => updateField("customer_name", e.target.value)} />
         </div>
 
         {/* 6. Notes — optional */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
-          <input className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+          <label htmlFor="sale-notes" className="text-xs font-bold uppercase tracking-wider text-gray-500">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
+          <input id="sale-notes" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
             placeholder="Any extra info..." value={form.notes} onChange={(e) => updateField("notes", e.target.value)} />
         </div>
       </div>

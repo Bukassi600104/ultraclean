@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getFarmFinance } from "@/lib/farm-finance";
-import { activeMortality } from "@/lib/farm-inventory";
+import { mortalityByProduct } from "@/lib/farm-inventory";
 import { summarizeContent, summarizeProperties, summarizeUltraTidy, summarizeDba, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
 import type { FarmInventoryTransaction } from "@/types";
 
@@ -9,9 +9,10 @@ export async function getCeoOverview(scope: OverviewScope) {
  async function all(table:string):Promise<OverviewRow[]> {
   const rows:OverviewRow[]=[];
   for(let offset=0;;offset+=500) {
-   const {data,error}=await db!.from(table).select("*").order("id").range(offset,offset+499);
+   const moneyTables=["content_sales","property_rent_payments","property_expenses","ultratidy_inflow","ultratidy_expenses","dba_sales"];
+   const {data,error}=await db!.from(table).select(moneyTables.includes(table)?"*,amount_exact:amount::text":"*").order("id").range(offset,offset+499);
    if(error) throw error;
-   rows.push(...(data??[]));if(!data||data.length<500)return rows;
+   rows.push(...((data??[]) as unknown as OverviewRow[]));if(!data||data.length<500)return rows;
   }
  }
  // A failed business query is unavailable, never a fabricated zero. Independent sections still load.
@@ -23,9 +24,8 @@ export async function getCeoOverview(scope: OverviewScope) {
   section(async()=>{const [properties,units,rent,expenses,maintenance,tenancies]=await Promise.all([all("property_properties"),all("property_units"),all("property_rent_payments"),all("property_expenses"),all("property_maintenance"),all("property_tenancies")]);return summarizeProperties({properties,units,rent,expenses,maintenance,tenancies},scope);}),
   section(async()=>{
    const [finance,inventory,feedStock,movements,sales]=await Promise.all([getFarmFinance({date:scope.to,...scope}),all("farm_inventory"),section(()=>all("farm_feed_stock")),all("farm_inventory_transactions"),all("farm_sales")]);
-   const mortality=activeMortality(movements as unknown as FarmInventoryTransaction[]).filter(r=>r.date>=scope.from&&r.date<=scope.to);
-   const mortalityByProduct=Object.entries(mortality.reduce<Record<string,number>>((total,row)=>{total[row.product]=(total[row.product]??0)+Number(row.quantity);return total;},{})).map(([product,quantity])=>({product,quantity}));
-   return {finance,inventory,fish:inventory.filter(r=>r.product==="catfish"),livestock:inventory.filter(r=>["goat","ram","cattle","pig","chicken","turkey"].includes(String(r.product))),feed:feedStock.data,feedError:feedStock.error,mortality:mortalityByProduct,salesCount:sales.filter(r=>!r.voided_at&&String(r.date)>=scope.from&&String(r.date)<=scope.to).length};
+   const mortality=mortalityByProduct(movements as unknown as FarmInventoryTransaction[],scope);
+   return {finance,inventory,fish:inventory.filter(r=>r.product==="catfish"),livestock:inventory.filter(r=>["goat","ram","cattle","pig","chicken","turkey"].includes(String(r.product))),feed:feedStock.data,feedError:feedStock.error,mortality:mortality.products,salesCount:sales.filter(r=>!r.voided_at&&String(r.date)>=scope.from&&String(r.date)<=scope.to).length};
   }),
   section(async()=>{
    const [reports,requests]=await Promise.all([all("farm_daily_reports"),all("farm_operational_requests")]);

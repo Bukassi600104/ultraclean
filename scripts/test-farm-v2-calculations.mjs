@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-const require=createRequire(import.meta.url);const ts=require('typescript');
-function load(file){const module={exports:{}};new Function('module','exports',ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText)(module,module.exports);return module.exports;}
+import {load} from './load-pure-typescript.mjs';
 const {calculateFarmFinance}=load('lib/farm-finance-calculations.ts');
-const {activeMortality}=load('lib/farm-inventory.ts');
+const {activeMortality,mortalityByProduct}=load('lib/farm-inventory.ts');
 const day='2026-10-03',prior='2026-10-02';
 const totals=calculateFarmFinance({transfers:[{date:prior,amount:500000},{date:day,amount:100000},{date:day,amount:999999,voided_at:day}],expenses:[{date:prior,amount:20000,expense_source:null},{date:day,amount:10000,expense_source:'bimbo_transfer'},{date:day,amount:5000,expense_source:'sales_cash'}],feed:[{date:day,cost:30000}],sales:[{date:day,total_amount:216000},{date:day,total_amount:999999,voided_at:day}]},{date:day});
 for(const [key,value] of Object.entries({opening_balance:480000,closing_balance:540000,sales_cash_balance:211000,net_position:751000,today_operational_net:171000,total_expenses:65000,feed_expenses:30000}))assert.equal(totals[key],value,key);
@@ -12,3 +9,11 @@ const many=calculateFarmFinance({transfers:[],expenses:Array.from({length:150},(
 const scoped=calculateFarmFinance({transfers:[],expenses:[{date:prior,amount:10},{date:day,amount:5}],feed:[],sales:[]},{date:day,from:day,to:day});assert.equal(scoped.total_expenses,5);
 const deaths=activeMortality([{id:'old',product:'catfish',action:'mortality',quantity:10},{id:'rev',product:'catfish',action:'add',quantity:10,correction_of:'old',correction_role:'reversal'},{id:'new',product:'catfish',action:'mortality',quantity:4,correction_of:'old',correction_role:'replacement'},{id:'unrelated',product:'goat',action:'remove',quantity:2}]);assert.deepEqual(deaths.map(d=>d.id),['new']);
 console.log('PASS: 11 financial/mortality checks; complete totals, date scopes, legacy NULL sources, feed, voids, negative balances and mortality reversals.');
+assert.equal(typeof mortalityByProduct,'function','One dated mortality calculation must serve both dashboards');
+const movements=[{id:'prior',date:'2026-09-30',product:'goat',action:'mortality',quantity:9},{id:'original',date:'2026-10-01',product:'catfish',action:'mortality',quantity:10},{id:'reverse',date:'2026-11-02',product:'catfish',action:'add',quantity:10,correction_of:'original',correction_role:'reversal'},{id:'replacement',date:'2026-10-01',product:'catfish',action:'mortality',quantity:4,correction_of:'original',correction_role:'replacement'},{id:'last',date:'2026-10-27',product:'goat',action:'mortality',quantity:3},{id:'future',date:'2026-10-28',product:'goat',action:'mortality',quantity:7},{id:'adjust',date:'2026-10-27',product:'goat',action:'remove',quantity:50}];
+assert.deepEqual(mortalityByProduct(movements,{from:'2026-10-01',to:'2026-10-27'}),{total:7,products:[{product:'catfish',quantity:4},{product:'goat',quantity:3}]});
+assert.equal(mortalityByProduct(movements,{to:'2026-10-27'}).total,16);
+assert.equal(mortalityByProduct(movements,{from:'2026-10-27',to:'2026-10-27'}).total,3);
+assert.deepEqual(mortalityByProduct([],{to:'2026-10-27'}),{total:0,products:[]});
+assert.equal(mortalityByProduct(Array.from({length:501},(_,i)=>({id:String(i),date:'2026-10-27',product:'goat',action:'mortality',quantity:1})),{to:'2026-10-27'}).total,501);
+console.log('PASS: dated mortality includes complete history for reversals, inclusive boundaries and 501 movements.');

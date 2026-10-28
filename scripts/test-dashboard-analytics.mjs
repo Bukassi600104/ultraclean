@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url),ts=require('typescript');
-function load(file){const mod={exports:{}};new Function('require','module','exports',ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText)(require,mod,mod.exports);return mod.exports;}
+import {load} from './load-pure-typescript.mjs';
 const {calculateFarmFinance}=load('lib/farm-finance-calculations.ts'),calc=load('lib/ceo-calculations.ts');
 const scope={from:'2026-10-01',to:'2026-10-27'};
 const f=calculateFarmFinance({transfers:[{date:'2026-09-01',amount:100},{date:'2026-10-01',amount:50}],sales:[{date:'2026-09-01',total_amount:10},{date:'2026-10-02',total_amount:20}],expenses:[{date:'2026-10-01',amount:5},{date:'2026-10-02',amount:2,expense_source:'sales_cash'}],feed:[{date:'2026-10-02',cost:3}]},{date:scope.to,...scope});

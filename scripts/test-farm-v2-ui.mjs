@@ -32,7 +32,7 @@ else if(url.pathname.endsWith('/fund-transfers'))data={data:[],total:0};
 else if(url.pathname.endsWith('/inventory'))data=[{id,product:'cattle',current_stock:5},{id:'00000000-0000-4000-8000-000000000002',product:'pig',current_stock:7}];
 else if(url.pathname.endsWith('/supplies/history'))data={data:[],total:0};
 else if(url.pathname.endsWith('/supplies'))data=[item];
-else if(url.pathname.endsWith('/inventory/transaction'))data={data:[]};
+else if(url.pathname.endsWith('/inventory/transaction'))data={data:[{id:'older',date:'2026-08-31',product:'catfish',action:'mortality',quantity:9},{id:'period',date:'2026-09-15',product:'catfish',action:'mortality',quantity:7}]};
 else if(url.pathname.endsWith('/daily-record'))data={record:{status:'open'}};
 else if(url.pathname.endsWith('/corrections'))data={data:[{id,record_type:'sale',record_id:id,status:resolved?'applied':'pending',reason:'Wrong quantity',requested_change:{description:'Correct fish quantity'},requested_at:now,requester_name:'Test Manager',current_record:{id,date:'2026-10-03',product:'catfish',quantity:40,weight_kg:72,unit_price:3000,pricing_basis:'per_kg',payment_method:'cash',revision:0}}],total:1};
 else if(url.pathname.endsWith('/activity'))data={data:[],total:0};
@@ -42,10 +42,13 @@ await page.route('**/api/ultratidy/inventory',route=>route.fulfill({status:200,c
 await page.route('**/api/dba/**',route=>route.fulfill({status:200,contentType:'application/json',body:route.request().url().includes('/products')?JSON.stringify([{id,name:'Fixture course',status:'active',price:10}]):JSON.stringify({data:[{id,buyer_name:'Fixture Buyer',buyer_email:'fixture@example.invalid',amount:20,payment_method:'cash',created_at:now}]})}));
 let checks=0;
 try{
+  await page.goto(`http://127.0.0.1:${port}/?screen=sale`,{waitUntil:'domcontentloaded'});await page.getByLabel('No. of Fish *',{exact:true}).waitFor({timeout:5000});
+  for(const label of ['Date','Weight (kg) *','Amount per kg (₦) *','Customer Name (optional)','Notes (optional)'])assert.equal(await page.getByLabel(label,{exact:true}).count(),1,label);
   financialFailure=true;await page.goto(`http://127.0.0.1:${port}/?screen=farmOverview`);await page.getByRole('alert').waitFor();assert.equal(await page.getByText('No sales data yet',{exact:true}).count(),0);assert.equal(await page.getByText('No expense data yet',{exact:true}).count(),0);checks++;financialFailure=false;
   await page.goto(`http://127.0.0.1:${port}/?screen=farmExpenseHistory`);await page.getByText('Order second',{exact:true}).waitFor();const historyRows=await page.locator('tbody tr').allTextContents();assert.match(historyRows[0],/chicken feed/);checks++;
   overviewFailure=true;await page.goto(`http://127.0.0.1:${port}/?screen=dbaOverview`);await page.getByRole('alert').waitFor();await page.getByText('Fixture Buyer',{exact:true}).waitFor();await page.getByRole('button',{name:'Log Sale',exact:true}).click();await page.getByRole('dialog').getByRole('combobox').first().click();await page.getByRole('option',{name:/Fixture course/}).waitFor();checks++;overviewFailure=false;
   await page.goto(`http://127.0.0.1:${port}/?screen=farmOverview&from=2026-09-01&to=2026-09-30`);await page.getByText('Reporting period: 2026-09-01 to 2026-09-30.',{exact:false}).waitFor();await page.getByText('101.25',{exact:false}).first().waitFor();assert.ok(requests.some(r=>r.path.endsWith('/balance')&&r.query.includes('from=2026-09-01')&&r.query.includes('date=2026-09-30')));checks++;
+  await page.getByText('Mortality in period',{exact:true}).waitFor();assert.match(await page.locator('body').innerText(),/Mortality by product: catfish: 7/);checks++;
   await page.goto(`http://127.0.0.1:${port}/?screen=cleaningOverview&from=2026-09-01&to=2026-09-30`);await page.getByText('Recorded operating result',{exact:true}).waitFor();await page.getByText(/100.25/).first().waitFor();checks++;
   await page.goto(`http://127.0.0.1:${port}/?screen=dbaOverview`);await page.getByText('100.25 (currency not recorded)',{exact:true}).waitFor();checks++;
   await page.goto(`http://127.0.0.1:${port}/?screen=salesOverview`);await page.getByText(/101\.25/).first().waitFor();checks++;

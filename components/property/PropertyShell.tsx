@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { propertyKinds } from "@/lib/property";
+import {operationalBackLink} from "@/lib/dashboard-navigation";
 
 const PropertyActorContext = createContext("");
 export function usePropertyActor() {return useContext(PropertyActorContext);}
 export default function PropertyShell({children, isAdmin, actorId}: {children: React.ReactNode; isAdmin: boolean; actorId: string}) {
   const pathname = usePathname(), router = useRouter();
+  const back=operationalBackLink(pathname,"property");
   const [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const links = [{href: "/property", label: "Overview"}, ...Object.entries(propertyKinds).map(([key, value]) => ({href: `/property/${key}`, label: value.label})), {href: "/property/history", label: "Activity history"}];
   async function logout() {
@@ -24,6 +26,6 @@ export default function PropertyShell({children, isAdmin, actorId}: {children: R
     </div></header>
     <nav aria-label="Property navigation" className="border-b bg-white"><div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2">{links.map(link => <Link key={link.href} href={link.href} aria-current={pathname === link.href ? "page" : undefined} className={`shrink-0 rounded-lg px-3 py-3 text-sm ${pathname === link.href ? "bg-teal-50 font-semibold text-teal-900" : "text-slate-600 hover:bg-slate-50"}`}>{link.label}</Link>)}</div></nav>
     {error && <p role="alert" className="mx-auto max-w-7xl px-4 pt-4 text-red-700">{error}</p>}
-    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+    <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{back&&<Link href={back.href} aria-label={back.label} className="mb-3 inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-semibold text-teal-800">← {back.label}</Link>}{children}</main>
   </div></PropertyActorContext.Provider>;
 }

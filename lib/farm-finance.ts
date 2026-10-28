@@ -6,8 +6,10 @@ export async function getFarmFinance(scope: { date: string; from?: string; to?: 
  async function all(table: string): Promise<FinancialRow[]> {
   const rows: FinancialRow[] = []; const maxDate = (scope.to ?? scope.date) > scope.date ? scope.to! : scope.date;
   for (let offset = 0; ; offset += 500) {
-   const { data, error } = await supabase!.from(table).select("*").lte("date", maxDate).order("id").range(offset, offset + 499);
-   if (error) throw error; rows.push(...(data ?? [])); if (!data || data.length < 500) return rows;
+   const columns: Record<string,string> = {farm_sales:"date,product,total_amount::text,voided_at",farm_expenses:"date,category,amount::text,expense_source,voided_at",farm_feed_purchases:"date,cost::text",farm_fund_transfers:"date,amount::text,voided_at"};
+   const { data, error } = await supabase!.from(table).select(columns[table]).lte("date", maxDate).order("id").range(offset, offset + 499);
+   // The client type parser does not model PostgREST numeric-to-text casts.
+   if (error) throw error; rows.push(...((data ?? []) as unknown as FinancialRow[])); if (!data || data.length < 500) return rows;
   }
  }
  const [transfers, expenses, feed, sales] = await Promise.all([all("farm_fund_transfers"), all("farm_expenses"), all("farm_feed_purchases"), all("farm_sales")]);

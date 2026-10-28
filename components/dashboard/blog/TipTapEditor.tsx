@@ -91,10 +91,12 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
   }
 
   const ToolbarButton = ({
+    label,
     onClick,
     isActive,
     children,
   }: {
+    label: string;
     onClick: () => void;
     isActive?: boolean;
     children: React.ReactNode;
@@ -105,6 +107,9 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
       size="icon"
       className={cn("h-8 w-8", isActive && "bg-gray-200")}
       onClick={onClick}
+      aria-label={label}
+      title={label}
+      aria-pressed={isActive}
     >
       {children}
     </Button>
@@ -123,18 +128,21 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
 
       <div className="flex flex-wrap gap-0.5 border-b p-1">
         <ToolbarButton
+          label="Bold"
           onClick={() => editor.chain().focus().toggleBold().run()}
           isActive={editor.isActive("bold")}
         >
           <Bold className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Italic"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           isActive={editor.isActive("italic")}
         >
           <Italic className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Heading 2"
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
@@ -143,6 +151,7 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
           <Heading2 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Heading 3"
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 3 }).run()
           }
@@ -151,34 +160,37 @@ export function TipTapEditor({ content, onChange }: TipTapEditorProps) {
           <Heading3 className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Bullet list"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           isActive={editor.isActive("bulletList")}
         >
           <List className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Numbered list"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           isActive={editor.isActive("orderedList")}
         >
           <ListOrdered className="h-4 w-4" />
         </ToolbarButton>
         <ToolbarButton
+          label="Blockquote"
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           isActive={editor.isActive("blockquote")}
         >
           <Quote className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={addLink} isActive={editor.isActive("link")}>
+        <ToolbarButton label="Insert link" onClick={addLink} isActive={editor.isActive("link")}>
           <LinkIcon className="h-4 w-4" />
         </ToolbarButton>
-        <ToolbarButton onClick={() => fileInputRef.current?.click()}>
+        <ToolbarButton label="Insert image" onClick={() => fileInputRef.current?.click()}>
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
         <div className="ml-auto flex gap-0.5">
-          <ToolbarButton onClick={() => editor.chain().focus().undo().run()}>
+          <ToolbarButton label="Undo" onClick={() => editor.chain().focus().undo().run()}>
             <Undo className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().redo().run()}>
+          <ToolbarButton label="Redo" onClick={() => editor.chain().focus().redo().run()}>
             <Redo className="h-4 w-4" />
           </ToolbarButton>
         </div>

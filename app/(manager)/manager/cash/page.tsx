@@ -9,6 +9,7 @@ import { RefreshCw, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 export default function ManagerCashPage() {
   const [todaySales, setTodaySales] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
+  const [net,setNet] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(false);
@@ -35,6 +36,7 @@ export default function ManagerCashPage() {
       if (!response.ok) throw new Error(data.error || "Balance unavailable");
       setTodaySales(data.total_sales_today);
       setTodayExpenses(data.today_total_expenses);
+      setNet(data.today_operational_net);
     } catch {
       setError(true);
     } finally {
@@ -47,7 +49,6 @@ export default function ManagerCashPage() {
     loadToday();
   }, [loadToday]);
 
-  const net = todaySales - todayExpenses;
   const isPositive = net >= 0;
 
   return (

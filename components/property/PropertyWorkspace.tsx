@@ -3,6 +3,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { isPropertySection, parsePropertyWrite, propertyKinds, PropertyRow, PropertySection, propertyMoney } from "@/lib/property";
 import { usePropertyActor } from "@/components/property/PropertyShell";
+import {summarizeProperties} from "@/lib/ceo-calculations";
 
 type Field = {key: string; label: string; type?: "date" | "number" | "textarea"; options?: string[]; lookup?: PropertySection; optional?: boolean; fixed?: boolean; max?: number};
 const fields: Record<PropertySection, Field[]> = {
@@ -24,6 +25,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
   const actorId = usePropertyActor();
   const pendingKey = actorId && isPropertySection(section) ? `bossbimbz-property-pending:${actorId}:${section}` : null;
   const [data, setData] = useState<Data>(emptyData), [history, setHistory] = useState<EventRow[]>([]), [historyPage, setHistoryPage] = useState(0), [historyMore, setHistoryMore] = useState(false);
+  const [finances,setFinances] = useState<ReturnType<typeof summarizeProperties>["finances"]>([]);
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(""), [saveError, setSaveError] = useState(""), [notice, setNotice] = useState(""), [saving, setSaving] = useState(false), [conflict, setConflict] = useState(false), [uncertain, setUncertain] = useState(false);
   const [editing, setEditing] = useState<PropertyRow | null>(null), [showForm, setShowForm] = useState(false), [values, setValues] = useState<Record<string, string>>({}), [reason, setReason] = useState(""), [filter, setFilter] = useState("all"), [search, setSearch] = useState("");
   const retry = useRef<{fingerprint: string; id: string} | null>(null);
@@ -56,7 +58,9 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
           }
           return [key, all] as const;
         }));
-        setData(Object.fromEntries(lists) as Data);
+        const next=Object.fromEntries(lists) as Data;
+        setFinances(summarizeProperties(next,{from:"0000-01-01",to:"9999-12-31"}).finances);
+        setData(next);
       }
     } catch (failure) {setLoadError(failure instanceof Error ? failure.message : "Unable to load records. Please retry.");}
     finally {setLoading(false);}
@@ -131,10 +135,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
     {!loading && !loadError && section === "overview" && <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Properties", data.properties.length], ["Occupied units", data.units.filter(row => row.status === "occupied").length], ["Vacant units", data.units.filter(row => row.status === "vacant").length], ["Unavailable units", data.units.filter(row => row.status === "unavailable").length]].map(([label, value]) => <div key={label} className="rounded-xl border bg-white p-5"><p className="text-sm text-slate-600">{label}</p><p className="mt-2 text-3xl font-bold">{value}</p></div>)}</div>
       <section className="rounded-xl border bg-white p-5"><h2 className="text-lg font-semibold">Recorded money · all dates</h2><p className="mt-1 text-sm text-slate-600">Received rent less recorded expenses, grouped by currency. Agreed rent and work costs are excluded from cash totals.</p>
-        {!data.rent.length && !data.expenses.length ? <p className="mt-4 text-sm text-slate-500">No payments or expenses recorded yet.</p> : <div className="mt-4 grid gap-4 sm:grid-cols-2">{Array.from(new Set([...data.rent, ...data.expenses].map(row => String(row.currency)))).sort().map(code => {
-          const rent = data.rent.filter(row => row.currency === code).reduce((sum, row) => sum + Number(row.amount), 0), expenses = data.expenses.filter(row => row.currency === code).reduce((sum, row) => sum + Number(row.amount), 0);
-          return <dl key={code} className="rounded-lg bg-slate-50 p-4 text-sm"><div className="flex flex-wrap justify-between gap-2"><dt>Rent received</dt><dd>{propertyMoney(rent, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2"><dt>Expenses</dt><dd>{propertyMoney(expenses, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2 font-semibold"><dt>Recorded net</dt><dd>{propertyMoney(rent - expenses, code)}</dd></div></dl>;
-        })}</div>}
+        {!data.rent.length && !data.expenses.length ? <p className="mt-4 text-sm text-slate-500">No payments or expenses recorded yet.</p> : <div className="mt-4 grid gap-4 sm:grid-cols-2">{finances.map(({currency:code,rent,expenses,net}) => <dl key={code} className="rounded-lg bg-slate-50 p-4 text-sm"><div className="flex flex-wrap justify-between gap-2"><dt>Rent received</dt><dd>{propertyMoney(rent, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2"><dt>Expenses</dt><dd>{propertyMoney(expenses, code)}</dd></div><div className="mt-2 flex flex-wrap justify-between gap-2 font-semibold"><dt>Recorded net</dt><dd>{propertyMoney(net, code)}</dd></div></dl>)}</div>}
       </section>
       <section className="rounded-xl border bg-white p-5"><h2 className="text-lg font-semibold">Maintenance & repairs</h2><p className="mt-2 text-sm">{data.maintenance.filter(row => row.status !== "resolved").length} open work items · {data.maintenance.filter(row => row.category === "repair" && row.status !== "resolved").length} open repairs</p><Link className="mt-3 inline-block rounded-lg px-3 py-3 text-sm font-medium text-teal-800 hover:bg-teal-50" href="/property/maintenance">View work records</Link></section>
       {!data.properties.length && <section className="rounded-xl border border-dashed bg-white p-6"><h2 className="font-semibold">Start with your first property</h2><p className="mt-2 text-sm text-slate-600">Add a property and its currency, then add units and their tenancies. No sample records are included.</p><Link href="/property/properties" className="mt-3 inline-block rounded-lg bg-[#0BBDB2] px-4 py-3 text-sm font-semibold">Add a property</Link></section>}

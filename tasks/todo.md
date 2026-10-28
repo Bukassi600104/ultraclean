@@ -202,3 +202,12 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - Missing business records remain untouched by user instruction.
 
 - Release evidence: docs/superpowers/plans/2026-10-27-dashboard-remediation-release.md. Existing 84 tables and all seven accounts unchanged; missing records remain untouched. Authenticated live walkthrough remains pending sign-in.
+
+## 2026-10-28 Dashboard audit corrections
+- [x] Baseline and reproduction
+- [x] Mortality scopes
+- [x] Exact accounting and reconciliation
+- [ ] Back navigation and layout
+- [x] Form accessibility
+- [x] Account UI harness
+- [ ] Verification, review and approved release

@@ -1,9 +1,10 @@
 "use client";
 import { formatCurrency } from "@/lib/utils";
+import {moneyNumber,subtractMoney,sumMoney} from "@/lib/money";
 import { FinancialPeriodForm } from "@/components/dashboard/BusinessFinancialCharts";
 import { FarmActivityPanel, FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 import { farmDateToday } from "@/lib/farm-products";
-import { activeMortality } from "@/lib/farm-inventory";
+import { mortalityByProduct as summarizeMortality } from "@/lib/farm-inventory";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -43,7 +44,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type { FarmInventory, FarmInventoryTransaction } from "@/types";
+import type { FarmInventory } from "@/types";
 
 const EXPENSE_COLORS = [
   "#0BBDB2",
@@ -76,8 +77,8 @@ export default function FarmOverviewPage() {
   const [fundTotal, setFundTotal] = useState(0);
   const [mortalityByProduct, setMortalityByProduct] = useState<Record<string, number>>({});
   const [revenue, setRevenue] = useState(0);
-  const [expenses, setExpenses] = useState(0);
-  const [feedExpenses, setFeedExpenses] = useState(0);
+  const [totalSpent,setTotalSpent] = useState(0);
+  const [operatingResult,setOperatingResult] = useState(0);
   const [inventory, setInventory] = useState<FarmInventory[]>([]);
   const [totalDeaths, setTotalDeaths] = useState(0);
   const [salesByProduct, setSalesByProduct] = useState<{ name: string; value: number }[]>([]);
@@ -106,12 +107,11 @@ export default function FarmOverviewPage() {
         ]);
         if (!financeRes.ok || !inventoryRes.ok || !mortRes.ok) throw new Error("Farm figures unavailable");
         const [finance, inv, mortData] = await Promise.all([financeRes.json(), inventoryRes.json(), mortRes.json()]);
-        setRevenue(finance.revenue); setExpenses(finance.general_expenses); setFeedExpenses(finance.feed_expenses);
-        setOwnerBalance(finance.closing_balance); setFundTotal(finance.total_transferred); setOwnerSpent(finance.total_spent_before + finance.total_spent_today);
+        setRevenue(finance.revenue); setTotalSpent(finance.total_expenses); setOperatingResult(finance.operational_net??moneyNumber(subtractMoney(finance.revenue,finance.total_expenses)));
+        setOwnerBalance(finance.closing_balance); setFundTotal(finance.total_transferred); setOwnerSpent(finance.total_owner_spent??moneyNumber(sumMoney([finance.total_spent_before,finance.total_spent_today])));
         setInventory(Array.isArray(inv) ? inv : []);
-        const deaths: Record<string, number> = {};
-        activeMortality(mortData.data || []).forEach((record: FarmInventoryTransaction) => { deaths[record.product] = (deaths[record.product] || 0) + Number(record.quantity); });
-        setMortalityByProduct(deaths); setTotalDeaths(Object.values(deaths).reduce((n, value) => n + value, 0));
+        const deaths = summarizeMortality(mortData.data || [], {from, to:today});
+        setMortalityByProduct(Object.fromEntries(deaths.products.map(row=>[row.product,row.quantity]))); setTotalDeaths(deaths.total);
         setSalesByProduct(finance.sales_by_product); setExpensesByCategory(finance.expenses_by_category);
       } catch {
         setFinancialError(true);
@@ -135,13 +135,12 @@ export default function FarmOverviewPage() {
       if (responses.some(response => !response.ok)) throw new Error("Farm figures unavailable");
       const [finance, inv, movements] = await Promise.all(responses.map(response => response.json()));
       setOwnerBalance(finance.closing_balance); setFundTotal(finance.total_transferred);
-      setOwnerSpent(finance.total_spent_before + finance.total_spent_today);
-      setRevenue(finance.revenue); setExpenses(finance.general_expenses); setFeedExpenses(finance.feed_expenses);
+      setOwnerSpent(finance.total_owner_spent??moneyNumber(sumMoney([finance.total_spent_before,finance.total_spent_today])));
+      setRevenue(finance.revenue); setTotalSpent(finance.total_expenses); setOperatingResult(finance.operational_net??moneyNumber(subtractMoney(finance.revenue,finance.total_expenses)));
       setSalesByProduct(finance.sales_by_product); setExpensesByCategory(finance.expenses_by_category);
       setInventory(Array.isArray(inv) ? inv : []);
-      const deaths: Record<string, number> = {};
-      activeMortality(movements.data || []).forEach((record: FarmInventoryTransaction) => { deaths[record.product] = (deaths[record.product] || 0) + Number(record.quantity); });
-      setMortalityByProduct(deaths); setTotalDeaths(Object.values(deaths).reduce((sum, value) => sum + value, 0));
+      const deaths = summarizeMortality(movements.data || [], period);
+      setMortalityByProduct(Object.fromEntries(deaths.products.map(row=>[row.product,row.quantity]))); setTotalDeaths(deaths.total);
       setFinancialError(false);
     } catch { setFinancialError(true); }
   }
@@ -200,7 +199,6 @@ export default function FarmOverviewPage() {
   }
 
   const totalTransferred = fundTotal;
-  const totalSpent = expenses + feedExpenses;
   const currentBalance = ownerBalance;
 
   return (
@@ -218,9 +216,9 @@ export default function FarmOverviewPage() {
             <>
               <SummaryCard title="Total Revenue" value={financialError ? "Unavailable" : formatCurrency(revenue)} icon={TrendingUp} />
               <SummaryCard title="Total Expenses" value={financialError ? "Unavailable" : formatCurrency(totalSpent)} icon={TrendingDown} />
-              <SummaryCard title="Recorded operating result" value={financialError ? "Unavailable" : formatCurrency((revenue - totalSpent))} icon={DollarSign} />
+              <SummaryCard title="Recorded operating result" value={financialError ? "Unavailable" : formatCurrency(operatingResult)} icon={DollarSign} />
               <SummaryCard title="Inventory Types" value={financialError?"Unavailable":inventory.length} icon={Package} />
-              <SummaryCard title="Total Mortality" value={financialError?"Unavailable":totalDeaths} icon={Skull} iconClassName="text-red-500" />
+              <SummaryCard title={period.from?"Mortality in period":"Mortality through end date"} value={financialError?"Unavailable":totalDeaths} icon={Skull} iconClassName="text-red-500" />
             </>
           )}
         </div>

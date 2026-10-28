@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
+import {operationalBackLink} from "@/lib/dashboard-navigation";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
-import { Menu } from "lucide-react";
+import { ArrowLeft, Menu } from "lucide-react";
 
 // Page title map
 
@@ -16,6 +18,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/sales/cattle": "Cattle Sales",
   "/sales/goat": "Goat Sales",
   "/sales/chicken": "Chicken Sales",
+  "/sales/pig": "Pig Sales",
+  "/sales/turkey": "Turkey Sales",
   "/sales/crops": "Crops Sales",
   "/sales/other": "Other Sales",
   "/expenses": "Record Expenses",
@@ -25,6 +29,11 @@ const PAGE_TITLES: Record<string, string> = {
   "/expenses/veterinary": "Veterinary",
   "/expenses/transport": "Transport",
   "/expenses/equipment": "Equipment",
+  "/expenses/produce": "Farm Produce",
+  "/expenses/other": "Other Expenses",
+  "/daily-report": "Daily Report",
+  "/daily-report/history": "Daily Report History",
+  "/operational-requests": "Operational Requests",
   "/supplies": "Farm Supplies",
   "/inventory": "Inventory",
   "/daily-feed": "Daily Feed",
@@ -48,6 +57,7 @@ export default function ManagerLayout({
 
   const normalised = pathname.replace(/^\/manager/, "") || "/";
   const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
+  const back=operationalBackLink(pathname,"manager");
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
@@ -62,7 +72,7 @@ export default function ManagerLayout({
 
         {/* Top bar */}
         <header
-          className="sticky top-0 z-30 flex items-center gap-3 px-4 h-14"
+          className="sticky top-0 z-30 flex min-h-14 items-center gap-3 px-4 py-2"
           style={{
             backgroundColor: "#ffffff",
             borderBottom: "1px solid rgba(27,67,50,0.09)",
@@ -79,12 +89,12 @@ export default function ManagerLayout({
             <Menu className="h-5 w-5" />
           </button>
 
-          <h1
-            className="font-bold text-base flex-1 truncate"
+          <div className="min-w-0 flex-1">{back&&<Link href={back.href} className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-emerald-800"><ArrowLeft aria-hidden="true" className="h-4 w-4"/>{back.label}</Link>}<h1
+            className="font-bold text-base truncate"
             style={{ color: "#161d1b" }}
           >
             {pageTitle}
-          </h1>
+          </h1></div>
 
           {/* Primefield brand mark — visible on desktop when sidebar is shown */}
           <span

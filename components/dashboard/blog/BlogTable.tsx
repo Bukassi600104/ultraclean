@@ -64,13 +64,13 @@ export function BlogTable({ posts, onDelete }: BlogTableProps) {
               <div className="flex justify-end gap-1">
                 {post.status === "published" && (
                   <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/blog/${post.slug}`} target="_blank">
+                    <Link href={`/blog/${post.slug}`} target="_blank" aria-label={`View ${post.title}`}>
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>
                 )}
                 <Button variant="ghost" size="icon" asChild>
-                  <Link href={`/dashboard/blog/edit/${post.id}`}>
+                  <Link href={`/dashboard/blog/edit/${post.id}`} aria-label={`Edit ${post.title}`}>
                     <Pencil className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -79,6 +79,7 @@ export function BlogTable({ posts, onDelete }: BlogTableProps) {
                   size="icon"
                   className="text-destructive hover:text-destructive"
                   onClick={() => onDelete(post.id)}
+                  aria-label={`Delete ${post.title}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

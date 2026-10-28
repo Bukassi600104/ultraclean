@@ -15,3 +15,13 @@ export function isDashboardDestinationActive(pathname: string, href: string, des
   const matches = destinations.filter(path => pathname === path || (path !== "/dashboard" && pathname.startsWith(path + "/")));
   return matches.sort((a, b) => b.length - a.length)[0] === href;
 }
+
+export function operationalBackLink(pathname: string, app: "manager" | "property" | "content") {
+  if (app !== "manager") return pathname === `/${app}` || pathname === `/${app}/login` ? null : {href:`/${app}`,label:`Back to ${app === "property" ? "Property" : "Content"} Overview`};
+  const prefix = /^\/manager(?:\/|$)/.test(pathname) ? "/manager" : "", path = pathname.slice(prefix.length) || "/";
+  if (path === "/" || path === "/login") return null;
+  for (const [section,label] of [["sales","Sales"],["expenses","Expenses"],["daily-report","Daily Report"]]) {
+    if (path.startsWith(`/${section}/`)) return {href:`${prefix}/${section}`,label:`Back to ${label}`};
+  }
+  return {href:prefix || "/",label:"Back to Farm Overview"};
+}
