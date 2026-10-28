@@ -215,3 +215,18 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - Independent review: original and addendum Important findings reproduced before fixes; no deferred Minor findings. Exact-money, mortality, account, role/API and backup restore evidence retained in the release report.
 - Production verification: all49 application tables unchanged,8 accounts retained; live internal CEO links and Back work. Public81 and liveGET17 PASS; staged/activated deployment dpl_1JvdMfEuENcQa9N2fWjob7jRHcdC on512d473. Final main push/build metadata retained in private release evidence.
 - Release report: docs/superpowers/plans/2026-10-28-dashboard-audit-corrections-release.md. Missing records remain untouched; the temporary tester remains active.
+
+## Manager handover, individual reporting and funds custody — 28 October 2026
+
+- [x] Read-only account, attribution, finance, inventory, permission and offline-queue audit.
+- [x] Confirm legacy Excel eligibility: Farm Manager and Emmanuel Adeolu only; exclude Tony and future accounts.
+- [ ] Complete reviewed design and obtain design approval before product changes. Builder check returned two funding-policy questions; awaiting the user's answers.
+- [ ] Write the implementation plan after approved design.
+- [ ] Implement individual reporting/access and account-scoped offline handling.
+- [ ] Implement farm inventory handover without inserting opening stock or changing existing quantities.
+- [ ] Implement linked funds custody/receipts and exact reconciliation.
+- [ ] Implement the two eligible accounts' genuine XLSX exports.
+- [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
+- [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
+
+Current stage: design only. No application code, production records, account status or schema has changed for this request.

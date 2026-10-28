@@ -33,3 +33,10 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Group content attribution by currency and content ID; titles are labels and may repeat. Disambiguate duplicate titles without merging the underlying records.
 - Explicit Back navigation must protect unsaved values, including date-only edits. Clear dirty state after confirmed saves; retain unconfirmed offline payloads.
 - Read financial numeric fields as decimal text and aggregate at full stored scale before final display rounding. Never rebuild historical ledgers to resolve a display mismatch.
+
+### Manager handover and funds responsibility — 28 October 2026
+- A fresh manager login needs server/database-scoped activity and cash responsibility, not merely empty UI cards. Keep business assets and legacy history intact.
+- The recording actor is not necessarily the cash recipient or responsible manager. Bimbo-created historical transfers without a recipient must remain unallocated until genuine evidence is supplied.
+- Internal procurement-to-manager receipts move custody of existing funds; they are neither extra owner funding nor an expense. Only the actual purchase reduces combined unspent funds.
+- Isolate offline queues by authenticated account and operating period. Retain legacy unowned drafts for resolution rather than submitting them under the next login.
+- Special legacy export eligibility is the two user-selected accounts, Farm Manager and Emmanuel Adeolu. Do not assume it applies to one account, Tony, or every manager.
