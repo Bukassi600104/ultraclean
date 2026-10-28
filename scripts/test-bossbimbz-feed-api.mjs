@@ -14,3 +14,9 @@ eq((await api.POST(req(opening,undefined,null))).status,400);eq((await api.POST(
 role='manager';eq((await api.POST(req({operation:'use',payload:{daily_feed_id:actor,bags_opened:1}}))).status,201);eq((await api.POST(req({operation:'use',payload:{daily_feed_id:actor,bags_opened:0}}))).status,400);
 error={code:'23514',message:'Closed day'};eq((await api.POST(req({operation:'use',payload:{daily_feed_id:actor,bags_opened:1}}))).status,409);error={code:'40001',message:'Changed'};role='admin';eq((await api.POST(req({operation:'adjust',id:actor,payload:{date:'2026-10-07',bags_delta:-1,expected_revision:0},reason:'Damaged bag'}))).status,409);
 console.log(`PASS: ${checks} actual feed-stock API authorization, actor, retry, validation and conflict checks`);
+error=null;role='manager';
+for(const operation of ['starting','received','opened','problem']){eq((await api.POST(req({operation,payload:{date:'2026-10-28',feed_type:'fish',feed_source:'local',bags:2,notes:'Actual feed activity'}}))).status,201);eq(calls.at(-1).args.p_actor,actor);}
+eq((await api.POST(req({operation:'opened',payload:{date:'2026-10-28',feed_type:'fish',bags:0.5}}))).status,400);
+eq((await api.POST(req({operation:'review_problem',id:actor,payload:{decision:'approve',expected_revision:0},reason:'Checked'}))).status,403);
+eq((await api.GET(req())).status,200);eq(calls.at(-1).name,'farm_feed_inventory_read');eq(calls.at(-1).args.p_actor,actor);eq(calls.at(-1).args.p_period_id,null);
+console.log(`PASS: ${checks} total feed API checks including manager-led physical entry, trusted scope, reviews and legacy compatibility`);

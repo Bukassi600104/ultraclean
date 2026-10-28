@@ -3,6 +3,7 @@ import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
+import type {FeedActivity,FeedInventoryRow} from "@/lib/farm-feed-types";
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -90,6 +91,9 @@ export default function ExpenseCategoryPage() {
   const categoryKey = (category as Category) in CATEGORY_CONFIG ? (category as Category) : "labor";
   const config = CATEGORY_CONFIG[categoryKey];
   const [today, setToday] = useState("");
+  const [delivery,setDelivery]=useState("order"),[feedSource,setFeedSource]=useState("local"),[deliveryDate,setDeliveryDate]=useState(""),[deliveryId,setDeliveryId]=useState(""),[included,setIncluded]=useState("");
+  const [deliveries,setDeliveries]=useState<FeedActivity[]>([]),[feedStocks,setFeedStocks]=useState<FeedInventoryRow[]>([]),[deliveryError,setDeliveryError]=useState("");
+  useEffect(()=>{if(categoryKey!=="feed")return;let current=true;Promise.all([managerFetch("/api/farm/feed-stock?history=1&limit=500"),managerFetch("/api/farm/feed-stock")]).then(async responses=>{const [history,inventory]=await Promise.all(responses.map(r=>r.json()));if(responses.some(r=>!r.ok))throw Error("Delivery history is unavailable. Retry before linking a delivery.");if(current){setDeliveries((history.data||[]).filter((r:FeedActivity)=>r.kind==="received"));setFeedStocks(inventory.data||[]);setDeliveryError("");}}).catch(e=>{if(current){setDeliveries([]);setFeedStocks([]);setDeliveryError(e.message);}});return()=>{current=false;};},[categoryKey,managerFetch]);
 
   const [form, setForm] = useState<FormValues>({
     date: "",
@@ -137,6 +141,10 @@ export default function ExpenseCategoryPage() {
     if (categoryKey === "feed") {
       if (!form.num_bags || Number(form.num_bags) <= 0) return toast.error("Enter number of bags");
       if (!form.cost_per_bag || Number(form.cost_per_bag) <= 0) return toast.error("Enter cost per bag");
+      if(delivery==="linked"&&!deliveryId)return toast.error("Choose the received delivery being paid for");
+      if(delivery==="received"&&!deliveryDate)return toast.error("Choose the actual delivery date");
+      const stock=feedStocks.find(r=>r.feed_type===form.feed_type&&r.feed_source===feedSource);
+      if(delivery==="received"&&stock?.opening_date&&deliveryDate<=stock.opening_date&&!included)return toast.error("Confirm whether these bags were included in the starting count");
     } else if (categoryKey === "produce") {
       if (!form.produce_quantity || Number(form.produce_quantity) <= 0) return toast.error("Enter quantity");
       if (!form.produce_unit_price || Number(form.produce_unit_price) <= 0) return toast.error("Enter unit price");
@@ -158,7 +166,10 @@ export default function ExpenseCategoryPage() {
         const payload = [{
           date: form.date,
           feed_type: form.feed_type,
-          feed_source: "local",
+          feed_source: feedSource,
+          delivery_received:delivery!=="order",
+          ...(delivery==="linked"?{feed_activity_id:deliveryId}:{}),
+          ...(delivery==="received"?{delivery_date:deliveryDate,...(included?{included_in_starting_count:included==="yes"}:{})}:{}),
           weight_unit: "tons",
           weight_amount: 1,
           num_bags: Number(form.num_bags),
@@ -178,6 +189,7 @@ export default function ExpenseCategoryPage() {
         }
 
         requestId.current = null;
+        setDelivery("order");setDeliveryId("");setDeliveryDate("");setIncluded("");
         setDirty(false);
         setSavedItems((prev) => [
           ...prev,
@@ -393,6 +405,12 @@ export default function ExpenseCategoryPage() {
         {/* Feed-specific fields */}
         {categoryKey === "feed" && (
           <>
+            <label className="block text-sm font-semibold">Feed source<select className="mt-1 min-h-11 w-full rounded-xl border p-3" value={feedSource} onChange={e=>{setFeedSource(e.target.value);setDeliveryId("");}}><option value="local">Local</option><option value="foreign">Foreign</option></select></label>
+            <label className="block text-sm font-semibold">Delivery status<select aria-label="Delivery status" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={delivery} onChange={e=>setDelivery(e.target.value)}><option value="order">Payment or order only, not received</option><option value="received">Received now, not yet recorded in Feed Inventory</option><option value="linked">Already recorded in Feed Inventory</option></select></label>
+            {delivery==="order"&&<p className="text-sm text-slate-600">This records the cost only. Bags are added when the actual delivery is recorded.</p>}
+            {delivery==="received"&&<><label className="block text-sm font-semibold">Actual delivery date<input className="mt-1 min-h-11 w-full rounded-xl border p-3" type="date" max={today} value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)}/></label>{feedStocks.some(s=>s.feed_type===form.feed_type&&s.feed_source===feedSource&&s.opening_date&&deliveryDate<=s.opening_date)&&<label className="block text-sm">Were these bags included in the starting count?<select className="mt-1 min-h-11 w-full rounded-xl border p-3" value={included} onChange={e=>setIncluded(e.target.value)}><option value="">Choose</option><option value="yes">Yes, already included</option><option value="no">No</option></select></label>}</>}
+            {delivery==="linked"&&<label className="block text-sm font-semibold">Received delivery<select className="mt-1 min-h-11 w-full rounded-xl border p-3" value={deliveryId} onChange={e=>setDeliveryId(e.target.value)}><option value="">Enter the matching bag count, then choose the delivery</option>{deliveries.filter(r=>r.feed_type===form.feed_type&&r.feed_source===feedSource&&r.bags===Number(form.num_bags)).map(r=><option key={r.id} value={r.id}>{r.activity_date} · {r.bags} bags · {r.actor_name||"Unknown actor"}</option>)}</select></label>}
+            {deliveryError&&<p role="alert" className="text-sm text-red-800">{deliveryError}</p>}
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Feed Type</label>
               <div className="mt-1.5 grid grid-cols-2 gap-2">

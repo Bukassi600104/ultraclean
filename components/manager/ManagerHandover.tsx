@@ -1,13 +1,14 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type ReactNode} from "react";
 import Link from "next/link";
+import {usePathname} from "next/navigation";
 import {useManagerFetch,useManagerPeriod,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 import {farmProductLabel} from "@/lib/farm-products";
 import {livestockGroupLabel,type LivestockGroup} from "@/lib/farm-livestock-categories";
 import type {HandoverState,HandoverItem,HandoverDecision} from "@/lib/manager-handover-types";
 const button="inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50";
-export function ManagerHandoverGate({children}:{children:ReactNode}){const scope=useManagerPeriod();return scope?.status==="awaiting_handover"?<ManagerHandover/>:children;}
+export function ManagerHandoverGate({children}:{children:ReactNode}){const scope=useManagerPeriod(),path=usePathname();return scope?.status==="awaiting_handover"&&!['/manager/feed-stock','/feed-stock'].includes(path)?<ManagerHandover/>:children;}
 export function ManagerHandover({onComplete=()=>window.location.assign("/manager")}:{onComplete?:()=>void}){
  const send=useManagerFetch(),scope=useManagerPeriod(),storageKey=useManagerStorageKey(scope?"primefield-handover-retry:"+scope.actorId:null);
  const [state,setState]=useState<HandoverState|null>(null),[step,setStep]=useState(0),[error,setError]=useState(""),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false),[retry,setRetry]=useState<HandoverDecision|null>(null);

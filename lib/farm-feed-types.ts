@@ -1,0 +1,3 @@
+export const FEED_TYPES=["fish","goat","chicken","pig","turkey","cattle","other"] as const;
+export type FeedInventoryRow={id:string|null;feed_type:string;feed_source:string;current_bags:number|null;initialized_at:string|null;opening_date:string|null;revision:number|null;actor_name?:string|null;uncounted_receipts?:{id:string;date:string;bags:number;actor_name:string|null}[]};
+export type FeedActivity={id:string;stock_id:string;kind:string;bags:number;activity_date:string;actor_name:string|null;recorded_at:string;notes:string|null;resulting_bags:number|null;feed_type:string;feed_source:string;review_status?:string;stock_revision:number;current_revision?:number;current_bags?:number|null;review_request_id?:string|null;daily_feed_id?:string|null;purchase_id?:string|null};

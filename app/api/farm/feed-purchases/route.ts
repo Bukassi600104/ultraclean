@@ -16,6 +16,10 @@ const feedItemSchema = z.object({
   weight_amount: z.number().positive("Weight must be positive").default(1),
   num_bags: z.number().int().positive("Number of bags must be positive"),
   cost: z.number().positive("Cost must be positive"),
+  delivery_received:z.boolean().optional(),
+  delivery_date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  feed_activity_id:z.string().uuid().optional(),
+  included_in_starting_count:z.boolean().optional(),
   notes: z.string().max(1000).optional().nullable(),
   date: z
     .string()

@@ -7,6 +7,8 @@ import Link from "next/link";
 import {useAuth} from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Droplets, Check } from "lucide-react";
+import {sumMoney} from "@/lib/money";
+import type {FeedActivity} from "@/lib/farm-feed-types";
 
 const FEED_TYPES = [
   { value: "fish", label: "Fish Feed" },
@@ -37,13 +39,14 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
  const managerFetch=useManagerFetch();
   const {profile}=useAuth();
   const [localOpened,setLocalOpened]=useState("0"),[foreignOpened,setForeignOpened]=useState("0");
+  const [localOpening,setLocalOpening]=useState(""),[foreignOpening,setForeignOpening]=useState(""),[openings,setOpenings]=useState<FeedActivity[]>([]);
   const [saveError,setSaveError]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [dirty,setDirty]=useState(false);
   const lock=useRef(false);
   const pending=useRef<{id:string;payload:Record<string,unknown>}[]>([]);
   const storageKey=useManagerStorageKey(profile?`primefield-daily-feed-retry:${profile.id}`:null);
-  useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||"[]");setUncertain(!!pending.current.length);if(pending.current.length){const first=pending.current[0].payload;setDate(String(first.date));setFeedType(String(first.feed_type));setNotes(String(first.notes??""));const local=pending.current.find(row=>row.payload.feed_source==="local")?.payload;const foreign=pending.current.find(row=>row.payload.feed_source==="foreign")?.payload;setLocalBags(local?String(local.num_bags):"");setForeignBags(foreign?String(foreign.num_bags):"");setLocalOpened(local?String(local.bags_opened):"0");setForeignOpened(foreign?String(foreign.bags_opened):"0");}}catch{toast.error("Cannot read saved feed submission; check history before retrying.");setUncertain(true);}},[storageKey]);
+  useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||"[]");setUncertain(!!pending.current.length);if(pending.current.length){const first=pending.current[0].payload;setDate(String(first.date));setFeedType(String(first.feed_type));setNotes(String(first.notes??""));const local=pending.current.find(row=>row.payload.feed_source==="local")?.payload;const foreign=pending.current.find(row=>row.payload.feed_source==="foreign")?.payload;setLocalBags(local?String(local.num_bags):"");setForeignBags(foreign?String(foreign.num_bags):"");setLocalOpened(local?String(local.bags_opened):"0");setForeignOpened(foreign?String(foreign.bags_opened):"0");setLocalOpening(String(local?.opening_activity_id||""));setForeignOpening(String(foreign?.opening_activity_id||""));}}catch{toast.error("Cannot read saved feed submission; check history before retrying.");setUncertain(true);}},[storageKey]);
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
@@ -67,7 +70,8 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
     try {
       const response=await managerFetch("/api/farm/daily-feed?limit=30",{cache:"no-store"});const res=await response.json();if(!response.ok)throw Error(res.error||"Unable to load feed history");setRecords(res.data||[]);
       const stockResponse=await managerFetch("/api/farm/feed-stock",{cache:"no-store"});const stocks=await stockResponse.json();if(!stockResponse.ok)throw Error(stocks.error||"Unable to load available bags");setStockRows(stocks.data??[]);setStockError("");
-    } catch(error) {setStockError(error instanceof Error?error.message:"Unable to load feed history and available bags");}
+      const openingResponse=await managerFetch("/api/farm/feed-stock?history=1&limit=500",{cache:"no-store"}),openingRows=await openingResponse.json();if(!openingResponse.ok)throw Error(openingRows.error||"Unable to load recorded openings");setOpenings((openingRows.data||[]).filter((row:FeedActivity)=>row.kind==="opened"));
+    } catch(error) {setRecords([]);setStockRows([]);setOpenings([]);setStockError(error instanceof Error?error.message:"Unable to load feed history and available bags");}
     finally { setLoadingRecords(false); }
   },[managerFetch]);
 
@@ -80,9 +84,9 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
     const hadPending=pending.current.length>0;
     if(!pending.current.length){
       if(!date)return toast.error("Select a date");
-      const values=[{feed_source:"local",num_bags:Number(localBags),bags_opened:Number(localOpened)},{feed_source:"foreign",num_bags:Number(foreignBags),bags_opened:Number(foreignOpened)}];
+      const values=[{feed_source:"local",num_bags:Number(localBags),bags_opened:Number(localOpened),...(localOpening?{opening_activity_id:localOpening}:{})},{feed_source:"foreign",num_bags:Number(foreignBags),bags_opened:Number(foreignOpened),...(foreignOpening?{opening_activity_id:foreignOpening}:{})}];
       if(values.every(row=>row.num_bags<=0))return toast.error("Enter at least one feeding quantity");
-      if(values.some(row=>!Number.isFinite(row.num_bags)||row.num_bags<0||!Number.isInteger(row.bags_opened)||row.bags_opened<0||(row.bags_opened>0&&row.num_bags<=0)))return toast.error("New bags opened must be a whole nonnegative count with a feeding entry");
+      if(values.some(row=>!Number.isFinite(row.num_bags)||row.num_bags<0||!Number.isInteger(row.bags_opened)||row.bags_opened<0||(row.bags_opened>0&&(row.num_bags<=0||row.opening_activity_id))))return toast.error("New bags opened must be a whole nonnegative count. An opening already recorded uses zero new bags.");
       pending.current=values.filter(row=>row.num_bags>0).map(row=>({id:crypto.randomUUID(),payload:{date,feed_type:feedType,...row,notes:notes.trim()||undefined}}));
     }
     lock.current=true;setSaving(true);
@@ -97,7 +101,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
         if(!response.ok)throw Error(result.error||"Unable to confirm feed submission");
         pending.current.shift();persist();
       }
-      setUncertain(false);setDirty(false);setLocalBags("");setForeignBags("");setLocalOpened("0");setForeignOpened("0");setNotes("");setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Feed activity and stock movement saved");await loadRecords();
+      setUncertain(false);setDirty(false);setLocalBags("");setForeignBags("");setLocalOpened("0");setForeignOpened("0");setLocalOpening("");setForeignOpening("");setNotes("");setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Feed activity saved");await loadRecords();
     }catch(error){const message=error instanceof Error?error.message:"Unconfirmed submission. Retry the saved entry; its bag count stays locked.";setSaveError(message);toast.error(message);}finally{lock.current=false;setSaving(false);}
   }
 
@@ -111,7 +115,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   }, {});
 
   return (
-    <div data-unsaved-changes={dirty||uncertain} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty||uncertain} onChangeCapture={() => setDirty(true)} className="mx-auto w-full max-w-lg space-y-4">
       {/* Header */}
       <div className="rounded-2xl px-5 py-4 flex items-center gap-3"
         style={{ backgroundColor: "#e0f2fe", borderLeft: "4px solid #0284c7" }}>
@@ -123,7 +127,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
       </div>
 
       <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Record feeding quantities separately from new bags opened. Opening a new bag deducts it immediately. Feeding from an already opened bag uses 0 new bags. <Link className="font-semibold underline" href={admin?"/dashboard/farm/feed-stock":"/feed-stock"}>View available feed and history</Link>.</p>
-      {stockError?<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}</p>:<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);return <p key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span><br/>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Awaiting physical opening count"}</p>;})}</div>}
+      {stockError?<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}</p>:<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);return <p key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span><br/>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Starting count needed"}</p>;})}</div>}
       {saveError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
       {uncertain&&<p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A saved entry is awaiting confirmation. Retry it without changing its values. Confirmed entries are not sent again.</p>}
       <fieldset disabled={saving||uncertain} className="min-w-0 space-y-4">
@@ -190,13 +194,14 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
           {(Number(localBags) > 0 || Number(foreignBags) > 0) && (
             <p className="mt-2 text-xs text-center text-gray-500">
               Total: <span className="font-bold text-gray-800">
-                {Number(localBags || 0) + Number(foreignBags || 0)} bag{(Number(localBags || 0) + Number(foreignBags || 0)) !== 1 ? "s" : ""}
+                {sumMoney([localBags || "0",foreignBags || "0"])} bags
               </span>
             </p>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">{[{label:"Local new bags opened",value:localOpened,set:setLocalOpened},{label:"Foreign new bags opened",value:foreignOpened,set:setForeignOpened}].map(field=><label key={field.label} className="text-sm font-semibold">{field.label}<input aria-label={field.label} type="number" min={0} step={1} inputMode="numeric" className="mt-2 w-full rounded-xl border p-3" value={field.value} onChange={event=>field.set(event.target.value)}/></label>)}</div>
+        {[{source:"local",value:localOpening,set:setLocalOpening,opened:setLocalOpened},{source:"foreign",value:foreignOpening,set:setForeignOpening,opened:setForeignOpened}].map(field=><label key={field.source} className="block text-sm font-medium capitalize">{field.source} recorded opening (optional)<select className="mt-1 min-h-11 w-full rounded-xl border p-3 text-sm normal-case" value={field.value} onChange={e=>{field.set(e.target.value);if(e.target.value)field.opened("0");}}><option value="">No opening selected</option>{openings.filter(row=>row.feed_type===feedType&&row.feed_source===field.source&&row.activity_date<=date).map(row=><option key={row.id} value={row.id}>{row.activity_date} · {row.bags} bags opened</option>)}</select></label>)}
         {/* Notes */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">

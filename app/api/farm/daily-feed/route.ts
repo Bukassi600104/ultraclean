@@ -39,13 +39,13 @@ async function legacyPOST(request: NextRequest) {
   const supabase = createServerClient();
   if (!supabase) return NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
-  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]), num_bags: z.number().positive(), feed_source: z.enum(["local", "foreign"]).default("local"), notes: z.string().max(1000).nullable().optional(), bags_opened:z.number().int().min(0).max(99999).optional() }).strict();
+  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), feed_type: z.enum(["fish", "goat", "chicken", "pig", "turkey", "cattle", "other"]), num_bags: z.number().positive(), feed_source: z.enum(["local", "foreign"]).default("local"), notes: z.string().max(1000).nullable().optional(), bags_opened:z.number().int().min(0).max(99999).optional(), opening_activity_id:z.string().uuid().optional() }).strict();
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });
   const requestId=request.headers.get("X-Request-ID") || undefined;
-  if(parsed.data.bags_opened!==undefined){
+  if(parsed.data.bags_opened!==undefined||parsed.data.opening_activity_id){
     if(!requestId||!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:"A valid X-Request-ID is required for safe feed retries"},{status:400});
-    const {data,error}=await feedStockWrite(profile,"create_daily_feed",parsed.data,{requestId});
+    const {data,error}=await feedStockWrite(profile,"create_daily_feed",{...parsed.data,bags_opened:parsed.data.bags_opened??0},{requestId});
     if(error)return farmErrorResponse(error);
     return NextResponse.json({data:data.daily_feed},{status:201});
   }
