@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -12,6 +14,7 @@ import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker"
 const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label: product.label }));
 
 export default function MortalityPage() {
+ const managerFetch=useManagerFetch();
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
@@ -35,7 +38,7 @@ export default function MortalityPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/farm/inventory/transaction", {
+      const res = await managerFetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ request_id: requestId, product, stock_group_id:stockGroup||null, action: "mortality", quantity: Number(quantity), date, reason: cause.trim() || "Unknown", notes: notes.trim() || undefined }),

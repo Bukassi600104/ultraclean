@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { managerUpdateSchema } from "@/lib/validations";
 import { isManagerRole } from "@/lib/manager-accounts";
+import {businessForRole} from "@/lib/manager-period-types";
 
 export const runtime = "nodejs";
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
@@ -43,7 +44,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const context = await account(params.id);
   if (context.response) return context.response;
-  const { supabase, user } = context;
+  const { supabase, user,target } = context;
   const parsed = managerUpdateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return fail("Validation failed", 400);
   if (user.app_metadata?.manager_access_removed === true) return fail("Access has been removed. Create a separate account for new access.", 409);
@@ -53,9 +54,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (error) return fail("Unable to suspend account", 503);
   }
   if (changes.password || changes.suspended !== undefined) {
+    if(user.app_metadata?.manager_setup_pending===true&&changes.suspended===false){
+      const {error:periodError}=await supabase.rpc("manager_context",{p_actor:params.id,p_business:businessForRole(target.role),p_period_id:null});
+      if(periodError)return fail("Account setup is incomplete. Finish its responsibility period before enabling sign-in.",409);
+    }
     const { error } = await supabase.auth.admin.updateUserById(params.id, {
       ...(changes.password ? { password: changes.password } : {}),
       ...(changes.suspended !== undefined ? { ban_duration: changes.suspended ? banDuration : "none" } : {}),
+      ...(user.app_metadata?.manager_setup_pending===true&&changes.suspended===false?{app_metadata:{...user.app_metadata,manager_setup_pending:false}}:{}),
     });
     if (error) return fail(changes.suspended === true ? "Account remains suspended, but the sign-in restriction did not finish. Please retry." : "Account update did not finish. Please retry.", 503);
   }

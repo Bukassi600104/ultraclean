@@ -51,6 +51,7 @@ export async function getCurrentUser() {
 
     if (!user) return null;
     if (user.app_metadata?.manager_access_removed === true) return null;
+    if (user.app_metadata?.manager_setup_pending === true) return null;
     if (user.banned_until && Date.parse(user.banned_until) > Date.now()) return null;
 
     const { data: profile } = await supabase

@@ -1,3 +1,4 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
@@ -13,7 +14,7 @@ const transactionSchema = z.object({
   reason: z.string().trim().optional(),
 });
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try { profile = await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -32,3 +33,5 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json(data, { status: 201 });
 }
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

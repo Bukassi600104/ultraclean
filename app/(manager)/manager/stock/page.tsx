@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -13,6 +15,7 @@ import { emptyClassification, validClassification } from "@/lib/farm-livestock-c
 const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label: product.label }));
 
 export default function StockPage() {
+ const managerFetch=useManagerFetch();
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function StockPage() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/farm/inventory/transaction", {
+      const res = await managerFetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ request_id: requestId, product, classification, action: "add", quantity: Number(quantity), date, reason: reason.trim() || "New batch arrived", notes: notes.trim() || undefined }),

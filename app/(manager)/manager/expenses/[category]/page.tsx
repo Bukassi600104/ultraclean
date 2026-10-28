@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
@@ -82,6 +84,7 @@ function getTodayStr() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ExpenseCategoryPage() {
+ const managerFetch=useManagerFetch();
   const { category } = useParams<{ category: string }>();
   const router = useRouter();
   const categoryKey = (category as Category) in CATEGORY_CONFIG ? (category as Category) : "labor";
@@ -118,13 +121,13 @@ export default function ExpenseCategoryPage() {
 
   useEffect(() => {
     if (!today) return;
-    fetch(`/api/farm/daily-record?date=${today}`)
+    managerFetch(`/api/farm/daily-record?date=${today}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.record?.status === "closed") setIsDayClosed(true);
       })
       .catch(() => {});
-  }, [today]);
+  }, [today,managerFetch]);
 
   function updateField(field: keyof FormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -163,7 +166,7 @@ export default function ExpenseCategoryPage() {
           notes: form.notes.trim() || undefined,
         }];
 
-        const res = await fetch("/api/farm/feed-purchases", {
+        const res = await managerFetch("/api/farm/feed-purchases", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify(payload),
@@ -214,7 +217,7 @@ export default function ExpenseCategoryPage() {
           notes: `${form.produce_quantity} units @ ₦${Number(form.produce_unit_price).toLocaleString("en-NG")}${form.notes.trim() ? ` — ${form.notes.trim()}` : ""}`,
         }];
 
-        const res = await fetch("/api/farm/expenses", {
+        const res = await managerFetch("/api/farm/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify(payload),
@@ -259,7 +262,7 @@ export default function ExpenseCategoryPage() {
           payload.item_name = form.item_name.trim();
         }
 
-        const res = await fetch("/api/farm/expenses", {
+        const res = await managerFetch("/api/farm/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-Request-ID": requestId.current },
           body: JSON.stringify([payload]),

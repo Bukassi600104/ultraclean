@@ -1,10 +1,11 @@
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+async function legacyGET() {
   try {
     await requireManager();
   } catch {
@@ -26,4 +27,9 @@ export async function GET() {
   }
 
   return NextResponse.json(data);
+}
+
+export async function GET(request: Request = new Request("http://localhost/api/farm/inventory")) {
+ const scoped=await managerReadResponse(request,"farm","farm_inventory","array",false);
+ return scoped ?? legacyGET();
 }

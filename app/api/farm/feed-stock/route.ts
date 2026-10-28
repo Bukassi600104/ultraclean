@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import {NextRequest,NextResponse} from "next/server";
 import {z} from "zod";
 import {requireManager} from "@/lib/auth";
@@ -12,7 +14,7 @@ const schema=z.discriminatedUnion("operation",[
  z.object({operation:z.literal("adjust"),id:z.string().uuid(),payload:z.object({date,bags_delta:z.number().int().min(-99999999).max(99999999).refine(v=>v!==0),expected_revision:z.number().int().nonnegative()}).strict(),reason:z.string().trim().min(1).max(2000),request_id:z.string().uuid().optional()}).strict(),
  z.object({operation:z.literal("use"),payload:z.object({daily_feed_id:z.string().uuid(),bags_opened:z.number().int().min(1).max(99999999)}).strict(),reason:z.string().trim().max(2000).optional(),request_id:z.string().uuid().optional()}).strict(),
 ]);
-export async function GET(request:NextRequest){
+async function legacyGET(request:NextRequest){
  let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}void profile;
  const db=createServerClient();if(!db)return farmErrorResponse({code:"503",message:"Database not configured"});
  const params=new URL(request.url).searchParams;const history=params.get("history")==="1";
@@ -25,7 +27,7 @@ export async function GET(request:NextRequest){
  const {data,error,count}=await q.range((page-1)*limit,page*limit-1);if(error)return farmErrorResponse(error);
  return NextResponse.json({data,total:count});
 }
-export async function POST(request:NextRequest){
+async function legacyPOST(request:NextRequest){
  let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}
  const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:"Validation failed",details:parsed.error.flatten().fieldErrors},{status:400});
  const body=parsed.data;if(body.operation!=="use"&&profile.role!=="admin")return NextResponse.json({error:"CEO authorization required"},{status:403});
@@ -33,3 +35,10 @@ export async function POST(request:NextRequest){
  const {data,error}=await feedStockWrite(profile,body.operation,body.payload,{id:body.operation==="adjust"?body.id:undefined,reason:body.reason,requestId});
  if(error)return farmErrorResponse(error);return NextResponse.json({data},{status:201});
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm",new URL(request.url).searchParams.get("history")==="1"?"farm_feed_stock_movements":"farm_feed_stock","list",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request:NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

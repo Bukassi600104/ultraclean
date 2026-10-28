@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { farmDateToday } from "@/lib/farm-products";
@@ -72,6 +74,7 @@ function getCategoryConfig(category: string) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ExpensesOverviewPage() {
+ const managerFetch=useManagerFetch();
   const router = useRouter();
   const today = getTodayStr();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -88,12 +91,12 @@ export default function ExpensesOverviewPage() {
   const loadData = useCallback(async () => {
     setLoading(true);setLoadError(false);setSummary(null);
     try {
-      const read = async (url:string) => {const response=await fetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
+      const read = async (url:string) => {const response=await managerFetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
       const [expRes, feedRes, recordRes, financeRes] = await Promise.all([
         read(`/api/farm/expenses?date=${today}&limit=100`),
         read(`/api/farm/feed-purchases?date=${today}&limit=100`),
         read(`/api/farm/daily-record?date=${today}`),
-        fetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
+        managerFetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
       ]);
       setSummary(financeRes);
       setExpenses(expRes.data || []);
@@ -104,7 +107,7 @@ export default function ExpensesOverviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [today]);
+  }, [today,managerFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

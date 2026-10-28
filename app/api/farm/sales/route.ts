@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -28,7 +30,7 @@ const saleItemSchema = z.object({
 
 const batchSaleSchema = z.array(saleItemSchema.refine(item => (item.pricing_basis ?? FARM_PRODUCTS.find(product => product.key === item.product)!.pricingBasis) !== "per_kg" || !!item.weight_kg, { message: "Weight is required for sales priced per kg", path: ["weight_kg"] })).min(1).max(50);
 
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data, total: count });
 }
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -109,3 +111,10 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_sales","list",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

@@ -1,5 +1,6 @@
 "use client";
 
+import {ManagerPeriodProvider} from "@/contexts/ManagerPeriodContext";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -47,14 +48,14 @@ const PAGE_TITLES: Record<string, string> = {
 
 // Layout
 
-export default function ManagerLayout({
+function ManagerShell({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isOnline, pendingCount, isSyncing, conflicts } = useOfflineSync();
+  const { isOnline, pendingCount, isSyncing, conflicts, quarantinedCount } = useOfflineSync();
 
   const normalised = pathname.replace(/^\/manager/, "") || "/";
   const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
@@ -107,6 +108,7 @@ export default function ManagerLayout({
         </header>
 
         {/* Offline/sync banner — only renders when needed */}
+        {quarantinedCount>0&&<p role="status" className="mx-auto max-w-3xl p-3 text-sm text-amber-900">Older offline entries are retained on this device for review. They will not be submitted under this account.</p>}
         <OfflineBanner
           isOnline={isOnline}
           pendingCount={pendingCount}
@@ -126,3 +128,5 @@ export default function ManagerLayout({
     </div>
   );
 }
+
+export default function ManagerLayout({children}:{children:React.ReactNode}){return <ManagerPeriodProvider business="farm"><ManagerShell>{children}</ManagerShell></ManagerPeriodProvider>;}

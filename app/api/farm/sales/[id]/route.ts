@@ -1,3 +1,4 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
@@ -26,5 +27,9 @@ async function mutate(request: NextRequest, id: string, operation: "update" | "v
   if (error) return farmErrorResponse(error);
   return NextResponse.json(operation === "void" ? { success: true } : { sale: data });
 }
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "update"); }
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "void"); }
+async function legacyPUT(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "update"); }
+async function legacyDELETE(request: NextRequest, { params }: { params: { id: string } }) { return mutate(request, params.id, "void"); }
+
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) { return withManagerWrite(request,"farm",()=>legacyPUT(request, {params})); }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return withManagerWrite(request,"farm",()=>legacyDELETE(request, {params})); }

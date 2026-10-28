@@ -1,3 +1,4 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
@@ -15,7 +16,7 @@ const updateSchema = z.object({
   reason: z.string().trim().min(1),
 });
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function legacyPUT(request: NextRequest, { params }: { params: { id: string } }) {
   let profile;
   try { profile = await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -29,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   return NextResponse.json(data);
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+async function legacyDELETE(request: NextRequest, { params }: { params: { id: string } }) {
   let profile;
   try { profile = await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -42,3 +43,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   if (error) return farmErrorResponse(error);
   return NextResponse.json(data);
 }
+
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) { return withManagerWrite(request,"farm",()=>legacyPUT(request, {params})); }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) { return withManagerWrite(request,"farm",()=>legacyDELETE(request, {params})); }

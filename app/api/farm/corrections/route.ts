@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
@@ -5,7 +7,7 @@ import { farmErrorResponse, farmWrite } from "@/lib/farm-v2";
 import { FARM_RECORD_TABLES, farmRecordTypeSchema, type FarmRecordType } from "@/lib/farm-corrections";
 import { z } from "zod";
 export const runtime = "nodejs";
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   let profile;
   try { profile = await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const db = createServerClient();
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data: rows, total: count });
 }
 const schema = z.object({ record_type: farmRecordTypeSchema.exclude(["fund"]), record_id: z.string().uuid(), requested_change: z.record(z.string(), z.unknown()).refine(value => JSON.stringify(value).length <= 4000), reason: z.string().trim().min(1).max(1000), request_id: z.string().uuid().optional() });
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try { profile = await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -39,3 +41,10 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json(data, { status: 201 });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_correction_requests","list",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

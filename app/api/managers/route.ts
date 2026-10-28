@@ -34,15 +34,16 @@ export async function GET() {
   const accounts = await Promise.all((data || []).map(async (profile) => {
     const { data: auth, error: authError } = await supabase.auth.admin.getUserById(profile.id);
     if (authError || !auth.user) throw new Error("Account status unavailable");
-    return { ...profile, access_removed: auth.user.app_metadata?.manager_access_removed === true };
+    return { ...profile, suspended:profile.suspended||auth.user.app_metadata?.manager_setup_pending===true,setup_pending:auth.user.app_metadata?.manager_setup_pending===true,access_removed: auth.user.app_metadata?.manager_access_removed === true };
   })).catch(() => null);
   if (!accounts) return NextResponse.json({ error: "Unable to load account status. Please retry." }, { status: 503 });
   return NextResponse.json(accounts, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {
+  let actor;
   try {
-    await requireAdmin();
+    actor=await requireAdmin();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -68,13 +69,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { email, password, name, role } = parsed.data;
+  const { email, password, name, role,starts_on } = parsed.data;
+  const {data:ready,error:releaseError}=await supabase.rpc("manager_release_status",{p_actor:actor.id});
+  if(releaseError||!ready)return NextResponse.json({error:"New account setup is temporarily paused. Please retry shortly."},{status:503});
 
   const { data: authData, error: authError } =
     await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      ban_duration:"876000h",
+      app_metadata:{manager_setup_pending:true},
     });
 
   if (authError) {
@@ -82,12 +87,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: authError.message }, { status });
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .update({ role, name, suspended: false })
-    .eq("id", authData.user.id)
-    .select()
-    .single();
+  const { data: profile, error: profileError } = await supabase.rpc("manager_account_provision",{
+    p_actor:actor.id,p_id:authData.user.id,p_role:role,p_name:name,p_starts_on:starts_on,
+  });
 
   if (profileError) {
     const { error: cleanupError } = await supabase.auth.admin.deleteUser(authData.user.id);
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-
+  const {error:enableError}=await supabase.auth.admin.updateUserById(authData.user.id,{ban_duration:"none",app_metadata:{...authData.user.app_metadata,manager_setup_pending:false}});
+  if(enableError)return NextResponse.json({error:"The new account is saved but remains locked. Use Reactivate to finish setup."},{status:503});
   return NextResponse.json(profile, { status: 201 });
 }

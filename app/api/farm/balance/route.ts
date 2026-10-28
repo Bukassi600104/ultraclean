@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import {requestManagerScope,managerReadError} from "@/lib/manager-read-api";
 import { requireManager } from "@/lib/auth";
 import { getFarmFinance } from "@/lib/farm-finance";
 import { z } from "zod";
@@ -9,5 +10,5 @@ export async function GET(request: NextRequest) {
  const schema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() });
  const parsed = schema.safeParse({ date: params.get("date"), from: params.get("from") ?? undefined, to: params.get("to") ?? undefined });
  if (!parsed.success || (parsed.success && parsed.data.from && parsed.data.from > (parsed.data.to ?? parsed.data.date))) return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
- try { return NextResponse.json(await getFarmFinance(parsed.data)); } catch (error) { console.error("Farm finance error", error); return NextResponse.json({ error: "Failed to compute balance" }, { status: 500 }); }
+ try { const manager=await requestManagerScope(request,"farm");return NextResponse.json(await getFarmFinance(parsed.data,manager),{headers:{"Cache-Control":"private, no-store"}}); } catch (error) { return managerReadError(error); }
 }

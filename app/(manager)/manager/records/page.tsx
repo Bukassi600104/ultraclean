@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -105,6 +107,7 @@ function DateFilterBar({
 }
 
 function SalesTab({ from, to }: { from: string; to: string }) {
+ const managerFetch=useManagerFetch();
   const [records, setRecords] = useState<SaleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -123,7 +126,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
           limit: PAGE_SIZE.toString(),
           ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
-        const res = await fetch(`/api/farm/sales?${params}`);
+        const res = await managerFetch(`/api/farm/sales?${params}`);
         if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
         if (version !== requestRef.current) return;
@@ -139,7 +142,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
         if (version === requestRef.current) setIsLoading(false);
       }
     },
-    [from, to]
+    [from, to,managerFetch]
   );
 
   useEffect(() => {
@@ -267,6 +270,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
 }
 
 function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
+ const managerFetch=useManagerFetch();
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -285,7 +289,7 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
           limit: PAGE_SIZE.toString(),
           ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
-        const res = await fetch(`/api/farm/expenses?${params}`);
+        const res = await managerFetch(`/api/farm/expenses?${params}`);
         if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
         if (version !== requestRef.current) return;
@@ -299,7 +303,7 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
         if (version === requestRef.current) setIsLoading(false);
       }
     },
-    [from, to]
+    [from, to,managerFetch]
   );
 
   useEffect(() => {
@@ -398,6 +402,7 @@ function GeneralExpensesTab({ from, to }: { from: string; to: string }) {
 }
 
 function FeedTab({ from, to }: { from: string; to: string }) {
+ const managerFetch=useManagerFetch();
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -416,7 +421,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
           limit: PAGE_SIZE.toString(),
           ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
-        const res = await fetch(`/api/farm/feed-purchases?${params}`);
+        const res = await managerFetch(`/api/farm/feed-purchases?${params}`);
         if (!res.ok) throw new Error("Records unavailable");
         const d = await res.json();
         if (version !== requestRef.current) return;
@@ -430,7 +435,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
         if (version === requestRef.current) setIsLoading(false);
       }
     },
-    [from, to]
+    [from, to,managerFetch]
   );
 
   useEffect(() => {

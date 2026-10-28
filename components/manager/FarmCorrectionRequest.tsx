@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -6,6 +8,7 @@ import { toast } from "sonner";
 export function FarmCorrectionRequest({ recordType, recordId, label = "Request correction" }: {
   recordType: string; recordId: string; label?: string;
 }) {
+ const managerFetch=useManagerFetch();
   const [open, setOpen] = useState(false);
   const [change, setChange] = useState("");
   const [reason, setReason] = useState("");
@@ -15,7 +18,7 @@ export function FarmCorrectionRequest({ recordType, recordId, label = "Request c
     if (!change.trim() || !reason.trim()) return toast.error("Describe the correction and its reason");
     setSaving(true);
     try {
-      const response = await fetch("/api/farm/corrections", {
+      const response = await managerFetch("/api/farm/corrections", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ record_type: recordType, record_id: recordId, requested_change: { description: change.trim() }, reason: reason.trim(), request_id: requestId }),
       });

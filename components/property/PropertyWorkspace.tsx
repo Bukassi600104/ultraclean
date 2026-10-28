@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
+
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { isPropertySection, parsePropertyWrite, propertyKinds, PropertyRow, PropertySection, propertyMoney } from "@/lib/property";
@@ -22,8 +24,9 @@ const inputClass = "mt-1 block min-h-11 w-full rounded-lg border border-slate-30
 function rowName(section: PropertySection, row: PropertyRow) {return String(section === "tenancies" ? row.tenant_name : section === "maintenance" ? row.issue : section === "rent" ? `Payment · ${row.payment_date}` : section === "expenses" ? row.category : row.name);}
 
 export default function PropertyWorkspace({section}: {section: PropertySection | "overview" | "history"}) {
+ const managerFetch=useManagerFetch();
   const actorId = usePropertyActor();
-  const pendingKey = actorId && isPropertySection(section) ? `bossbimbz-property-pending:${actorId}:${section}` : null;
+  const pendingKey = useManagerStorageKey(actorId && isPropertySection(section) ? `bossbimbz-property-pending:${actorId}:${section}` : null);
   const [data, setData] = useState<Data>(emptyData), [history, setHistory] = useState<EventRow[]>([]), [historyPage, setHistoryPage] = useState(0), [historyMore, setHistoryMore] = useState(false);
   const [finances,setFinances] = useState<ReturnType<typeof summarizeProperties>["finances"]>([]);
   const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(""), [saveError, setSaveError] = useState(""), [notice, setNotice] = useState(""), [saving, setSaving] = useState(false), [conflict, setConflict] = useState(false), [uncertain, setUncertain] = useState(false);
@@ -40,20 +43,20 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
       if (!pending.values || Object.values(pending.values).some(value => typeof value !== "string")) throw new Error("Invalid pending entry");
       setValues(pending.values);setEditing(pending.editing);setReason(pending.reason);retry.current = pending.retry;setUncertain(true);setShowForm(true);
       setSaveError("An unconfirmed submission was restored. Retry it to confirm the saved record before editing.");
-    } catch {try {localStorage.removeItem(pendingKey);} catch {/* Browser storage may be unavailable; online forms remain usable. */}}
+    } catch {setUncertain(true);setSaveError("The saved submission needs review. It remains on this device; do not enter it again.");}
   }, [section, pendingKey]);
   const load = useCallback(async () => {
     setLoading(true);setLoadError("");
     try {
       if (section === "history") {
-        const response = await fetch(`/api/property/history?page=${historyPage}`, {cache: "no-store"}), result = await response.json();
+        const response = await managerFetch(`/api/property/history?page=${historyPage}`, {cache: "no-store"}), result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to load activity history.");
         setHistory(result.data);setHistoryMore(result.has_more);
       } else {
         const lists = await Promise.all(Object.keys(propertyKinds).map(async key => {
           const all: PropertyRow[] = [];let page = 0, more = true;
           while (more) {
-            const response = await fetch(`/api/property/${key}?page=${page}`, {cache: "no-store"}), result = await response.json();
+            const response = await managerFetch(`/api/property/${key}?page=${page}`, {cache: "no-store"}), result = await response.json();
             if (!response.ok) throw new Error(result.error || "Unable to load property records.");
             all.push(...result.data);more = result.has_more;page++;
           }
@@ -65,7 +68,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
       }
     } catch (failure) {setLoadError(failure instanceof Error ? failure.message : "Unable to load records. Please retry.");}
     finally {setLoading(false);}
-  }, [section, historyPage]);
+  }, [section, historyPage,managerFetch]);
   useEffect(() => {void load();}, [load]);
   function start(row: PropertyRow | null) {
     if (!isPropertySection(section) || uncertain) return;
@@ -98,7 +101,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
       if (!pendingKey) throw new Error("The entry was not sent. Wait for your account to load, then retry.");
       try {localStorage.setItem(pendingKey, JSON.stringify({values, editing, reason, retry: retry.current}));}
       catch {throw new Error("The entry was not sent because device storage is unavailable. Your form is retained; enable storage and retry.");}
-      const response = await fetch(`/api/property/${section}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...body, request_id: retry.current.id})});
+      const response = await managerFetch(`/api/property/${section}`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({...body, request_id: retry.current.id})});
       const result = await response.json();
       if (!response.ok) {
         if (response.status === 409) {setConflict(true);void load();}

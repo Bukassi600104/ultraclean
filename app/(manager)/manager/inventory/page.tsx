@@ -1,7 +1,9 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { FARM_PRODUCTS, farmProductLabel } from "@/lib/farm-products";
@@ -26,24 +28,25 @@ interface SupplyItem {
 
 
 export default function InventoryPage() {
+ const managerFetch=useManagerFetch();
   const [livestock, setLivestock] = useState<InventoryItem[]>([]);
   const [supplies, setSupplies] = useState<SupplyItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadData() {
+  const loadData=useCallback(async()=>{
     setLoading(true);
     try {
       const [invRes, supRes] = await Promise.all([
-        fetch("/api/farm/inventory").then((r) => r.json()),
-        fetch("/api/farm/supplies").then((r) => r.json()),
+        managerFetch("/api/farm/inventory").then((r) => r.json()),
+        managerFetch("/api/farm/supplies").then((r) => r.json()),
       ]);
       setLivestock(Array.isArray(invRes) ? invRes : []);
       setSupplies(Array.isArray(supRes) ? supRes : []);
     } catch { toast.error("Failed to load inventory"); }
     finally { setLoading(false); }
-  }
+  },[managerFetch]);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [loadData]);
 
   // Group supplies by category
   const supplyGroups = supplies.reduce<Record<string, SupplyItem[]>>((acc, item) => {

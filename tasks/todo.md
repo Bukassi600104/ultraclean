@@ -234,4 +234,4 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 
 Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; approved for isolated implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
 
-Execution: Task 1 (periods and access) in progress. Preserve all original figures; new data and permissions only.
+Execution: Tasks 1 and 2 implemented in the isolated branch. Manager periods, restrictive access, guarded linked writes, separate day closure, complete scoped finance reads, start-date provisioning and account/business/period offline boundaries verified. Individual CEO reporting remains Task 6. All 17 isolation/legacy-workflow suites passed; lint and TypeScript clean. No production records, figures, accounts or deployment changed.

@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { farmDateToday } from "@/lib/farm-products";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -8,7 +10,7 @@ export const runtime = "nodejs";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ record: data });
 }
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -68,3 +70,10 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ record: data });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_daily_records","day",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
@@ -7,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw, TrendingUp, TrendingDown, Wallet } from "lucide-react";
 
 export default function ManagerCashPage() {
+ const managerFetch=useManagerFetch();
   const [todaySales, setTodaySales] = useState(0);
   const [todayExpenses, setTodayExpenses] = useState(0);
   const [net,setNet] = useState(0);
@@ -31,7 +34,7 @@ export default function ManagerCashPage() {
     const today = farmDateToday();
     setError(false);
     try {
-      const response = await fetch(`/api/farm/balance?date=${today}`);
+      const response = await managerFetch(`/api/farm/balance?date=${today}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Balance unavailable");
       setTodaySales(data.total_sales_today);
@@ -43,7 +46,7 @@ export default function ManagerCashPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [managerFetch]);
 
   useEffect(() => {
     loadToday();

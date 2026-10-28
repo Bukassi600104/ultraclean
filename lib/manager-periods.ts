@@ -22,7 +22,8 @@ export async function resolveManagerScope(actor:Profile,business:Business,select
 export type RecordFilters={from?:string;to?:string;page?:number;limit?:number;[key:string]:unknown};
 export async function readManagerRecords(scope:ManagerScope,resource:string,filters:RecordFilters={}):Promise<{data:Record<string,unknown>[];total:number;has_more:boolean}> {
  const db=createServerClient();if(!db)failure("Manager service unavailable","503");
- const {data,error}=await db.rpc("manager_read_records",{p_actor:scope.actorId,p_business:scope.business,p_resource:resource,p_period_id:scope.periodId,p_filters:filters});
+ const ownLegacy=scope.mode==="legacy"&&scope.actorId===scope.managerId&&filters.personal_report!==true;
+ const {data,error}=await db.rpc("manager_read_records",{p_actor:scope.actorId,p_business:scope.business,p_resource:resource,p_period_id:ownLegacy?null:scope.periodId,p_filters:filters});
  if(error)throw error;
  if(!data||!Array.isArray(data.data)||typeof data.total!=="number")failure("Scoped records are unavailable","503");
  return data;

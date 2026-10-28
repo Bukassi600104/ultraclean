@@ -46,6 +46,7 @@ export default function ManagersPage() {
   // Add dialog
   const [showAdd, setShowAdd] = useState(false);
   const [addName, setAddName] = useState("");
+  const [addStartsOn,setAddStartsOn]=useState(()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()));
   const [addEmail, setAddEmail] = useState("");
   const [addPassword, setAddPassword] = useState("");
   const [showAddPassword, setShowAddPassword] = useState(false);
@@ -108,6 +109,7 @@ export default function ManagersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: addName.trim(),
+          starts_on:addStartsOn,
           email: addEmail.trim(),
           password: addPassword,
           role: addRole,
@@ -393,6 +395,11 @@ export default function ManagersPage() {
                 value={addName}
                 onChange={(e) => setAddName(e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="m-start">Work start date</Label>
+              <Input id="m-start" type="date" required value={addStartsOn} onChange={e=>setAddStartsOn(e.target.value)}/>
+              <p className="text-xs text-slate-600">Personal activity starts here. Existing business records stay with their original accounts.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="m-email">Email Address</Label>

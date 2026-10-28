@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 import { farmDateToday } from "@/lib/farm-products";
 
@@ -38,6 +40,7 @@ function getWeekRange() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ManagerHomePage() {
+ const managerFetch=useManagerFetch();
   const { profile } = useAuth();
   const [openingBalance, setOpeningBalance] = useState<number | null>(null);
   const [balanceErr, setBalanceErr] = useState(false);
@@ -49,7 +52,7 @@ export default function ManagerHomePage() {
   useEffect(() => {
     const today = getTodayStr();
 
-    fetch(`/api/farm/balance?date=${today}`)
+    managerFetch(`/api/farm/balance?date=${today}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.closing_balance !== undefined) setOpeningBalance(d.closing_balance);
@@ -58,11 +61,11 @@ export default function ManagerHomePage() {
       .catch(() => setBalanceErr(true));
 
     const { from, to } = getWeekRange();
-    fetch(`/api/farm/balance?date=${today}&from=${from}&to=${to}`)
+    managerFetch(`/api/farm/balance?date=${today}&from=${from}&to=${to}`)
       .then(async (response) => { if (!response.ok) throw new Error("Finance unavailable"); return response.json(); })
       .then((data) => { setWeekSales(data.revenue); setWeekExpenses(data.total_expenses); })
       .catch(() => { setWeekError(true); });
-  }, []);
+  }, [managerFetch]);
 
   const balancePositive = openingBalance !== null && openingBalance >= 0;
   const [dateLabel, setDateLabel] = useState("");

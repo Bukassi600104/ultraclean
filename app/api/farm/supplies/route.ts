@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
@@ -13,7 +15,7 @@ const itemSchema = z.object({
   notes: z.string().trim().nullish(),
 });
 
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   let profile;
   try { profile = await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data);
 }
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try { profile = await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
@@ -39,3 +41,10 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json(data, { status: 201 });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_supply_inventory","array",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

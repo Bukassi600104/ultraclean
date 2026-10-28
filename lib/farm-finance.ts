@@ -1,10 +1,16 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { calculateFarmFinance, type FinancialRow } from "./farm-finance-calculations";
+import {allManagerRecords} from "./manager-read-api";
+import type {ManagerScope} from "./manager-period-types";
 export { calculateFarmFinance } from "./farm-finance-calculations";
-export async function getFarmFinance(scope: { date: string; from?: string; to?: string }) {
+export async function getFarmFinance(scope: { date: string; from?: string; to?: string },manager?:ManagerScope) {
  const supabase = createServerClient(); if (!supabase) throw new Error("Database not configured");
  async function all(table: string): Promise<FinancialRow[]> {
   const rows: FinancialRow[] = []; const maxDate = (scope.to ?? scope.date) > scope.date ? scope.to! : scope.date;
+  if(manager&&manager.mode!=="admin_all"&&manager.periodId){
+   const scoped=await allManagerRecords(manager,table,{to:maxDate});
+   return scoped.map(row=>({...row,amount:row.amount_exact??row.amount,cost:row.cost_exact??row.cost,total_amount:row.total_amount_exact??row.total_amount})) as unknown as FinancialRow[];
+  }
   for (let offset = 0; ; offset += 500) {
    const columns: Record<string,string> = {farm_sales:"date,product,total_amount::text,voided_at",farm_expenses:"date,category,amount::text,expense_source,voided_at",farm_feed_purchases:"date,cost::text",farm_fund_transfers:"date,amount::text,voided_at"};
    const { data, error } = await supabase!.from(table).select(columns[table]).lte("date", maxDate).order("id").range(offset, offset + 499);

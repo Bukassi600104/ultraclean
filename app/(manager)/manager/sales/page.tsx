@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState, useCallback } from "react";
@@ -75,6 +77,7 @@ function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => voi
 }
 
 export default function SalesPage() {
+ const managerFetch=useManagerFetch();
   const router = useRouter();
   const today = getTodayStr();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -92,7 +95,7 @@ export default function SalesPage() {
   const loadData = useCallback(async () => {
     setLoading(true);setLoadError(false);setSummary(null);
     try {
-      const read = async (url:string) => {const response=await fetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
+      const read = async (url:string) => {const response=await managerFetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
       const [salesRes, recordRes, finance] = await Promise.all([
         read(`/api/farm/sales?date=${today}&limit=100`),
         read(`/api/farm/daily-record?date=${today}`),
@@ -102,7 +105,7 @@ export default function SalesPage() {
       setDayRecord(recordRes.record || null);
     } catch { setLoadError(true);toast.error("Failed to load data"); }
     finally { setLoading(false); }
-  }, [today]);
+  }, [today,managerFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -118,7 +121,7 @@ export default function SalesPage() {
   async function handleCloseDay() {
     setClosing(true);
     try {
-      const res = await fetch("/api/farm/daily-record/close", {
+      const res = await managerFetch("/api/farm/daily-record/close", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: today }),
       });

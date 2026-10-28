@@ -1,9 +1,10 @@
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { farmReadDates } from "@/lib/farm-read-filters";
 export const runtime = "nodejs";
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   try { await requireAdmin(); } catch { return NextResponse.json({ error: "Admin access required" }, { status: 403 }); }
   const params = new URL(request.url).searchParams;
   let dates: ReturnType<typeof farmReadDates>;
@@ -37,4 +38,9 @@ export async function GET(request: NextRequest) {
     const rows = [...expenses.rows, ...feed.rows].sort((a, b) => b.data.date.localeCompare(a.data.date) || b.data.created_at.localeCompare(a.data.created_at) || b.data.id.localeCompare(a.data.id) || b._type.localeCompare(a._type));
     return NextResponse.json({ data: rows.slice((page - 1) * limit, page * limit), total: expenses.total + feed.total, page, limit }, { headers: { "Cache-Control": "private, no-store" } });
   } catch { return NextResponse.json({ error: "Expense history unavailable. Please retry." }, { status: 500 }); }
+}
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_expenses","expenses",true);
+ return scoped ?? legacyGET(request);
 }

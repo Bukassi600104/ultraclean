@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { farmDateToday } from "@/lib/farm-products";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -24,7 +26,7 @@ function escHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   try {
     await requireManager();
   } catch {
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data, total: count });
 }
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -110,3 +112,10 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(data, { status: 201 });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_fund_transfers","list",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

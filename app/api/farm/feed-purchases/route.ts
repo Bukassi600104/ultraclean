@@ -1,3 +1,5 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -22,7 +24,7 @@ const feedItemSchema = z.object({
 
 const batchFeedSchema = z.array(feedItemSchema).min(1).max(50);
 
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ data, total: count });
 }
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -101,3 +103,10 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });
 }
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_feed_purchases","list",false);
+ return scoped ?? legacyGET(request);
+}
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

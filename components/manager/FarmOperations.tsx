@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -23,18 +25,20 @@ const panel="rounded-xl border border-slate-200 bg-white p-4 sm:p-6 space-y-4";
 type ReportForm={report_date:string;sections:ReportSections;decision_required:boolean};
 
 function useOperations(kind:"daily-reports"|"operational-requests") {
+ const managerFetch=useManagerFetch();
   const [rows,setRows]=useState<(DailyReport|OperationalRequest)[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[page,setPage]=useState(1),[total,setTotal]=useState(0);
-  const load=useCallback(async()=>{setLoading(true);setError("");try{const target=new URL(window.location.href).searchParams.get(kind==="daily-reports"?"report_id":"request_id");const response=await fetch(`/api/farm/${kind}?page=${page}${target?`&id=${encodeURIComponent(target)}`:""}`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw Error(body.error||"Unable to load records");setRows(body.data??[]);setTotal(body.total??0);}catch(err){setError(err instanceof Error?err.message:"Unable to load records");}finally{setLoading(false);}},[kind,page]);
+  const load=useCallback(async()=>{setLoading(true);setError("");try{const target=new URL(window.location.href).searchParams.get(kind==="daily-reports"?"report_id":"request_id");const response=await managerFetch(`/api/farm/${kind}?page=${page}${target?`&id=${encodeURIComponent(target)}`:""}`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw Error(body.error||"Unable to load records");setRows(body.data??[]);setTotal(body.total??0);}catch(err){setError(err instanceof Error?err.message:"Unable to load records");}finally{setLoading(false);}},[kind,page,managerFetch]);
   useEffect(()=>{void load();},[load]);
   return {rows,loading,error,setError,load,page,setPage,total};
 }
 
 function useWrite(kind:string,onError:(message:string)=>void) {
+ const managerFetch=useManagerFetch();
   const {profile}=useAuth();
   const [busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(false);
   const pending=useRef<{key:string;id:string}|null>(null);
   const lock=useRef(false);
-  const storageKey=profile?`primefield-operation-retry:${profile.id}:${kind}`:null;
+  const storageKey=useManagerStorageKey(profile?`primefield-operation-retry:${profile.id}:${kind}`:null);
   useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||sessionStorage.getItem(storageKey)||"null");setUncertain(!!pending.current);}catch{onError("Saved retry information could not be read. Check your history before submitting again.");}},[storageKey,onError]);
   async function write(payload:unknown,id?:string){
     if(lock.current)return null;
@@ -46,7 +50,7 @@ function useWrite(kind:string,onError:(message:string)=>void) {
     if(!pending.current)pending.current={key,id:crypto.randomUUID()};
     try{localStorage.setItem(storageKey,JSON.stringify(pending.current));}catch{onError("Device storage is unavailable. The entry was not sent. Keep this form and restore storage before retrying.");if(!hadPending)pending.current=null;lock.current=false;setBusy(false);return null;}
     function clear(){pending.current=null;setUncertain(false);if(storageKey){try{localStorage.removeItem(storageKey);sessionStorage.removeItem(storageKey);}catch{/* Already confirmed by the server. */}}}
-    try{const response=await fetch(`/api/farm/${kind}${id?`/${id}`:""}`,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json","X-Request-ID":pending.current.id},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok){if(response.status>=400&&response.status<500&&![401,403].includes(response.status))clear();else setUncertain(true);throw Error(result.error||"Unable to save");}clear();return result.data;}catch(err){if(pending.current)setUncertain(true);onError(err instanceof Error?err.message:"Unable to confirm the submission. Retry the saved entry when connected.");return null;}finally{lock.current=false;setBusy(false);}
+    try{const response=await managerFetch(`/api/farm/${kind}${id?`/${id}`:""}`,{method:id?"PUT":"POST",headers:{"Content-Type":"application/json","X-Request-ID":pending.current.id},body:JSON.stringify(payload)});const result=await response.json();if(!response.ok){if(response.status>=400&&response.status<500&&![401,403].includes(response.status))clear();else setUncertain(true);throw Error(result.error||"Unable to save");}clear();return result.data;}catch(err){if(pending.current)setUncertain(true);onError(err instanceof Error?err.message:"Unable to confirm the submission. Retry the saved entry when connected.");return null;}finally{lock.current=false;setBusy(false);}
   }
   async function retry(){if(!pending.current)return null;const saved=JSON.parse(pending.current.key);return write(saved.payload,saved.id);}
   return {write,busy,uncertain,retry};
@@ -55,7 +59,7 @@ function useWrite(kind:string,onError:(message:string)=>void) {
 export function FarmDailyReports({admin=false,historyOnly=false}:{admin?:boolean;historyOnly?:boolean}) {
   const {profile}=useAuth(),records=useOperations("daily-reports");
   const [form,setForm]=useState<ReportForm>({report_date:"",sections:blankSections(),decision_required:false}),[selected,setSelected]=useState<DailyReport|null>(null),[reason,setReason]=useState(""),[review,setReview]=useState(""),[message,setMessage]=useState(""),[restored,setRestored]=useState(false);
-  const storageKey=profile?`primefield-report-draft:${profile.id}`:null;
+  const storageKey=useManagerStorageKey(profile?`primefield-report-draft:${profile.id}`:null);
   const {write,busy,uncertain,retry}=useWrite("daily-reports",records.setError);
   useEffect(()=>{if(!storageKey||admin||historyOnly)return;try{const saved=localStorage.getItem(storageKey);if(saved){const draft=JSON.parse(saved);setForm(draft.form);setSelected(draft.selected??null);setMessage("Local draft restored. Save it when connected.");}else setForm({report_date:today(),sections:blankSections(),decision_required:false});}catch{setForm({report_date:today(),sections:blankSections(),decision_required:false});}setRestored(true);},[storageKey,admin,historyOnly]);
   useEffect(()=>{if(!storageKey||!restored||admin||historyOnly||selected?.status==="submitted")return;try{localStorage.setItem(storageKey,JSON.stringify({form,selected}));}catch{/* Server saving remains available when device storage is full. */}},[form,selected,storageKey,restored,admin,historyOnly]);
@@ -93,8 +97,9 @@ export function FarmDailyReports({admin=false,historyOnly=false}:{admin?:boolean
 }
 
 function ReportFeedActivity({date}:{date:string}){
+ const managerFetch=useManagerFetch();
  const [rows,setRows]=useState<{id:string;bags_delta:number;daily_feed_id:string|null;purchase_id:string|null;created_at:string}[]>([]),[error,setError]=useState(""),[total,setTotal]=useState(0),[loading,setLoading]=useState(false);
- useEffect(()=>{let active=true;if(!date)return;setRows([]);setTotal(0);setError("");setLoading(true);void (async()=>{try{const response=await fetch(`/api/farm/feed-stock?history=1&date=${encodeURIComponent(date)}`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw Error(body.error||"Unable to load bag movements");if(active){setRows(body.data??[]);setTotal(body.total??0);}}catch(err){if(active)setError(err instanceof Error?err.message:"Unable to load bag movements");}finally{if(active)setLoading(false);}})();return ()=>{active=false;};},[date]);
+ useEffect(()=>{let active=true;if(!date)return;setRows([]);setTotal(0);setError("");setLoading(true);void (async()=>{try{const response=await managerFetch(`/api/farm/feed-stock?history=1&date=${encodeURIComponent(date)}`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw Error(body.error||"Unable to load bag movements");if(active){setRows(body.data??[]);setTotal(body.total??0);}}catch(err){if(active)setError(err instanceof Error?err.message:"Unable to load bag movements");}finally{if(active)setLoading(false);}})();return ()=>{active=false;};},[date,managerFetch]);
  return <section className="space-y-2 rounded-lg border bg-slate-50 p-3"><h3 className="text-sm font-semibold">Linked feed stock activity - {date}</h3>{error?<p role="alert" className="text-sm text-red-800">{error}</p>:loading?<p role="status" className="text-sm">Loading feed stock activity...</p>:!rows.length?<p className="text-sm text-slate-600">No recorded bag movements for this date. Feed notes do not change stock.</p>:<><ul className="space-y-2">{rows.map(row=><li key={row.id} className="break-all text-xs">{row.bags_delta>0?"+":""}{row.bags_delta} bags - {row.created_at}{row.daily_feed_id&&<> - Daily feed record {row.daily_feed_id}</>}{row.purchase_id&&<> - Purchase record {row.purchase_id}</>} - Movement {row.id}</li>)}</ul>{total>rows.length&&<p className="text-xs">Showing {rows.length} of {total} movements. View full feed inventory history.</p>}</>}</section>;
 }
 
@@ -119,7 +124,7 @@ export function FarmOperationalRequests({admin=false}:{admin?:boolean}) {
   const records=useOperations("operational-requests"),{write,busy,uncertain,retry}=useWrite("operational-requests",records.setError);
   const [date,setDate]=useState(""),[category,setCategory]=useState("other"),[description,setDescription]=useState(""),[selected,setSelected]=useState<OperationalRequest|null>(null),[reason,setReason]=useState(""),[response,setResponse]=useState(""),[resolution,setResolution]=useState(""),[message,setMessage]=useState("");
   const [restored,setRestored]=useState(false);
-  const draftKey=profile?`primefield-request-draft:${profile.id}`:null;
+  const draftKey=useManagerStorageKey(profile?`primefield-request-draft:${profile.id}`:null);
   useEffect(()=>{if(admin||!draftKey)return;try{const saved=JSON.parse(localStorage.getItem(draftKey)||"null");if(saved){setDate(saved.date||today());setCategory(saved.category||"other");setDescription(saved.description||"");}else setDate(today());}catch{setDate(today());}setRestored(true);},[admin,draftKey]);
   useEffect(()=>{if(admin||!draftKey||!restored)return;try{localStorage.setItem(draftKey,JSON.stringify({date,category,description}));}catch{/* Online submission remains available. */}},[admin,draftKey,restored,date,category,description]);
   useEffect(()=>{const target=new URL(window.location.href).searchParams.get("request_id");if(target){const row=records.rows.find(row=>row.id===target) as OperationalRequest|undefined;if(row){setSelected(row);setResponse(row.ceo_response??"");setResolution(row.resolution??"");}}},[records.rows]);

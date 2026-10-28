@@ -12,7 +12,7 @@ function load(filename){
  const file=path.resolve(filename);if(cache.has(file))return cache.get(file).exports;
  const module={exports:{}};cache.set(file,module);
  const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;
- function resolve(name){
+ function resolve(name){if(name==='@/lib/manager-periods')return require('../tests/helpers/legacy-manager-scope.cjs');
   if(name==='next/headers')return {cookies:()=>({getAll:()=>[],set:()=>{}})};
   if(name==='next/server')return {NextResponse:{json:(body,init={})=>({status:init.status??200,json:async()=>body})}};
   if(name==='@supabase/ssr')return {createServerClient:()=>({auth:{getUser:async()=>({data:{user:profile?{id:profile.id}:null}})},from:()=>({select:()=>({eq:()=>({single:async()=>({data:profile})})})})})};

@@ -1,3 +1,6 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerRpc} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, requireManager } from "@/lib/auth";
@@ -37,6 +40,7 @@ export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;repo
 
 export async function listFarmOperations(request:NextRequest,kind:"report"|"request") {
   let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}
+  const scoped=await managerReadResponse(request,"farm",kind==="report"?"farm_daily_reports":"farm_operational_requests");if(scoped)return scoped;
   const db=createServerClient();if(!db)return farmErrorResponse({code:"503",message:"Database not configured"});
   const params=new URL(request.url).searchParams;
   const targetId=params.get("id");
@@ -50,7 +54,7 @@ export async function listFarmOperations(request:NextRequest,kind:"report"|"requ
   return NextResponse.json({data,total:count});
 }
 
-export async function writeFarmOperation(request:NextRequest,kind:"report"|"request",id?:string){
+async function legacyWriteFarmOperation(request:NextRequest,kind:"report"|"request",id?:string){
   let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}
   let body:Record<string,unknown>;try{body=await request.json();if(!body||Array.isArray(body)||typeof body!=="object")throw Error();}catch{return NextResponse.json({error:"Invalid request body"},{status:400});}
   const operation=id?body.operation:"create";
@@ -72,7 +76,9 @@ export async function writeFarmOperation(request:NextRequest,kind:"report"|"requ
   const requestId=request.headers.get("X-Request-ID");if(!requestId||!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:"A valid X-Request-ID is required for safe retries"},{status:400});
   const {operation:ignored,revision,reason:reasonValue,...payload}=fields;void ignored;
   const db=createServerClient();if(!db)return farmErrorResponse({code:"503",message:"Database not configured"});
-  const {data,error}=await db.rpc("farm_operations_write",{p_actor:profile.id,p_kind:kind,p_operation:operation,p_payload:{...payload,...(id?{expected_revision:revision}:{})},p_id:id??null,p_reason:reasonValue??null,p_request_id:requestId});
+  const {data,error}=await managerRpc(db,"farm_operations_write",{p_actor:profile.id,p_kind:kind,p_operation:operation,p_payload:{...payload,...(id?{expected_revision:revision}:{})},p_id:id??null,p_reason:reasonValue??null,p_request_id:requestId});
   if(error)return farmErrorResponse(error);
   return NextResponse.json({data},{status:id?200:201});
 }
+
+export function writeFarmOperation(request:NextRequest,kind:"report"|"request",id?:string){return withManagerWrite(request,"farm",()=>legacyWriteFarmOperation(request,kind,id));}

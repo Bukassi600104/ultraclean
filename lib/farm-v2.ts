@@ -1,3 +1,4 @@
+import {managerRpc} from "@/lib/manager-write-api";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/auth";
@@ -9,7 +10,7 @@ export type FarmWriteError = { message: string; code?: string };
 export async function farmWrite(profile: Profile, kind: string, operation: string, payload: unknown, options: WriteOptions = {}) {
   const supabase = createServerClient();
   if (!supabase) return { data: null, error: { message: "Database not configured", code: "503" } };
-  return supabase.rpc("farm_v2_write", {
+  return managerRpc(supabase,"farm_v2_write", {
     p_actor: profile.id, p_kind: kind, p_operation: operation, p_payload: payload,
     p_id: options.id ?? null, p_reason: options.reason ?? null,
     p_request_id: options.requestId ?? null,

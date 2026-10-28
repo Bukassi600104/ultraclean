@@ -1,3 +1,4 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
 import { farmDateToday } from "@/lib/farm-products";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -8,7 +9,7 @@ export const runtime = "nodejs";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try {
     profile = await requireManager();
@@ -38,3 +39,5 @@ export async function POST(request: NextRequest) {
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ record: data });
 }
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

@@ -1,6 +1,8 @@
 "use client";
+import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import {useAuth} from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -32,6 +34,7 @@ function fmtDate(date: string) {
 }
 
 export default function DailyFeed({admin=false}: {admin?:boolean}) {
+ const managerFetch=useManagerFetch();
   const {profile}=useAuth();
   const [localOpened,setLocalOpened]=useState("0"),[foreignOpened,setForeignOpened]=useState("0");
   const [saveError,setSaveError]=useState("");
@@ -39,7 +42,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [dirty,setDirty]=useState(false);
   const lock=useRef(false);
   const pending=useRef<{id:string;payload:Record<string,unknown>}[]>([]);
-  const storageKey=profile?`primefield-daily-feed-retry:${profile.id}`:null;
+  const storageKey=useManagerStorageKey(profile?`primefield-daily-feed-retry:${profile.id}`:null);
   useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||"[]");setUncertain(!!pending.current.length);if(pending.current.length){const first=pending.current[0].payload;setDate(String(first.date));setFeedType(String(first.feed_type));setNotes(String(first.notes??""));const local=pending.current.find(row=>row.payload.feed_source==="local")?.payload;const foreign=pending.current.find(row=>row.payload.feed_source==="foreign")?.payload;setLocalBags(local?String(local.num_bags):"");setForeignBags(foreign?String(foreign.num_bags):"");setLocalOpened(local?String(local.bags_opened):"0");setForeignOpened(foreign?String(foreign.bags_opened):"0");}}catch{toast.error("Cannot read saved feed submission; check history before retrying.");setUncertain(true);}},[storageKey]);
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
@@ -59,16 +62,16 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
 
-  async function loadRecords() {
+  const loadRecords=useCallback(async()=>{
     setLoadingRecords(true);
     try {
-      const response=await fetch("/api/farm/daily-feed?limit=30",{cache:"no-store"});const res=await response.json();if(!response.ok)throw Error(res.error||"Unable to load feed history");setRecords(res.data||[]);
-      const stockResponse=await fetch("/api/farm/feed-stock",{cache:"no-store"});const stocks=await stockResponse.json();if(!stockResponse.ok)throw Error(stocks.error||"Unable to load available bags");setStockRows(stocks.data??[]);setStockError("");
+      const response=await managerFetch("/api/farm/daily-feed?limit=30",{cache:"no-store"});const res=await response.json();if(!response.ok)throw Error(res.error||"Unable to load feed history");setRecords(res.data||[]);
+      const stockResponse=await managerFetch("/api/farm/feed-stock",{cache:"no-store"});const stocks=await stockResponse.json();if(!stockResponse.ok)throw Error(stocks.error||"Unable to load available bags");setStockRows(stocks.data??[]);setStockError("");
     } catch(error) {setStockError(error instanceof Error?error.message:"Unable to load feed history and available bags");}
     finally { setLoadingRecords(false); }
-  }
+  },[managerFetch]);
 
-  useEffect(() => { loadRecords(); }, []);
+  useEffect(() => { loadRecords(); }, [loadRecords]);
 
   async function handleSave() {
     if(lock.current)return;
@@ -89,7 +92,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
     try{
       while(pending.current.length){
         const saved=pending.current[0];
-        const response=await fetch("/api/farm/daily-feed",{method:"POST",headers:{"Content-Type":"application/json","X-Request-ID":saved.id},body:JSON.stringify(saved.payload)});
+        const response=await managerFetch("/api/farm/daily-feed",{method:"POST",headers:{"Content-Type":"application/json","X-Request-ID":saved.id},body:JSON.stringify(saved.payload)});
         const result=await response.json();
         if(!response.ok)throw Error(result.error||"Unable to confirm feed submission");
         pending.current.shift();persist();

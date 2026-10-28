@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { useEffect, useState } from "react";
 import { farmProductLabel } from "@/lib/farm-products";
@@ -6,17 +8,18 @@ import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionReques
 import { livestockGroupLabel,type LivestockGroup } from "@/lib/farm-livestock-categories";
 
 export function InventoryActivity({ action, refreshKey }: { action: "add" | "mortality"; refreshKey?: string | null }) {
+ const managerFetch=useManagerFetch();
   const [movements, setMovements] = useState<{ id: string; product: string; action: string; date: string; quantity: number; stock_group?:LivestockGroup|null; correction_of?: string | null; correction_role?: string | null }[]>([]);
   const [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
-    fetch("/api/farm/inventory/transaction").then(async (response) => {
+    managerFetch("/api/farm/inventory/transaction").then(async (response) => {
       if (!response.ok) throw new Error();
       const result = await response.json();
       if (active) { setMovements(result.data ?? []); setError(false); }
     }).catch(() => { if (active) setError(true); });
     return () => { active = false; };
-  }, [action, refreshKey]);
+  }, [action, refreshKey,managerFetch]);
   const rows = movements.filter((movement) => movement.action === action);
   const reversed = new Set(movements.filter((movement) => movement.correction_role === "reversal").map((movement) => movement.correction_of));
   return <details className="bg-white rounded-2xl border p-4">

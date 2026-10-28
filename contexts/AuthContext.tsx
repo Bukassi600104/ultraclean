@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const activeUser=useRef<string|null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -44,22 +46,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let version=0,disposed=false;
     async function loadUser() {
+      const requestVersion=++version;
       const supabase = createClient()!;
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
+      if(disposed||requestVersion!==version)return;
       if (user) {
+        activeUser.current=user.id;
         setUser(user);
         const { data } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
-        if (data) setProfile(data as Profile);
+        if (!disposed&&requestVersion===version)setProfile(data as Profile|null);
       }
-      setIsLoading(false);
+      if(!disposed&&requestVersion===version)setIsLoading(false);
     }
 
     loadUser();
@@ -67,13 +72,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if(session?.user.id===activeUser.current&&_event!=="USER_UPDATED")return;
+      activeUser.current=session?.user.id??null;
+      version++;
       setUser(session?.user ?? null);
-      if (!session?.user) {
-        setProfile(null);
-      }
+      setProfile(null);
+      if(session?.user)setTimeout(()=>{if(!disposed)void loadUser();},0);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {disposed=true;version++;subscription.unsubscribe();};
   }, []);
 
   async function signOut() {

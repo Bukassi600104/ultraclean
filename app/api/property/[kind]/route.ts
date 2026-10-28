@@ -1,3 +1,6 @@
+import {managerRpc} from "@/lib/manager-write-api";
+import {withManagerWrite} from "@/lib/manager-write-api";
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePropertyManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
@@ -8,6 +11,8 @@ type Context = {params: {kind: string}};
 export async function GET(request: NextRequest, {params}: Context) {
   try {await requirePropertyManager();} catch {return NextResponse.json({error: "Property access required"}, {status: 403});}
   if (!isPropertySection(params.kind) && params.kind !== "history") return NextResponse.json({error: "Unknown property resource"}, {status: 404});
+  const tableForScope=params.kind==="history"?"property_events":propertyKinds[params.kind as keyof typeof propertyKinds].table;
+  const scoped=await managerReadResponse(request,"property",tableForScope);if(scoped)return scoped;
   const db = createServerClient();
   if (!db) return NextResponse.json({error: "Property service unavailable"}, {status: 503});
   const raw = new URL(request.url).searchParams.get("page") ?? "0";
@@ -19,7 +24,7 @@ export async function GET(request: NextRequest, {params}: Context) {
   if (error) return NextResponse.json({error: "Unable to load property records. Please retry."}, {status: 500});
   return NextResponse.json({data: data ?? [], page, has_more: data?.length === size});
 }
-export async function POST(request: NextRequest, {params}: Context) {
+async function legacyPOST(request: NextRequest, {params}: Context) {
   let actor;
   try {actor = await requirePropertyManager();} catch {return NextResponse.json({error: "Property access required"}, {status: 403});}
   if (!isPropertySection(params.kind)) return NextResponse.json({error: "Unknown property resource"}, {status: 404});
@@ -31,7 +36,7 @@ export async function POST(request: NextRequest, {params}: Context) {
   } catch (error) {return NextResponse.json({error: error instanceof Error && !error.message.startsWith("[") ? error.message : "Check all required fields, dates, amounts and currency."}, {status: 400});}
   const db = createServerClient();
   if (!db) return NextResponse.json({error: "Property service unavailable"}, {status: 503});
-  const {data, error} = await db.rpc("property_write", {p_actor: actor.id, p_kind: propertyKinds[params.kind].kind, p_operation: body.operation, p_payload: body.payload, p_id: body.targetId ?? null, p_reason: body.reason ?? null, p_request_id: body.request_id ?? null});
+  const {data, error} = await managerRpc(db,"property_write", {p_actor: actor.id, p_kind: propertyKinds[params.kind].kind, p_operation: body.operation, p_payload: body.payload, p_id: body.targetId ?? null, p_reason: body.reason ?? null, p_request_id: body.request_id ?? null});
   if (error) {
     const conflict = ["40001", "23505"].includes(error.code);
     const invalid = ["22023", "23514", "23503", "23502", "22P02", "22007", "22008"].includes(error.code);
@@ -39,3 +44,5 @@ export async function POST(request: NextRequest, {params}: Context) {
   }
   return NextResponse.json({data});
 }
+
+export async function POST(request: NextRequest, {params}: Context) { return withManagerWrite(request,"property",()=>legacyPOST(request, {params})); }

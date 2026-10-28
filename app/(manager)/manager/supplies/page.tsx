@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -89,6 +91,7 @@ function ActionSheet({
   onClose: () => void;
   onRefresh: () => void;
 }) {
+ const managerFetch=useManagerFetch();
   const [view, setView] = useState<"menu" | "use" | "purchase" | "history" | "correction" | "remove">("menu");
   const [qty, setQty] = useState("");
   const [requestId] = useState(() => crypto.randomUUID());
@@ -102,7 +105,7 @@ function ActionSheet({
   async function loadHistory() {
     setHistoryLoading(true);
     try {
-      const res = await fetch(`/api/farm/supplies/history?item_id=${item.id}&limit=20`);
+      const res = await managerFetch(`/api/farm/supplies/history?item_id=${item.id}&limit=20`);
       const d = await res.json();
       setHistory(d.data || []);
     } catch {
@@ -120,7 +123,7 @@ function ActionSheet({
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/farm/supplies/transaction", {
+      const res = await managerFetch("/api/farm/supplies/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ item_id: item.id, action, quantity, notes, request_id: requestId }),
@@ -140,7 +143,7 @@ function ActionSheet({
   async function submitCorrection() {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/farm/corrections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ record_type: "supply", record_id: item.id, requested_change: view === "remove" ? { action: "archive" } : { description: requestedChange }, reason: correctionReason }) });
+      const res = await managerFetch("/api/farm/corrections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ record_type: "supply", record_id: item.id, requested_change: view === "remove" ? { action: "archive" } : { description: requestedChange }, reason: correctionReason }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed to request correction");
       toast.success("Request sent to Bimbo for review"); onClose();
@@ -383,6 +386,7 @@ function AddItemSheet({
   onClose: () => void;
   onAdded: () => void;
 }) {
+ const managerFetch=useManagerFetch();
   const [requestId] = useState(() => crypto.randomUUID());
   const [form, setForm] = useState({
     item_name: "",
@@ -399,7 +403,7 @@ function AddItemSheet({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/farm/supplies", {
+      const res = await managerFetch("/api/farm/supplies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, request_id: requestId }),
@@ -538,6 +542,7 @@ function AddItemSheet({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SuppliesPage() {
+ const managerFetch=useManagerFetch();
 
   const [items, setItems] = useState<SupplyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -547,7 +552,7 @@ export default function SuppliesPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/farm/supplies");
+      const res = await managerFetch("/api/farm/supplies");
       const d = await res.json();
       setItems(Array.isArray(d) ? d : []);
     } catch {
@@ -555,7 +560,7 @@ export default function SuppliesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [managerFetch]);
 
   useEffect(() => { load(); }, [load]);
 

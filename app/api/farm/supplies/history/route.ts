@@ -1,3 +1,4 @@
+import {managerReadResponse} from "@/lib/manager-read-api";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -6,7 +7,7 @@ import { requireManager } from "@/lib/auth";
 export const runtime = "nodejs";
 
 // GET — transaction history, optionally filtered by item_id
-export async function GET(request: NextRequest) {
+async function legacyGET(request: NextRequest) {
   try { await requireManager(); }
   catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
   const supabase = createServerClient();
@@ -31,4 +32,9 @@ export async function GET(request: NextRequest) {
   const { data: actors } = actorIds.length ? await supabase.from("profiles").select("id, name").in("id", actorIds) : { data: [] };
   const names = new Map((actors || []).map((actor) => [actor.id, actor.name]));
   return NextResponse.json({ data: (data || []).map((row) => ({ ...row, created_by_name: names.get(row.created_by) || null })) });
+}
+
+export async function GET(request: NextRequest) {
+ const scoped=await managerReadResponse(request,"farm","farm_supply_transactions","list",false);
+ return scoped ?? legacyGET(request);
 }

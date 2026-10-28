@@ -1,4 +1,6 @@
 "use client";
+import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+
 import { formatCurrency } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
@@ -74,6 +76,7 @@ function ConfirmDialog({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SaleProductPage() {
+ const managerFetch=useManagerFetch();
   const { product } = useParams<{ product: string }>();
   const router = useRouter();
   const selectedProduct = FARM_PRODUCTS.find((item) => item.key === product);
@@ -108,11 +111,11 @@ export default function SaleProductPage() {
 
   useEffect(() => {
     if (!form.date) return;
-    fetch(`/api/farm/daily-record?date=${form.date}`)
+    managerFetch(`/api/farm/daily-record?date=${form.date}`)
       .then((r) => r.json())
       .then((d) => { setIsDayClosed(d.record?.status === "closed"); })
       .catch(() => {});
-  }, [form.date]);
+  }, [form.date,managerFetch]);
 
   function updateField(field: keyof FormValues, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -194,7 +197,7 @@ export default function SaleProductPage() {
         if (productKey === "crops") payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await fetch("/api/farm/sales", {
+      const res = await managerFetch("/api/farm/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify([payload]),

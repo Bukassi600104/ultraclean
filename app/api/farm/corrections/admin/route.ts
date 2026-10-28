@@ -1,3 +1,4 @@
+import {withManagerWrite} from "@/lib/manager-write-api";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
@@ -5,7 +6,7 @@ import { farmRecordTypeSchema, parseFarmCorrection } from "@/lib/farm-correction
 import { z } from "zod";
 export const runtime = "nodejs";
 const schema = z.object({ record_type: farmRecordTypeSchema, record_id: z.string().uuid(), operation: z.enum(["update","void","archive"]), changes: z.record(z.string(),z.unknown()), reason: z.string().trim().min(1).max(1000), request_id: z.string().uuid() });
-export async function POST(request: NextRequest) {
+async function legacyPOST(request: NextRequest) {
   let profile;
   try { profile = await requireAdmin(); } catch { return NextResponse.json({ error: "Admin access required" }, { status: 403 }); }
   const parsed = schema.safeParse(await request.json().catch(() => null));
@@ -18,3 +19,5 @@ export async function POST(request: NextRequest) {
   if(error) return farmErrorResponse(error);
   return NextResponse.json(data);
 }
+
+export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request),true); }
