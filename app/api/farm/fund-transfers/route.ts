@@ -8,6 +8,8 @@ import { z } from "zod";
 import { Resend } from "resend";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import { getFarmFinance } from "@/lib/farm-finance";
+import {cashWrite,cashError} from "@/lib/operations-cash";
+import {cashRecipient} from "@/lib/operations-cash-validation";
 
 export const runtime = "nodejs";
 
@@ -15,6 +17,8 @@ const transferSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   amount: z.number().positive("Amount must be positive"),
   notes: z.string().max(1000).optional().nullable(),
+  recipient:cashRecipient.optional(),
+  confirmed_receipt:z.boolean().optional(),
 });
 
 function escHtml(str: string): string {
@@ -87,6 +91,10 @@ async function legacyPOST(request: NextRequest) {
     );
   }
 
+  if(parsed.data.recipient){
+    const requestId=request.headers.get("X-Request-ID");if(!requestId||!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:"A valid retry identifier is required"},{status:400});
+    try{const outcome=await cashWrite(profile,"fund",{business:"farm",currency:"NGN",bucket:"owner",date:parsed.data.date,amount:String(parsed.data.amount),recipient:parsed.data.recipient,confirmed_receipt:parsed.data.confirmed_receipt,...(parsed.data.notes?{notes:parsed.data.notes}:{})},requestId);return NextResponse.json(outcome,{status:outcome.status==="posted"?201:202});}catch(e){return cashError(e);}
+  }
   const { data, error } = await farmWrite(profile, "fund", "create", parsed.data, { requestId: request.headers.get("X-Request-ID") || undefined });
   if (error) return farmErrorResponse(error);
 
