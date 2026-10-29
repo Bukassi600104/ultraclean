@@ -45,3 +45,4 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - CEO is Bimbo's activity, reconciliation and decision control centre across existing businesses. Apply consistent layout to every sidebar and nested page; show only real live records and truthful empty/unknown/error states. Never use demo rows or fixture fallbacks to make production screens look populated.
 
 - A failed list/detail request must retain its Back link and explicit retry state, not present an empty ledger, zero totals or a false missing-record redirect. Controlled house dialogs also need focus restoration when opened without a Radix trigger.
+- Never install through a dependency junction into the primary live checkout. Give the isolated worktree its own directory and verify existing resolved versions/integrity after a dependency addition; scope compatible security patches to the new tree.

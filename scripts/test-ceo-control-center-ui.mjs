@@ -18,6 +18,7 @@ await page.route('**/api/**',async route=>{const q=route.request(),url=new URL(q
  else if(mode==='entry'&&key==='/api/dba/sales')value={data:[{id:recordId,buyer_name:'Isolated saved sale',buyer_email:'saved@example.invalid',amount:123.45,payment_method:'cash',created_at:new Date().toISOString()}],total:1};
  else if(mode==='entry'&&key==='/api/farm/supplies')value=[{id:recordId,item_name:'Isolated saved supply',category:'equipment',unit:'units',current_quantity:5,restock_threshold:1,updated_at:new Date().toISOString(),revision:0}];
  else if(['/api/farm/inventory','/api/farm/supplies','/api/ultratidy/inventory','/api/ultratidy/inventory/transaction','/api/dba/products','/api/blog','/api/managers'].includes(key))value=[];
+ else if(/\/api\/managers\/[^/]+\/export$/.test(key))return route.fulfill({status:403,json:{error:'No historical export for this isolated account'}});
  else if(key==='/api/courses/settings')value=null;
  else if(key==='/api/leads/'+recordId)value={id:recordId,name:'Isolated existing lead',email:'existing@example.invalid',business:'ultratidy',source:'website',status:'new',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
  else if(key==='/api/blog/'+recordId)value={id:recordId,title:'Isolated existing post',slug:'existing-test-post',content:'<p>Original test content</p>',status:'draft',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};

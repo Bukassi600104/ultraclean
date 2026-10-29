@@ -1,5 +1,7 @@
 "use client";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {useAuth} from "@/contexts/AuthContext";
+import {LegacyManagerExportButton} from "@/components/manager/LegacyManagerExportButton";
 
 import { formatCurrency } from "@/lib/utils";
 
@@ -533,6 +535,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
 }
 
 export default function RecordsPage() {
+  const {profile}=useAuth();
   const [mainTab, setMainTab] = useState<MainTab>("sales");
   const [expenseSub, setExpenseSub] = useState<ExpenseSub>("general");
   const [fromDate, setFromDate] = useState("");
@@ -543,6 +546,7 @@ export default function RecordsPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {profile?.id&&<LegacyManagerExportButton targetId={profile.id}/>}
 
       {/* Tab switcher */}
       <div
