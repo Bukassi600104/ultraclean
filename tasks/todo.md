@@ -230,9 +230,9 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
 - [x] Implement the two eligible accounts' genuine XLSX exports.
 - [x] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
-- [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
+- [x] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: Tasks 1–7 and Task 8 implementation, preservation rehearsal, regression testing and independent review are complete in the isolated branch. Production release remains pending the approved plan’s final release gate and explicit handling of the confirmed existing signup/service-credential exposure. No production records, figures, account state, schema, credentials or deployment have been changed by this update.
+Current stage: approved application/schema and security cutover are live. All49 original business-table fingerprints and eight original profiles/Auth identities/passwords are preserved. Signup is closed; exposed legacy API and bearer tokens are rejected; current ES256 sign-in key remains unchanged. Final main-branch deployment identity and follow-up read-only checks are retained in the private release manifest.
 
 Task 6A evidence: docs/superpowers/plans/2026-10-28-ceo-layout-verification.md. Read-only route checks use actual pages and house components; synthetic boundary fixtures remain isolated from runtime.
 
@@ -245,6 +245,6 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [x] Fresh private backup, original-row/column baseline and eight-profile catalog.
 - [x] Disable public signup only, preserving other Auth settings.
 - [x] Create and read-only verify replacement publishable/server keys; remove embedded keys and block remote ad-hoc Auth tests.
-- [ ] Stage compatible production configuration/application; apply eight reviewed additive migrations under the named Farm pause.
-- [ ] Promote, activate, retire legacy API keys and verify old-key rejection, original records/accounts and branded routes.
-- [ ] Resume guarded Farm writes and record exact deployed source/evidence.
+- [x] Stage compatible production configuration/application; apply eight reviewed additive migrations under the named Farm pause.
+- [x] Promote, activate, retire legacy API keys and verify old-key rejection, original records/accounts and branded routes.
+- [x] Resume guarded Farm writes and record exact deployed source/evidence.

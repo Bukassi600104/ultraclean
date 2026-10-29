@@ -2,7 +2,7 @@
 
 ## Scope and current release state
 
-This implements the approved 28 October manager-handover plan and its feed/CEO control-centre addenda. Implementation, isolated verification and the fresh independent review are complete. On 29 October the user explicitly authorized the coordinated production release, replacement and retirement of exposed API keys, and public signup closure. The release is in progress; production completion must be verified before this record is marked complete.
+This implements the approved 28 October manager-handover plan and its feed/CEO control-centre addenda. Implementation, isolated verification and the fresh independent review are complete. On 29 October the user explicitly authorized the coordinated production release, replacement and retirement of exposed API keys, and public signup closure. The coordinated application/schema release is live and verified; final main-branch build identity is retained in the private release manifest.
 
 New managers receive personal operating periods with no inherited transactions, cash or debts. Verified manager custody is available only in personal periods; legacy accounts keep their original spending workflow and cannot receive allocations that their ordinary expenses would not debit. Bimbo may explicitly start a personal period when appropriate; no period/account is reset automatically. Existing assets require explicit assignment or confirmed Farm handover. Existing accounts keep their identities, credentials, status and historical records. Closing or starting an operating period remains an explicit CEO action.
 
@@ -40,7 +40,7 @@ Thirteen checks using **two real PostgreSQL connections** proved stale stock/han
 | Fresh whole-change review and narrow follow-ups | Three material findings reproduced, fixed and cleared; no remaining material findings |
 | Built-application GET smoke | 13 pass; local Primefield Host canonical redirect still requires branded staging/live verification |
 
-The built chunks were inspected to confirm the final movement-date filter, explicit admin queue identity and independent feed-history retry are present. A standalone TypeScript check was run only after the final build finished. The unchanged public suite never submitted valid production transactions or created accounts. Signed-in verification of the **new production release** remains pending deployment approval and compatible migration/configuration.
+The built chunks were inspected to confirm the final movement-date filter, explicit admin queue identity and independent feed-history retry are present. A standalone TypeScript check was run only after the final build finished. The unchanged public suite never submitted valid production transactions or created accounts. Signed-in production verification passed against the promoted build and activated schema, including the 16 protected API reads and four CEO pages recorded below.
 
 Review fixes: prevent tracked manager cash in legacy periods whose ordinary forms retain the legacy ledger flow; archive definite rejected receipts/decisions before unlocking while retaining uncertain retries; filter displayed source rows/counts to the selected activity dates without narrowing opening-balance calculation inputs. Backdated feed movements use `movement_date`, rather than their recording timestamp.
 
@@ -51,7 +51,7 @@ Read-only verification found public signup enabled while the existing new-user t
 
 Two pre-existing tracked ad-hoc test files, `scripts/test-auth-and-managers.js` and `scripts/test-final.js`, contain the currently configured service credential. Never execute them against production or reproduce their credential in reports, logs or new source. The user explicitly approved replacing and retiring the exposed credential on 29 October. The two ad-hoc scripts now read environment credentials and reject remote Supabase targets before any test runs. Do not silently rotate the JWT signing secret, invalidate staff sessions, change passwords or recreate accounts.
 
-A replacement must first inventory every legitimate key consumer, stage updated private server/browser configuration, verify them, and only then retire the exposed legacy key. Supabase supports overlapping new publishable/secret keys and later legacy-key deactivation; old installed clients and any integrations must be accounted for. Deactivating legacy API keys is distinct from rotating Auth signing keys. This additional security step is a release condition, not an already-executed change. [Supabase leaked-key procedure](https://supabase.com/docs/guides/getting-started/api-keys), [migration procedure](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys), [signing-key implications](https://supabase.com/docs/guides/auth/signing-keys).
+A replacement must first inventory every legitimate key consumer, stage updated private server/browser configuration, verify them, and only then retire the exposed legacy key. Supabase supports overlapping new publishable/secret keys and later legacy-key deactivation; old installed clients and any integrations must be accounted for. Deactivating legacy API keys is distinct from rotating Auth signing keys. The authorized security cutover is complete as documented below. [Supabase leaked-key procedure](https://supabase.com/docs/guides/getting-started/api-keys), [migration procedure](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys), [signing-key implications](https://supabase.com/docs/guides/auth/signing-keys).
 
 ## Approved-release sequence
 
@@ -89,6 +89,31 @@ Missing historical spending and old unassigned cash recipients stay unmodified a
 
 Fresh pre-cutover backup is 768,044 bytes, SHA256 `83debf94598c941cc0ea8944269b93726f4e63b01d325c6fede91ec75a2cff77`. All 84 original tables, original column lists and complete source rows are retained privately; all eight profiles match the reviewed catalog. No Edge Functions, database HTTP consumers or scheduled database extensions were found. Vercel has one production environment for the shared application.
 
-The Auth configuration was patched only with `disable_signup=true`; every other returned Auth setting remained identical. New named publishable and server secret keys passed read-only REST and trusted Auth-admin checks. Deployment configuration is being switched before legacy API-key deactivation. JWT signing keys, existing passwords and accounts are not rotated. Production application/migration/activation and old-key rejection checks remain pending.
+The Auth configuration was patched only with `disable_signup=true`; every other returned Auth setting remained identical. New named publishable and server secret keys passed read-only REST and trusted Auth-admin checks. Deployment configuration is being switched before legacy API-key deactivation. JWT signing keys, existing passwords and accounts are not rotated. Production application, all eight migrations, guarded activation and old-key rejection checks passed. Farm writes have resumed.
 
 Credential cleanup verification: both ad-hoc scripts reject missing/production/other remote endpoints before client initialization, accept an isolated loopback preamble, and contain no exposed service credential in current tracked source. The old Git history is retained; revocation, rather than history rewriting, closes that exposure.
+
+## Completed production verification
+
+The tested production build `dpl_Gpe5ckwMLDCgrT1rwiP86rmZtZn9` (reviewed application source `bb53622474086cbdfdd2d1bcb39b7bf2a5921697`) was staged without live-domain assignment, verified, promoted and activated. The branded CEO domain independently resolved to that exact deployment. The named Farm pause ran from 21:30:19 to 21:37:08 UTC; zero pause guards remain. Existing reads and logins remained available. Four existing manager workspaces were captured as legacy; no personal account or source transaction was created.
+
+All 49 original business tables retain their original row counts and complete-row fingerprints using their original columns. Original storage data also matches. All eight profile records and Auth identities/password hashes match. The only Auth baseline differences are the expected existing tester sign-in timestamp and its ordinary session, refresh-token and authentication-method records. No missing historical entry, opening balance, account attribution, stock quantity or financial amount was invented.
+
+Sixteen signed-in API reads pass: accounts, existing CEO overview, Farm control report, all three manager contexts and custody summaries, Farm feed/balance/inventory, both approved managers' individual reports, Property and Content. Four authenticated CEO pages return 200. New reports correctly returned the intentional preparation response before activation and 200 afterwards. All three public sites, all four branded login routes and both additional app manifests return 200. The real legacy export implementation was independently verified in the earlier XLSX tests; no production financial test entry or new test account was submitted.
+
+Public signup remains disabled with email login enabled. Production environment values and all four managed local checkouts use replacement publishable/server keys. Disabling legacy API keys alone did not reject their bearer-token form, which a read-only privileged probe caught. The project already used ES256 key `26a125a6-c25e-4f22-b5be-22b3f5429bc0` for current sign-ins. Only the retired, previously-used HS256 key was revoked; the current signing key was neither rotated nor replaced. The existing pre-retirement ES256 test session remains accepted. Old anon/service keys now return 401 both as API keys and as bearer tokens paired with the new public key; the new server's trusted Auth read returns 200. No passwords or users were recreated or changed. Open installed tabs should reload once to receive the new public configuration.
+
+Supabase MCP assigned application times to the reviewed migration names. This mapping is release evidence, not permission to replay older files or blindly run `db push` over the repository's pre-existing migration drift:
+
+| Reviewed file version/name | Applied version |
+| --- | --- |
+| 20261028120700 manager_periods_and_scope | 20261029213027 |
+| 20261028122243 manager_scoped_writes | 20261029213033 |
+| 20261028131020 manager_handover | 20261029213040 |
+| 20261028140421 manager_feed_activity | 20261029213049 |
+| 20261028201056 operations_cash_custody | 20261029213058 |
+| 20261028203309 manager_cash_business_writes | 20261029213104 |
+| 20261028221502 manager_reports_and_assignments | 20261029213112 |
+| 20261029004043 legacy_manager_export | 20261029213118 |
+
+The temporary named pause/resume steps are registered at `20261029213019` / `20261029213708`; they leave no pause function or trigger. Future migration tooling must reconcile verified versions separately before applying anything, rather than replaying these changes. Never re-enable the retired legacy signing key or expose replacement server keys as a rollback shortcut. The additive schema and original history remain intact.
