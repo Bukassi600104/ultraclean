@@ -239,3 +239,12 @@ Task 6A evidence: docs/superpowers/plans/2026-10-28-ceo-layout-verification.md. 
 Task 7: SQL24, actual XLSX40, API35, export UI13 and existing CEO report UI14 passed; TypeScript/lint clean. Own frozen-lock install and scoped dependency patches retain all original entries/versions. See docs/superpowers/plans/2026-10-29-legacy-export-validation.md. Production remains unchanged.
 
 Task 8 verified: lint, production build and sequential generated TypeScript checks pass;81 unchanged public browser tests pass;62 explicitly isolated suites are verified across execution groups, with affected regressions rerun after review fixes. CEO matrix144 across32pages, operational Back links87, actual provider14, fundsUI36, reportUI19, feedUI41 and XLSX SQL24/workbook40/API35/UI13 are covered. Full original84table fingerprints survive all8migrations/activation and coordinated pause/resume. Real two-connection PostgreSQL races13 pass. Independent review’s3findings plus movement-date follow-up are resolved. See docs/superpowers/plans/2026-10-29-manager-handover-release.md for exact boundaries, security release conditions and rollback limits.
+
+## Authorized production and credential cutover, 29 October 2026
+
+- [x] Fresh private backup, original-row/column baseline and eight-profile catalog.
+- [x] Disable public signup only, preserving other Auth settings.
+- [x] Create and read-only verify replacement publishable/server keys; remove embedded keys and block remote ad-hoc Auth tests.
+- [ ] Stage compatible production configuration/application; apply eight reviewed additive migrations under the named Farm pause.
+- [ ] Promote, activate, retire legacy API keys and verify old-key rejection, original records/accounts and branded routes.
+- [ ] Resume guarded Farm writes and record exact deployed source/evidence.

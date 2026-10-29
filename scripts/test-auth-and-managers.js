@@ -4,11 +4,14 @@
 const { createClient } = require("@supabase/supabase-js");
 
 const BASE = "http://localhost:3000";
-const SUPABASE_URL = "https://gsxqrjywtugeuexrjcln.supabase.co";
-const ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzeHFyanl3dHVnZXVleHJqY2xuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4OTAwODMsImV4cCI6MjA4NjQ2NjA4M30.1saBTigbC0HU9sNuSEkxMXwDtIhgnYv6SIHXtemluww";
-const SERVICE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdzeHFyanl3dHVnZXVleHJqY2xuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDg5MDA4MywiZXhwIjoyMDg2NDY2MDgzfQ.4zi9-LFfqGbKM_sHHE8hj7LYvr0yJCOGrUwKM2NSNIQ";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// These destructive ad-hoc tests may run only against a disposable local database.
+if (!SUPABASE_URL || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(SUPABASE_URL).hostname)) {
+  throw new Error("Auth tests require an isolated local Supabase project; production is blocked.");
+}
+if (!ANON_KEY || !SERVICE_KEY) throw new Error("Local Supabase test credentials are required.");
 
 let passed = 0;
 let failed = 0;
@@ -24,7 +27,7 @@ function fail(name, reason) {
 }
 
 function buildCookies(session) {
-  const ref = "gsxqrjywtugeuexrjcln";
+  const ref = new URL(SUPABASE_URL).hostname.split(".")[0];
   const cookieName = `sb-${ref}-auth-token`;
   const sessionData = JSON.stringify({
     access_token: session.access_token,
