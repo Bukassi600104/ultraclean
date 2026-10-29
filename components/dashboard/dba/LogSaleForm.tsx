@@ -88,9 +88,9 @@ export function LogSaleForm({
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label>Product *</Label>
+            <Label htmlFor="entry-dba-1">Product *</Label>
             <Select onValueChange={(v) => setValue("product_id", v)}>
-              <SelectTrigger>
+              <SelectTrigger id="entry-dba-1">
                 <SelectValue placeholder="Select product" />
               </SelectTrigger>
               <SelectContent>
@@ -144,12 +144,12 @@ export function LogSaleForm({
               />
             </div>
             <div className="space-y-2">
-              <Label>Payment Method</Label>
+              <Label htmlFor="entry-dba-2">Payment Method</Label>
               <Select
                 defaultValue="transfer"
                 onValueChange={(v) => setValue("payment_method", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="entry-dba-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

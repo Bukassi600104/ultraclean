@@ -8,7 +8,7 @@ import { isDashboardDestinationActive } from "@/lib/dashboard-navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import {
   Popover,
   PopoverContent,
@@ -122,7 +122,7 @@ function BrandLogo({ collapsed }: { collapsed: boolean }) {
           <p className="font-heading text-sm font-extrabold text-white tracking-wide leading-none">
             BossBimbz
           </p>
-          <p className="text-[9px] text-white/50 font-bold tracking-[0.18em] uppercase mt-0.5">
+          <p className="text-[9px] text-white/75 font-bold tracking-[0.18em] uppercase mt-0.5">
             HQ
           </p>
         </div>
@@ -145,7 +145,7 @@ function NavContent({
       {NAV_SECTIONS.map((section) => (
         <div key={section.label} className="mb-1">
           {!collapsed ? (
-            <p className="px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/30 select-none">
+            <p className="px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-white/65 select-none">
               {section.label}
             </p>
           ) : (
@@ -161,13 +161,13 @@ function NavContent({
                   onClick={onClose}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 group",
+                    "flex items-center gap-3 min-h-11 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 group",
                     collapsed && "justify-center px-2",
                     isActive && pathname === "/dashboard"
                       ? "bg-teal-400 text-[#1B1464] shadow-sm"
                       : isActive
                       ? "bg-white/15 text-white"
-                      : pathname === "/dashboard" ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-white/50 hover:bg-white/8 hover:text-white/80"
+                      : pathname === "/dashboard" ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-white/75 hover:bg-white/8 hover:text-white/80"
                   )}
                 >
                   <item.icon
@@ -175,7 +175,7 @@ function NavContent({
                       "h-4 w-4 shrink-0 transition-colors",
                       isActive
                         ? pathname === "/dashboard" ? "text-[#1B1464]" : "text-white"
-                        : "text-white/40 group-hover:text-white/70"
+                        : "text-white/65 group-hover:text-white/80"
                     )}
                   />
                   {!collapsed && (
@@ -215,7 +215,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
       <PopoverTrigger asChild>
         <button
           className={cn(
-            "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm transition-colors outline-none hover:bg-white/8",
+            "flex items-center gap-3 w-full min-h-11 rounded-lg px-3 py-2.5 text-sm transition-colors outline-none hover:bg-white/8",
             collapsed && "justify-center px-2"
           )}
         >
@@ -231,12 +231,12 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
                   {displayName}
                 </p>
                 {profile?.name && profile?.email && (
-                  <p className="truncate text-xs text-white/40">
+                  <p className="truncate text-xs text-white/65">
                     {profile.email}
                   </p>
                 )}
               </div>
-              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-white/30" />
+              <ChevronUp className="h-3.5 w-3.5 shrink-0 text-white/65" />
             </>
           )}
         </button>
@@ -249,14 +249,14 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
       >
         <Link
           href="/dashboard/settings"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
         >
           <Settings className="h-4 w-4" />
           Settings
         </Link>
         <button
           onClick={signOut}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-red-400 hover:bg-white/10 hover:text-red-300 transition-colors w-full"
+          className="flex min-h-11 items-center gap-2 rounded-md px-3 py-2 text-sm text-red-400 hover:bg-white/10 hover:text-red-300 transition-colors w-full"
         >
           <LogOut className="h-4 w-4" />
           Sign out
@@ -293,7 +293,7 @@ export function Sidebar() {
               size="icon"
               onClick={() => setCollapsed(true)}
               aria-label="Collapse navigation"
-              className="h-7 w-7 text-white/30 hover:text-white/80 hover:bg-white/8 shrink-0"
+              className="h-11 w-11 text-white/65 hover:text-white/80 hover:bg-white/8 shrink-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -307,7 +307,7 @@ export function Sidebar() {
           <button
             onClick={() => setCollapsed(false)}
             aria-label="Expand navigation"
-            className="absolute -right-3 top-[68px] h-6 w-6 rounded-full border border-white/25 bg-[#1B1464] text-white/50 hover:text-white hover:bg-white/10 flex items-center justify-center z-20 transition-colors shadow-sm"
+            className="absolute -right-5 top-[68px] h-11 w-11 rounded-full border border-white/25 bg-[#1B1464] text-white/75 hover:text-white hover:bg-white/10 flex items-center justify-center z-20 transition-colors shadow-sm"
           >
             <ChevronRight className="h-3 w-3" />
           </button>
@@ -326,15 +326,16 @@ export function Sidebar() {
             variant="ghost"
             size="icon"
             aria-label="Open navigation"
-            className={cn("lg:hidden absolute left-3 top-3.5 z-50 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white shadow-sm rounded-lg h-9 w-9", isCeoHome && "h-11 w-11")}
+            className={cn("lg:hidden absolute left-3 top-3.5 z-50 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white shadow-sm rounded-lg h-11 w-11", isCeoHome && "h-11 w-11")}
           >
             <Menu className="h-4 w-4" />
           </Button>
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="w-60 bg-[#1B1464] p-0 border-r border-white/8"
+          data-hq className="w-60 bg-[#1B1464] p-0 border-r border-white/8 [&>button]:h-11 [&>button]:w-11 [&>button]:flex [&>button]:items-center [&>button]:justify-center text-white"
         >
+          <SheetTitle className="sr-only">CEO navigation</SheetTitle>
           <div className="flex h-16 items-center border-b border-white/8 px-4">
             <BrandLogo collapsed={false} />
           </div>

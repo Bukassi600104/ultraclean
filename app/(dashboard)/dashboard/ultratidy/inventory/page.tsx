@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Loader2, Trash2, X, Package, RefreshCw } from "lucide-react";
 
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,9 @@ export default function UltraTidyInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(true);
 
+  const [loadError,setLoadError]=useState("");
+  const [historyError,setHistoryError]=useState("");
+
   // Add item form
   const [showAddItem, setShowAddItem] = useState(false);
   const [savingItem, setSavingItem] = useState(false);
@@ -56,17 +59,17 @@ export default function UltraTidyInventoryPage() {
   const [deleting, setDeleting] = useState(false);
 
   const loadItems = useCallback(async () => {
-    setLoading(true);
-    const r = await fetch("/api/ultratidy/inventory");
-    setItems(await r.json());
-    setLoading(false);
+    setLoading(true);setLoadError("");
+    try {const res=await fetch("/api/ultratidy/inventory");const data=await res.json();if(!res.ok||!Array.isArray(data))throw Error();setItems(data);}
+    catch {setLoadError("Inventory could not be loaded. Please retry.");}
+    finally {setLoading(false);}
   }, []);
 
   const loadTxs = useCallback(async () => {
-    setTxLoading(true);
-    const r = await fetch("/api/ultratidy/inventory/transaction");
-    setTxs(await r.json());
-    setTxLoading(false);
+    setTxLoading(true);setHistoryError("");
+    try {const res=await fetch("/api/ultratidy/inventory/transaction");const data=await res.json();if(!res.ok||!Array.isArray(data))throw Error();setTxs(data);}
+    catch {setHistoryError("Inventory history could not be loaded. Please retry.");}
+    finally {setTxLoading(false);}
   }, []);
 
   useEffect(() => { loadItems(); loadTxs(); }, [loadItems, loadTxs]);
@@ -115,10 +118,11 @@ export default function UltraTidyInventoryPage() {
 
   const lowStockItems = items.filter((i) => Number(i.current_quantity) <= Number(i.reorder_level));
 
+  if(loadError)return <DashboardReadError title="UltraTidy Inventory" message={loadError} onRetry={()=>{void loadItems();void loadTxs();}}/>;
   return (
     <>
       <DashboardHeader title="UltraTidy — Inventory" />
-      <div className="p-4 lg:p-8 space-y-6 max-w-5xl">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-5xl">
         
 
         <Tabs defaultValue="stock">
@@ -196,7 +200,7 @@ export default function UltraTidyInventoryPage() {
           <TabsContent value="transactions">
             <div className="rounded-xl border bg-card overflow-hidden">
               <div className="px-6 py-4 border-b bg-muted/30">
-                <h3 className="font-semibold text-sm">All Transactions ({txs.length})</h3>
+                <h3 className="font-semibold text-sm">All Transactions {historyError?"unavailable":`(${txs.length})`}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -208,7 +212,7 @@ export default function UltraTidyInventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {txLoading ? (
+                    {historyError ? <tr><td colSpan={5} role="alert" className="p-4 text-red-800">{historyError} <button className="min-h-11 underline" onClick={()=>void loadTxs()}>Retry history</button></td></tr> : txLoading ? (
                       <tr><td colSpan={5} className="text-center py-12"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
                     ) : txs.length === 0 ? (
                       <tr><td colSpan={5} className="text-center py-12 text-muted-foreground text-sm">No transactions yet.</td></tr>
@@ -273,28 +277,28 @@ export default function UltraTidyInventoryPage() {
 
       {/* Add Item Dialog */}
       <Dialog open={showAddItem} onOpenChange={setShowAddItem}>
-        <DialogContent className="max-w-md">
+        <DialogContent data-hq className="max-w-md">
           <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             {itemError && <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">{itemError}</div>}
             <div className="space-y-1.5">
-              <Label>Item Name</Label>
-              <Input placeholder="e.g. Multipurpose Spray" value={itemForm.item_name} onChange={(e) => setItemForm({ ...itemForm, item_name: e.target.value })} />
+              <Label htmlFor="entry-inventory-1">Item Name</Label>
+              <Input id="entry-inventory-1" placeholder="e.g. Multipurpose Spray" value={itemForm.item_name} onChange={(e) => setItemForm({ ...itemForm, item_name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label htmlFor="entry-inventory-2">Category</Label>
                 <Select value={itemForm.category} onValueChange={(v) => setItemForm({ ...itemForm, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-inventory-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => <SelectItem key={c} value={c} className="capitalize">{c.replace(/_/g, " ")}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Unit</Label>
+                <Label htmlFor="entry-inventory-3">Unit</Label>
                 <Select value={itemForm.unit} onValueChange={(v) => setItemForm({ ...itemForm, unit: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-inventory-3"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {UNITS.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                   </SelectContent>
@@ -303,12 +307,12 @@ export default function UltraTidyInventoryPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Starting Quantity</Label>
-                <Input type="number" min="0" step="1" placeholder="0" value={itemForm.current_quantity} onChange={(e) => setItemForm({ ...itemForm, current_quantity: e.target.value })} />
+                <Label htmlFor="entry-inventory-4">Starting Quantity</Label>
+                <Input id="entry-inventory-4" type="number" min="0" step="1" placeholder="0" value={itemForm.current_quantity} onChange={(e) => setItemForm({ ...itemForm, current_quantity: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Reorder Level</Label>
-                <Input type="number" min="0" step="1" placeholder="5" value={itemForm.reorder_level} onChange={(e) => setItemForm({ ...itemForm, reorder_level: e.target.value })} />
+                <Label htmlFor="entry-inventory-5">Reorder Level</Label>
+                <Input id="entry-inventory-5" type="number" min="0" step="1" placeholder="5" value={itemForm.reorder_level} onChange={(e) => setItemForm({ ...itemForm, reorder_level: e.target.value })} />
                 <p className="text-xs text-muted-foreground">Alert when stock falls to this level</p>
               </div>
             </div>
@@ -316,7 +320,7 @@ export default function UltraTidyInventoryPage() {
               <Button onClick={handleAddItem} disabled={savingItem} className="flex-1">
                 {savingItem ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Add Item"}
               </Button>
-              <Button variant="ghost" onClick={() => setShowAddItem(false)} disabled={savingItem}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" aria-label="Cancel entry" onClick={() => setShowAddItem(false)} disabled={savingItem}><X className="h-4 w-4" /></Button>
             </div>
           </div>
         </DialogContent>
@@ -324,15 +328,15 @@ export default function UltraTidyInventoryPage() {
 
       {/* Update Stock Dialog */}
       <Dialog open={!!updateItem} onOpenChange={(o) => !o && setUpdateItem(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent data-hq className="max-w-sm">
           <DialogHeader><DialogTitle>Update Stock — {updateItem?.item_name}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             {txError && <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">{txError}</div>}
             <p className="text-sm text-muted-foreground">Current: <span className="font-bold text-foreground">{Number(updateItem?.current_quantity)} {updateItem?.unit}</span></p>
             <div className="space-y-1.5">
-              <Label>Action</Label>
+              <Label htmlFor="entry-inventory-6">Action</Label>
               <Select value={txForm.action} onValueChange={(v) => setTxForm({ ...txForm, action: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="entry-inventory-6"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="add">Add (received new stock)</SelectItem>
                   <SelectItem value="use">Use (used on a job)</SelectItem>
@@ -342,25 +346,25 @@ export default function UltraTidyInventoryPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Quantity</Label>
-              <Input type="number" min="0.01" step="0.01" placeholder="0" value={txForm.quantity} onChange={(e) => setTxForm({ ...txForm, quantity: e.target.value })} />
+              <Label htmlFor="entry-inventory-7">Quantity</Label>
+              <Input id="entry-inventory-7" type="number" min="0.01" step="0.01" placeholder="0" value={txForm.quantity} onChange={(e) => setTxForm({ ...txForm, quantity: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notes (optional)</Label>
-              <Input placeholder="e.g. Used on 3 jobs today" value={txForm.notes} onChange={(e) => setTxForm({ ...txForm, notes: e.target.value })} />
+              <Label htmlFor="entry-inventory-8">Notes (optional)</Label>
+              <Input id="entry-inventory-8" placeholder="e.g. Used on 3 jobs today" value={txForm.notes} onChange={(e) => setTxForm({ ...txForm, notes: e.target.value })} />
             </div>
             <div className="flex gap-3 pt-1">
               <Button onClick={handleUpdateStock} disabled={savingTx} className="flex-1">
                 {savingTx ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Update Stock"}
               </Button>
-              <Button variant="ghost" onClick={() => setUpdateItem(null)} disabled={savingTx}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" aria-label="Cancel entry" onClick={() => setUpdateItem(null)} disabled={savingTx}><X className="h-4 w-4" /></Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-hq>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this item?</AlertDialogTitle>
             <AlertDialogDescription>This will remove the item and all its transaction history. Cannot be undone.</AlertDialogDescription>

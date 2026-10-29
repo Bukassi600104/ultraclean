@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { LeadStatusBadge } from "@/components/dashboard/leads/LeadStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,26 +56,18 @@ export default function LeadDetailPage() {
   const router = useRouter();
   const [lead, setLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError,setLoadError]=useState("");
+  const [version,setVersion]=useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    async function loadLead() {
-      try {
-        const res = await fetch(`/api/leads/${params.id}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setLead(data);
-        setNotes(data.notes || "");
-      } catch {
-        toast.error("Lead not found");
-        router.push("/dashboard/leads");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadLead();
-  }, [params.id, router]);
+    const controller=new AbortController();setIsLoading(true);setLoadError("");
+    void (async()=>{try {const res=await fetch(`/api/leads/${params.id}`,{signal:controller.signal});if(!res.ok)throw Error();const data=await res.json();if(!data?.id)throw Error();if(!controller.signal.aborted){setLead(data);setNotes(data.notes||"");}}
+    catch {if(!controller.signal.aborted)setLoadError("This record could not be loaded. Please retry or use the Back link.");}
+    finally {if(!controller.signal.aborted)setIsLoading(false);}})();
+    return ()=>controller.abort();
+  }, [params.id,version]);
 
   async function updateLead(updates: Partial<Lead>) {
     setIsSaving(true);
@@ -129,7 +121,7 @@ export default function LeadDetailPage() {
     return (
       <>
         <DashboardHeader title="Lead Details" />
-        <div className="p-4 lg:p-8 space-y-4">
+        <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-[400px]" />
         </div>
@@ -137,7 +129,7 @@ export default function LeadDetailPage() {
     );
   }
 
-  if (!lead) return null;
+  if (loadError||!lead) return <DashboardReadError title="Lead Details" message={loadError||"Record unavailable. Please retry."} onRetry={()=>setVersion(v=>v+1)}/>;
 
   const currentStatusIndex = STATUSES.indexOf(
     lead.status as (typeof STATUSES)[number]
@@ -146,7 +138,7 @@ export default function LeadDetailPage() {
   return (
     <>
       <DashboardHeader title="Lead Details" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
         
 
         {/* Status Pipeline */}
@@ -186,38 +178,38 @@ export default function LeadDetailPage() {
                   href={`mailto:${lead.email}`}
                   className="flex items-center gap-2 text-sm hover:text-primary"
                 >
-                  <Mail className="h-4 w-4 text-gray-400" />
+                  <Mail className="h-4 w-4 text-gray-600" />
                   {lead.email}
                 </a>
                 <a
                   href={`tel:${lead.phone}`}
                   className="flex items-center gap-2 text-sm hover:text-primary"
                 >
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Phone className="h-4 w-4 text-gray-600" />
                   {lead.phone}
                 </a>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t pt-4">
                 <div>
-                  <p className="text-xs text-gray-400">Service</p>
+                  <p className="text-xs text-gray-600">Service</p>
                   <p className="text-sm font-medium">{lead.service}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Business</p>
+                  <p className="text-xs text-gray-600">Business</p>
                   <p className="text-sm font-medium capitalize">
                     {lead.business}
                   </p>
                 </div>
                 {lead.property_size && (
                   <div>
-                    <p className="text-xs text-gray-400">Property Size</p>
+                    <p className="text-xs text-gray-600">Property Size</p>
                     <p className="text-sm font-medium">{lead.property_size}</p>
                   </div>
                 )}
                 {lead.date_needed && (
                   <div>
-                    <p className="text-xs text-gray-400">Date Needed</p>
+                    <p className="text-xs text-gray-600">Date Needed</p>
                     <p className="text-sm font-medium flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {lead.date_needed}
@@ -227,7 +219,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="border-t pt-4">
-                <p className="text-xs text-gray-400 mb-2">Notes</p>
+                <p className="text-xs text-gray-600 mb-2">Notes</p>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -247,7 +239,7 @@ export default function LeadDetailPage() {
                 </Button>
               </div>
 
-              <div className="text-xs text-gray-400 border-t pt-4">
+              <div className="text-xs text-gray-600 border-t pt-4">
                 Created {format(new Date(lead.created_at), "MMM d, yyyy 'at' h:mm a")}
                 {lead.updated_at !== lead.created_at && (
                   <>
@@ -269,7 +261,7 @@ export default function LeadDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <p className="text-xs text-gray-400">Change Status</p>
+                <p className="text-xs text-gray-600">Change Status</p>
                 <Select
                   value={lead.status}
                   onValueChange={(v) => updateLead({ status: v as Lead["status"] })}
@@ -288,7 +280,7 @@ export default function LeadDetailPage() {
               </div>
 
               <div className="space-y-2 border-t pt-3">
-                <p className="text-xs text-gray-400">Send Email</p>
+                <p className="text-xs text-gray-600">Send Email</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -321,7 +313,7 @@ export default function LeadDetailPage() {
                       Delete Lead
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent data-hq>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete this lead?</AlertDialogTitle>
                       <AlertDialogDescription>

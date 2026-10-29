@@ -3,7 +3,7 @@ import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 
 import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { useEffect, useState } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,6 @@ import { format } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";
 import { activeMortality } from "@/lib/farm-inventory";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
-import { toast } from "sonner";
 
 interface MortalitySummary {
   product: string;
@@ -44,11 +43,13 @@ export default function FarmInventoryPage() {
   const [inventory, setInventory] = useState<FarmInventory[]>([]);
   const [mortalityLog, setMortalityLog] = useState<FarmInventoryTransaction[]>([]);
   const [allTransactions, setAllTransactions] = useState<FarmInventoryTransaction[]>([]);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     async function load() {
+      setIsLoading(true);setLoadError("");
       try {
         const [invRes, allRes] = await Promise.all([
           fetch("/api/farm/inventory"),
@@ -61,10 +62,7 @@ export default function FarmInventoryPage() {
         setMortalityLog(activeMortality(allData.data || []));
         setAllTransactions(allData.data || []);
       } catch {
-        toast.error("Unable to load inventory history");
-        setInventory([]);
-        setMortalityLog([]);
-        setAllTransactions([]);
+        setLoadError("Farm inventory could not be loaded. Please retry.");
       } finally {
         setIsLoading(false);
       }
@@ -89,10 +87,11 @@ export default function FarmInventoryPage() {
     return format(new Date(raw), "dd MMM yyyy");
   }
 
+  if(loadError)return <DashboardReadError title="Farm Inventory" message={loadError} onRetry={()=>setRefresh(v=>v+1)}/>;
   return (
     <>
       <DashboardHeader title="Farm Inventory" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
       <LivestockInventoryBreakdown canManage refreshKey={refresh} />
         
 
@@ -177,7 +176,7 @@ export default function FarmInventoryPage() {
                 <CardTitle className="text-base">
                   All Inventory Entries
                   {!isLoading && (
-                    <span className="ml-2 text-xs font-normal text-gray-400">
+                    <span className="ml-2 text-xs font-normal text-gray-600">
                       ({allTransactions.length} records)
                     </span>
                   )}
@@ -243,7 +242,7 @@ export default function FarmInventoryPage() {
                             <TableCell className="hidden sm:table-cell text-sm text-gray-500">
                               {tx.reason || "—"}
                             </TableCell>
-                            <TableCell className="hidden md:table-cell text-sm text-gray-400">
+                            <TableCell className="hidden md:table-cell text-sm text-gray-600">
                               {tx.notes || "—"}
                             </TableCell>
                             <TableCell>{!tx.sale_id && tx.correction_role !== "reversal" && !allTransactions.some(row => row.correction_of === tx.id && row.correction_role === "reversal") && <FarmAdminCorrection recordType="inventory_transaction" record={tx} onSaved={() => setRefresh(value => value + 1)} />}</TableCell>
@@ -280,7 +279,7 @@ export default function FarmInventoryPage() {
                             <p className="text-3xl font-bold text-red-600">
                               {s.total_deaths}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-gray-600 mt-1">
                               recorded deaths
                             </p>
                           </div>
@@ -352,7 +351,7 @@ export default function FarmInventoryPage() {
                           <TableCell className="text-sm text-gray-500">
                             {m.reason || "—"}
                           </TableCell>
-                          <TableCell className="hidden md:table-cell text-sm text-gray-400">
+                          <TableCell className="hidden md:table-cell text-sm text-gray-600">
                             {m.notes || "—"}
                           </TableCell>
                         </TableRow>

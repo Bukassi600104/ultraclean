@@ -204,7 +204,7 @@ export default function FarmOverviewPage() {
   return (
     <>
       <DashboardHeader title="Farm Overview" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
         {financialError && <p role="alert" className="text-red-600">Farm figures could not be loaded. Refresh before relying on these totals.</p>}
         <FinancialPeriodForm from={period.from} to={period.to}/>
         <p className="text-xs text-slate-500">Balances are as at the end date. Recent transfer history below is independent of the selected financial period.</p>

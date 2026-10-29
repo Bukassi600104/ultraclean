@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { BlogTable } from "@/components/dashboard/blog/BlogTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,16 +14,18 @@ import type { BlogPost } from "@/types";
 
 export default function BlogListPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   async function loadPosts() {
+    setIsLoading(true);setLoadError("");
     try {
       const res = await fetch("/api/blog");
-      const data = await res.json();
+      const data = await res.json();if(!res.ok||!Array.isArray(data))throw Error();
       setPosts(Array.isArray(data) ? data : []);
     } catch {
-      setPosts([]);
+      setLoadError("Blog could not be loaded. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -51,13 +53,14 @@ export default function BlogListPage() {
       p.slug.toLowerCase().includes(search.toLowerCase())
   );
 
+  if(loadError)return <DashboardReadError title="Blog" message={loadError} onRetry={()=>void loadPosts()}/>;
   return (
     <>
       <DashboardHeader title="Blog" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
             <Input
               placeholder="Search posts..."
               value={search}

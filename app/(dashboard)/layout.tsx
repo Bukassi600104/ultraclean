@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Sidebar } from "@/components/dashboard/Sidebar";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://leads.ultratidycleaning.com"),
@@ -22,10 +22,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div data-hq className="flex h-screen overflow-hidden bg-[#EEEEFF]">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <DashboardShell>{children}</DashboardShell>
     </AuthProvider>
   );
 }

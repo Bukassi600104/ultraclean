@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Download, Loader2, Trash2, X } from "lucide-react";
 
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,7 @@ export default function UltraTidyExpensesPage() {
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [catFilter, setCatFilter] = useState("all");
+  const [loadError,setLoadError]=useState("");
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
@@ -53,12 +54,13 @@ export default function UltraTidyExpensesPage() {
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/ultratidy/expenses?page=${page}&limit=${LIMIT}&category=${catFilter}`);
+    setLoading(true);setLoadError("");
+    try {
+      const res = await fetch(`/api/ultratidy/expenses?page=${page}&limit=${LIMIT}&category=${catFilter}`);
     const j = await res.json();
-    setRecords(j.data || []);
-    setCount(j.count || 0);
-    setLoading(false);
+      if(!res.ok||!Array.isArray(j.data))throw Error();
+      setRecords(j.data);setCount(j.count??0);
+    }catch{setLoadError("UltraTidy Expenses records could not be loaded. Please retry.");}finally{setLoading(false);}
   }, [page, catFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -102,10 +104,11 @@ export default function UltraTidyExpensesPage() {
 
   const totalPages = Math.ceil(count / LIMIT);
 
+  if(loadError)return <DashboardReadError title="UltraTidy Expenses" message={loadError} onRetry={()=>void load()}/>;
   return (
     <>
       <DashboardHeader title="UltraTidy — Expenses" />
-      <div className="p-4 lg:p-8 space-y-6 max-w-5xl">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-5xl">
         
 
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -170,38 +173,38 @@ export default function UltraTidyExpensesPage() {
       </div>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent data-hq className="max-w-md">
           <DialogHeader><DialogTitle>Record Expense</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             {formError && <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">{formError}</div>}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Date</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <Label htmlFor="entry-expenses-1">Date</Label>
+                <Input id="entry-expenses-1" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Amount (CAD)</Label>
-                <Input type="number" min="0.01" step="0.01" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                <Label htmlFor="entry-expenses-2">Amount (CAD)</Label>
+                <Input id="entry-expenses-2" type="number" min="0.01" step="0.01" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Description</Label>
-              <Input placeholder="e.g. Cleaning supplies from Costco" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Label htmlFor="entry-expenses-3">Description</Label>
+              <Input id="entry-expenses-3" placeholder="e.g. Cleaning supplies from Costco" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Category</Label>
+                <Label htmlFor="entry-expenses-4">Category</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-expenses-4"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Payment Method</Label>
+                <Label htmlFor="entry-expenses-5">Payment Method</Label>
                 <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-expenses-5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m.replace(/-/g, " ")}</SelectItem>)}
                   </SelectContent>
@@ -209,25 +212,25 @@ export default function UltraTidyExpensesPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Paid To (optional)</Label>
-              <Input placeholder="e.g. Costco, Amazon" value={form.paid_to} onChange={(e) => setForm({ ...form, paid_to: e.target.value })} />
+              <Label htmlFor="entry-expenses-6">Paid To (optional)</Label>
+              <Input id="entry-expenses-6" placeholder="e.g. Costco, Amazon" value={form.paid_to} onChange={(e) => setForm({ ...form, paid_to: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <Label>Notes (optional)</Label>
-              <Input placeholder="e.g. Receipt #1234" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <Label htmlFor="entry-expenses-7">Notes (optional)</Label>
+              <Input id="entry-expenses-7" placeholder="e.g. Receipt #1234" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <div className="flex gap-3 pt-1">
               <Button onClick={handleSave} disabled={saving} className="flex-1">
                 {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Expense"}
               </Button>
-              <Button variant="ghost" onClick={() => setShowForm(false)} disabled={saving}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" aria-label="Cancel entry" onClick={() => setShowForm(false)} disabled={saving}><X className="h-4 w-4" /></Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-hq>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
             <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>

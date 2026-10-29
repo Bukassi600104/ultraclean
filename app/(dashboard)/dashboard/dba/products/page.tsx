@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { ProductTable } from "@/components/dashboard/dba/ProductTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,15 +13,17 @@ import type { DBAProduct } from "@/types";
 
 export default function DBAProductsPage() {
   const [products, setProducts] = useState<DBAProduct[]>([]);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   async function loadProducts() {
+    setIsLoading(true);setLoadError("");
     try {
       const res = await fetch("/api/dba/products");
-      const data = await res.json();
+      const data = await res.json();if(!res.ok||!Array.isArray(data))throw Error();
       setProducts(Array.isArray(data) ? data : []);
     } catch {
-      setProducts([]);
+      setLoadError("DBA Products could not be loaded. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -43,10 +45,11 @@ export default function DBAProductsPage() {
     }
   }
 
+  if(loadError)return <DashboardReadError title="DBA Products" message={loadError} onRetry={()=>void loadProducts()}/>;
   return (
     <>
       <DashboardHeader title="DBA Products" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         <div className="flex justify-end">
           <Button size="sm" asChild>
             <Link href="/dashboard/dba/products/new">

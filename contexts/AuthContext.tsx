@@ -15,6 +15,7 @@ import type { UserRole } from "@/lib/auth";
 interface Profile {
   id: string;
   role: UserRole;
+  suspended?: boolean;
   name: string | null;
   email: string | null;
 }

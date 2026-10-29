@@ -167,3 +167,12 @@
   background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
   pointer-events: none;
 }
+
+/* Keep CEO controls readable without changing the public website. */
+[data-hq] button:not([role="switch"]):not([role="checkbox"]),
+[data-hq] a.inline-flex { min-height: 2.75rem; }
+[data-hq] main p { overflow-wrap: anywhere; }
+
+[data-hq] input:not([type="checkbox"]):not([type="radio"]),
+[data-hq] select, [data-hq] [role="combobox"] { min-height: 2.75rem; }
+[data-hq] .text-gray-500, [data-hq] .text-muted-foreground { color: #4b5563; }

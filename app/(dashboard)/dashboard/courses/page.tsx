@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 
 interface CourseSettings {
   course_name: string;
@@ -39,6 +39,9 @@ export default function CoursesPage() {
   const [settings, setSettings] = useState<CourseSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
 
+  const [loadError,setLoadError]=useState("");
+  const [version,setVersion]=useState(0);
+
   // Edit state
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -50,14 +53,12 @@ export default function CoursesPage() {
   const registrationLink = "https://bboconcepts.com";
 
   useEffect(() => {
-    fetch("/api/courses/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        setSettings(data);
-        setLoadingSettings(false);
-      })
-      .catch(() => setLoadingSettings(false));
-  }, []);
+    const controller=new AbortController();setLoadingSettings(true);setLoadError("");
+    void (async()=>{try {const response=await fetch("/api/courses/settings",{signal:controller.signal});const data=await response.json();if(!response.ok||data!==null&&(typeof data.course_name!=="string"||typeof data.price_cents!=="number"||typeof data.currency!=="string"))throw Error();if(!controller.signal.aborted)setSettings(data);}
+    catch {if(!controller.signal.aborted)setLoadError("Course settings could not be loaded. Please retry.");}
+    finally {if(!controller.signal.aborted)setLoadingSettings(false);}})();
+    return ()=>controller.abort();
+  }, [version]);
 
   function openEdit() {
     if (!settings) return;
@@ -120,10 +121,11 @@ export default function CoursesPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  if(loadError)return <DashboardReadError title="Courses" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
   return (
     <>
       <DashboardHeader title="DBA Courses" />
-      <div className="p-4 lg:p-8 space-y-6 max-w-3xl">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-3xl">
 
         {/* Course Settings Card */}
         <div className="rounded-xl border bg-card overflow-hidden">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +78,9 @@ export default function FarmSuppliesPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
+  const [loadError,setLoadError]=useState("");
+  const [historyError,setHistoryError]=useState("");
+
   // Threshold dialog
   const [editItem, setEditItem] = useState<SupplyItem | null>(null);
   const [thresholdVal, setThresholdVal] = useState("");
@@ -90,21 +93,18 @@ export default function FarmSuppliesPage() {
   const [filterItemId, setFilterItemId] = useState<string>("all");
 
   const loadItems = useCallback(async () => {
-    const res = await fetch("/api/farm/supplies");
-    const d = await res.json();
-    setItems(Array.isArray(d) ? d : []);
-    setIsLoading(false);
+    setIsLoading(true);setLoadError("");
+    try {const res=await fetch("/api/farm/supplies");const data=await res.json();if(!res.ok||!Array.isArray(data))throw Error();setItems(data);}
+    catch {setLoadError("Supply inventory could not be loaded. Please retry.");}
+    finally {setIsLoading(false);}
   }, []);
 
   const loadHistory = useCallback(async (itemId?: string) => {
-    setHistoryLoading(true);
-    const url = itemId && itemId !== "all"
-      ? `/api/farm/supplies/history?item_id=${itemId}&limit=100`
-      : "/api/farm/supplies/history?limit=100";
-    const res = await fetch(url);
-    const d = await res.json();
-    setHistory(d.data || []);
-    setHistoryLoading(false);
+    setHistoryLoading(true);setHistoryError("");
+    const url=itemId&&itemId!=="all"?`/api/farm/supplies/history?item_id=${encodeURIComponent(itemId)}&limit=100`:"/api/farm/supplies/history?limit=100";
+    try {const res=await fetch(url);const data=await res.json();if(!res.ok||!Array.isArray(data.data))throw Error();setHistory(data.data);}
+    catch {setHistoryError("Supply history could not be loaded. Please retry.");}
+    finally {setHistoryLoading(false);}
   }, []);
 
   useEffect(() => {
@@ -147,10 +147,11 @@ export default function FarmSuppliesPage() {
   const lowCount = items.filter(isLow).length;
   const outCount = items.filter(isOut).length;
 
+  if(loadError)return <DashboardReadError title="Farm Supplies" message={loadError} onRetry={()=>void loadItems()}/>;
   return (
     <>
       <DashboardHeader title="Farm Supplies" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -300,7 +301,7 @@ export default function FarmSuppliesPage() {
             </select>
           </CardHeader>
           <CardContent className="p-0">
-            {historyLoading ? (
+            {historyError ? <p role="alert" className="p-4 text-red-800">{historyError} <button className="min-h-11 underline" onClick={()=>void loadHistory(filterItemId)}>Retry history</button></p> : historyLoading ? (
               <div className="p-6 space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
               </div>
@@ -369,7 +370,7 @@ export default function FarmSuppliesPage() {
 
       {/* Threshold dialog */}
       <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent data-hq className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Supply</DialogTitle>
           </DialogHeader>
@@ -379,14 +380,14 @@ export default function FarmSuppliesPage() {
                 Correct <strong>{editItem.item_name}</strong>. Saved changes include your reason and preserve activity history.
               </p>
               {(["item_name", "category", "unit", "notes", "quantity_change", "reason"] as const).map((field) => (
-                <div key={field}><Label>{({ item_name: "Item name", category: "Category", unit: "Unit", notes: "Notes", quantity_change: "Quantity adjustment (+ / -)", reason: "Correction / removal reason" })[field]}</Label>
-                  {field === "category" ? <select className="w-full border rounded-md p-2" value={details.category} onChange={(e) => setDetails((d) => ({ ...d, category: e.target.value }))}>{Object.entries(CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select> : <Input type={field === "quantity_change" ? "number" : "text"} value={details[field]} onChange={(e) => setDetails((d) => ({ ...d, [field]: e.target.value }))} />}
+                <div key={field}><Label htmlFor={`supply-${field}`}>{({ item_name: "Item name", category: "Category", unit: "Unit", notes: "Notes", quantity_change: "Quantity adjustment (+ / -)", reason: "Correction / removal reason" })[field]}</Label>
+                  {field === "category" ? <select id="supply-category" className="w-full border rounded-md p-2" value={details.category} onChange={(e) => setDetails((d) => ({ ...d, category: e.target.value }))}>{Object.entries(CATEGORY_LABELS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select> : <Input id={`supply-${field}`} type={field === "quantity_change" ? "number" : "text"} value={details[field]} onChange={(e) => setDetails((d) => ({ ...d, [field]: e.target.value }))} />}
                 </div>
               ))}
               <p className="text-xs text-muted-foreground">Units are protected once movement history exists. Quantity corrections add a movement.</p>
               <div className="space-y-2">
-                <Label>Threshold ({editItem.unit})</Label>
-                <Input
+                <Label htmlFor="supply-threshold">Threshold ({editItem.unit})</Label>
+                <Input id="supply-threshold"
                   type="number"
                   inputMode="numeric"
                   min="0"

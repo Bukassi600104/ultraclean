@@ -79,7 +79,7 @@ export function ProductForm({ product }: ProductFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="max-w-xl space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="mx-auto w-full max-w-xl space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Product Name *</Label>
         <Input id="name" {...register("name")} />

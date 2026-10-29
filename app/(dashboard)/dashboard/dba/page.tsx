@@ -54,7 +54,7 @@ export default function DBAOverviewPage() {
   return (
     <>
       <DashboardHeader title="DBA Products" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
         <FinancialPeriodForm from={period.from} to={period.to}/>
         {financeError&&<p role="alert" className="text-red-700">DBA finances unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
         <p className="text-xs text-slate-500">The financial amount uses the selected period; the recent-sales list remains a separate history preview. Currency is not recorded in this sales ledger.</p>

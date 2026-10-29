@@ -4,7 +4,7 @@ import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPan
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -75,17 +75,17 @@ export default function FarmExpensesPage() {
   const pageTotalAmount =
     rows.reduce((sum, row) => sum + Number(row._type === "expense" ? row.data.amount : row.data.cost), 0);
 
+  if(loadError)return <DashboardReadError title="Farm Expenses" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
   return (
     <>
       <DashboardHeader title="Farm Expenses" />
-      {loadError && <p role="alert" className="p-4 text-red-700">{loadError}<button className="ml-3 underline min-h-11" onClick={() => setVersion(v => v + 1)}>Retry</button></p>}
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">{combinedTotal} total records</p>
             {pageTotalAmount > 0 && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 Page total: {formatCurrency(pageTotalAmount)}
               </p>
             )}

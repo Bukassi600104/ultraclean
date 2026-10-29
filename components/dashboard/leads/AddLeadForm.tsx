@@ -76,14 +76,14 @@ export function AddLeadForm({ open, onClose }: AddLeadFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent data-hq className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Lead</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Business</Label>
+              <Label htmlFor="entry-leads-1">Business</Label>
               <Select
                 defaultValue="ultratidy"
                 onValueChange={(v) =>
@@ -93,7 +93,7 @@ export function AddLeadForm({ open, onClose }: AddLeadFormProps) {
                   )
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="entry-leads-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -104,12 +104,12 @@ export function AddLeadForm({ open, onClose }: AddLeadFormProps) {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Source</Label>
+              <Label htmlFor="entry-leads-2">Source</Label>
               <Select
                 defaultValue="manual"
                 onValueChange={(v) => setValue("source", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="entry-leads-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

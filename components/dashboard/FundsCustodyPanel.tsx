@@ -12,20 +12,21 @@ type Saved={target:PendingExpense;body:Record<string,unknown>};
 export function FundsCustodyPanel({business,selection=""}:{business:Business;selection?:string}){
  const {data,error,loading,refresh}=useOperationsFunds(business,selection),send=useManagerFetch(),{profile}=useAuth(),key=useManagerStorageKey(profile?`ceo-funding-review:${profile.id}:${business}:${selection}`:null);
  const [target,setTarget]=useState<PendingExpense|null>(null),[payer,setPayer]=useState(""),[reason,setReason]=useState(""),[action,setAction]=useState<"post"|"decline">("post"),[saved,setSaved]=useState<Saved|null>(null),[saveError,setSaveError]=useState(""),[busy,setBusy]=useState(false),[storageFault,setStorageFault]=useState(false);
- const lock=useRef(false),returnTo=useRef<HTMLButtonElement|null>(null);
- useEffect(()=>{if(!key)return;try{const entry=JSON.parse(localStorage.getItem(key)||"null") as Saved|null;if(entry)setSaved(entry);}catch{setStorageFault(true);setSaveError("Your saved funding decision remains on this device for review.");}},[key]);
+ const currentKey=useRef(key),alive=useRef(true),lock=useRef(false),returnTo=useRef<HTMLButtonElement|null>(null);
+ currentKey.current=key;
+ useEffect(()=>{alive.current=true;setSaved(null);setTarget(null);setBusy(false);setPayer("");setReason("");setAction("post");setStorageFault(false);setSaveError("");if(key)try{const entry=JSON.parse(localStorage.getItem(key)||"null") as Saved|null;if(entry){if(!entry.target||typeof entry.target.id!=="string"||!entry.body||entry.body.business!==business||typeof entry.body.request_id!=="string")throw Error();setSaved(entry);}}catch{setStorageFault(true);setSaveError("Your saved funding decision remains on this device for review.");}return()=>{alive.current=false;};},[key,business]);
  const currencies=Array.from(new Set((data?.accounts||[]).map(a=>a.currency))).sort(),pending=(data?.pending_expenses||[]).filter(p=>p.status==="pending");
  function review(row:PendingExpense,trigger:HTMLButtonElement){returnTo.current=trigger;setTarget(saved?.target||row);setReason(saved?String(saved.body.reason):"");setPayer(saved?String(saved.body.payer_account_id||""):"");setAction(saved?.body.action==="decline"?"decline":"post");setSaveError("");}
  async function decide(){
   if(!target||!key||lock.current||storageFault)return;
   if(!saved&&(!reason.trim()||(action==="post"&&!payer)))return setSaveError("Choose the actual payer and give a reason, or decline with a reason.");
   const submission=saved||{target,body:{business,action,payer_account_id:action==="post"?payer:undefined,reason:reason.trim(),expected_revision:target.revision,request_id:crypto.randomUUID()}};
-  lock.current=true;setBusy(true);setSaveError("");try{
-   localStorage.setItem(key,JSON.stringify(submission));setSaved(submission);
-   const response=await send(`/api/operations/funds/pending-expenses/${submission.target.id}${selection?"?"+selection.replace(/^&/,""):""}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(submission.body)}),result=await response.json();if(!response.ok)throw Error(result.error||"Unable to confirm the funding decision");
-   localStorage.removeItem(key);setSaved(null);if(result.status==="pending_funding")setSaveError(result.message||"Still pending. Confirmed funds must be available on the original expense date.");else{setTarget(null);setReason("");}
+  const ownedKey=key;lock.current=true;setBusy(true);setSaveError("");try{
+   localStorage.setItem(ownedKey,JSON.stringify(submission));setSaved(submission);
+   const response=await send(`/api/operations/funds/pending-expenses/${submission.target.id}${selection?"?"+selection.replace(/^&/,""):""}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(submission.body)}),result=await response.json();if(!alive.current||currentKey.current!==ownedKey)return;if(!response.ok)throw Error(result.error||"Unable to confirm the funding decision");
+   localStorage.removeItem(ownedKey);setSaved(null);if(result.status==="pending_funding")setSaveError(result.message||"Still pending. Confirmed funds must be available on the original expense date.");else{setTarget(null);setReason("");}
    refresh();window.dispatchEvent(new Event("operations-cash-updated"));
-  }catch(e){setSaveError((e as Error).message);}finally{lock.current=false;setBusy(false);}
+  }catch(e){if(alive.current&&currentKey.current===ownedKey)setSaveError((e as Error).message);}finally{lock.current=false;if(alive.current&&currentKey.current===ownedKey)setBusy(false);}
  }
  return <section className="mx-auto w-full max-w-6xl space-y-5 text-slate-900"><header><h2 className="text-xl font-bold">Funds control</h2><p className="mt-1 max-w-3xl text-sm text-slate-600">See who holds verified money and decide which real funding source paid a pending expense. Internal handoffs move custody and are counted once.</p></header>
   {error?<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900">{error}<button className={button+" ml-2"} onClick={refresh}>Retry funds</button></p>:loading?<p role="status">Loading funds control…</p>:data&&<>

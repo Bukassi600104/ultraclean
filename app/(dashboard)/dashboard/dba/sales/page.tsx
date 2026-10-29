@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { SalesTable } from "@/components/dashboard/dba/SalesTable";
 import { LogSaleForm } from "@/components/dashboard/dba/LogSaleForm";
 import { Button } from "@/components/ui/button";
@@ -15,10 +15,12 @@ export default function DBASalesPage() {
     { id: string; buyer_name: string; buyer_email: string; amount: number; payment_method: string; created_at: string; product?: { name: string } | null }[]
   >([]);
   const [products, setProducts] = useState<DBAProduct[]>([]);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [showLogSale, setShowLogSale] = useState(false);
 
   async function loadData() {
+    setIsLoading(true);setLoadError("");
     try {
       const [salesRes, prodRes] = await Promise.all([
         fetch("/api/dba/sales?limit=50"),
@@ -26,10 +28,11 @@ export default function DBASalesPage() {
       ]);
       const salesData = await salesRes.json();
       const prods = await prodRes.json();
-      setSales(salesData.data || []);
+      if(!salesRes.ok||!prodRes.ok||!Array.isArray(salesData.data)||!Array.isArray(prods))throw Error();
+      setSales(salesData.data);
       setProducts(Array.isArray(prods) ? prods : []);
     } catch {
-      // ignore
+      setLoadError("Sales could not be loaded. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -39,10 +42,11 @@ export default function DBASalesPage() {
     loadData();
   }, []);
 
+  if(loadError)return <DashboardReadError title="DBA Sales" message={loadError} onRetry={()=>void loadData()}/>;
   return (
     <>
       <DashboardHeader title="DBA Sales" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setShowLogSale(true)}>
             <Plus className="mr-2 h-4 w-4" />

@@ -139,26 +139,26 @@ export default function SettingsPage() {
   return (
     <>
       <DashboardHeader title="Settings" />
-      <div className="p-4 lg:p-8 space-y-6 max-w-4xl">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-4xl">
         {/* Account Info */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Account</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-gray-500">Username</span>
-              <span className="text-sm font-medium">
-                {profile?.name || <span className="text-gray-400 italic">Not set</span>}
+              <span className="min-w-0 break-all text-sm font-medium">
+                {profile?.name || <span className="text-gray-600 italic">Not set</span>}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-gray-500">Email</span>
-              <span className="text-sm font-medium">
+              <span className="min-w-0 break-all text-sm font-medium">
                 {profile?.email || "—"}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-gray-500">Role</span>
               <Badge variant="secondary" className="capitalize">
                 {profile?.role || "—"}
@@ -173,7 +173,7 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Change Username</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleChangeUsername} className="space-y-4 max-w-md">
+            <form onSubmit={handleChangeUsername} className="mx-auto w-full space-y-4 max-w-md">
               <div className="space-y-2">
                 <Label htmlFor="new-username">New Username</Label>
                 <Input
@@ -208,7 +208,7 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Change Email</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleChangeEmail} className="space-y-4 max-w-md">
+            <form onSubmit={handleChangeEmail} className="mx-auto w-full space-y-4 max-w-md">
               <div className="space-y-2">
                 <Label htmlFor="new-email">New Email Address</Label>
                 <Input
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
                     onClick={() => setShowEmailPwd(!showEmailPwd)}
                     tabIndex={-1}
                   >
@@ -257,7 +257,7 @@ export default function SettingsPage() {
             <CardTitle className="text-base">Change Password</CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+            <form onSubmit={handleChangePassword} className="mx-auto w-full space-y-4 max-w-md">
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
                 <div className="relative">
@@ -270,7 +270,7 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
                     onClick={() => setShowCurrent(!showCurrent)}
                     tabIndex={-1}
                   >
@@ -295,7 +295,7 @@ export default function SettingsPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-600"
                     onClick={() => setShowNew(!showNew)}
                     tabIndex={-1}
                   >

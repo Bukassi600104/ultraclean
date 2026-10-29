@@ -175,9 +175,9 @@ begin
  records:=records||jsonb_build_object('operations_cash_events',rows);
  select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('amount_exact',t.amount::text,'_source_json',to_jsonb(t)::text) order by t.operational_date,t.id),'[]'::jsonb) into rows from operations_cash_postings t where t.event_id in (select (value->>'id')::uuid from jsonb_array_elements(records->'operations_cash_events'));
  records:=records||jsonb_build_object('operations_cash_postings',rows);
- select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('amount_exact',t.amount::text,'_source_json',to_jsonb(t)::text) order by t.requested_at,t.id),'[]'::jsonb) into rows from manager_pending_expenses t where t.business=p_business and (c->>'mode'='admin_all' or t.period_id=(c->>'periodId')::uuid);
+ select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('amount_exact',t.amount::text,'created_by_name',(select name from profiles where id=t.requested_by),'_source_json',to_jsonb(t)::text) order by t.requested_at,t.id),'[]'::jsonb) into rows from manager_pending_expenses t where t.business=p_business and (c->>'mode'='admin_all' or t.period_id=(c->>'periodId')::uuid);
  records:=records||jsonb_build_object('manager_pending_expenses',rows);
- select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('_source_json',to_jsonb(t)::text) order by t.decided_at,t.id),'[]'::jsonb) into rows from manager_pending_decisions t where t.pending_id in (select (value->>'id')::uuid from jsonb_array_elements(records->'manager_pending_expenses'));
+ select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('created_by_name',(select name from profiles where id=t.actor_id),'_source_json',to_jsonb(t)::text) order by t.decided_at,t.id),'[]'::jsonb) into rows from manager_pending_decisions t where t.pending_id in (select (value->>'id')::uuid from jsonb_array_elements(records->'manager_pending_expenses'));
  records:=records||jsonb_build_object('manager_pending_decisions',rows);
  cash:=operations_cash_summary(p_actor,p_business,p_period_id,from_date,until_date,0,100);
  select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object('manager_name',p.name) order by t.created_at desc,t.id),'[]'::jsonb) into period_rows from manager_periods t join profiles p on p.id=t.manager_id where t.business=p_business and (c->>'mode'='admin_all' or t.manager_id=(c->>'managerId')::uuid);

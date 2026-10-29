@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -36,19 +36,21 @@ const STATUS_OPTIONS = ["all", "pending", "confirmed", "completed", "cancelled"]
 
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
 
   async function loadAppointments(status: string) {
-    setIsLoading(true);
+    setIsLoading(true);setLoadError("");
     try {
       const params = new URLSearchParams();
       if (status !== "all") params.set("status", status);
       const res = await fetch(`/api/appointments?${params}`);
       const json = await res.json();
-      setAppointments(json.data || []);
+      if(!res.ok||!Array.isArray(json.data))throw Error();
+      setAppointments(json.data);
     } catch {
-      toast.error("Failed to load appointments");
+      setLoadError("Appointments could not be loaded. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -73,10 +75,11 @@ export default function AppointmentsPage() {
     }
   }
 
+  if(loadError)return <DashboardReadError title="Appointments" message={loadError} onRetry={()=>void loadAppointments(statusFilter)}/>;
   return (
     <>
       <DashboardHeader title="Appointments" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
         {/* Filters */}
         <div className="flex items-center gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>

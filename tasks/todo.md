@@ -223,17 +223,15 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Complete independent design review and resolve both funding-policy questions with the user.
 - [x] Write and self-review the implementation plan against the reviewed design and confirmed policies.
 - [x] Complete plan approved by user on 28 October 2026.
-- [ ] Implement individual reporting/access and account-scoped offline handling.
+- [x] Implement individual reporting/access and account-scoped offline handling.
 - [x] Implement farm inventory handover without inserting opening stock or changing existing quantities.
-- [ ] Simplify Feed Inventory: compact table, manager-led dated starting/received/opened entries in a centred dialog, synchronized CEO oversight, optional non-blocking review and no double stock when pending costs resolve.
-- [ ] Implement linked funds custody/receipts and exact reconciliation.
-- [ ] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
+- [x] Simplify Feed Inventory: compact table, manager-led dated starting/received/opened entries in a centred dialog, synchronized CEO oversight, optional non-blocking review and no double stock when pending costs resolve.
+- [x] Implement linked funds custody/receipts and exact reconciliation.
+- [x] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
 - [ ] Implement the two eligible accounts' genuine XLSX exports.
 - [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
 - [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: reviewed design and implementation plan updated with user feed-UX and CEO control-centre/layout/no-mock-data addenda; approved for isolated implementation. User confirmed manager receipt acknowledgement and pending insufficient-funds expenses. No application code, production records, account status or schema has changed for this request.
+Current stage: Tasks 1–6 implemented and verified in the isolated branch. Personal records, handover, manager-led dated feed activity, true cash custody, pending funding and internal CEO reports are integrated. Task 6A checks the complete CEO layout/read-error/keyboard matrix; Task 7 exports and Task 8 preservation/release verification remain. No production records, figures, account state, schema or deployment have changed.
 
-Execution: Tasks 1 and 2 implemented in the isolated branch. Manager periods, restrictive access, guarded linked writes, separate day closure, complete scoped finance reads, start-date provisioning and account/business/period offline boundaries verified. Individual CEO reporting remains Task 6. All 17 isolation/legacy-workflow suites passed; lint and TypeScript clean. No production records, figures, accounts or deployment changed.
-
-Task 3 verification: actual-source snapshots, saved ticks, unknown versus zero, per-item stale versions, one-time acceptance and original source-row/count preservation pass isolated SQL/API/browser checks. Feed starting-count setup during handover is the next Task 3A integration. No production migration or deployment performed.
+Task 6A evidence: docs/superpowers/plans/2026-10-28-ceo-layout-verification.md. Read-only route checks use actual pages and house components; synthetic boundary fixtures remain isolated from runtime.

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { LeadTable } from "@/components/dashboard/leads/LeadTable";
 import { LeadFilters } from "@/components/dashboard/leads/LeadFilters";
 import { AddLeadForm } from "@/components/dashboard/leads/AddLeadForm";
@@ -26,7 +26,7 @@ function LeadsPageSkeleton() {
   return (
     <>
       <DashboardHeader title="Leads" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-[400px]" />
       </div>
@@ -40,6 +40,7 @@ function LeadsPageContent() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
@@ -49,7 +50,7 @@ function LeadsPageContent() {
   );
 
   const fetchLeads = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoading(true);setLoadError("");
     const params = new URLSearchParams();
     params.set("page", page.toString());
     if (search) params.set("search", search);
@@ -59,11 +60,12 @@ function LeadsPageContent() {
     try {
       const res = await fetch(`/api/leads?${params}`);
       const json = await res.json();
-      setLeads(json.data || []);
+      if(!res.ok||!Array.isArray(json.data))throw Error();
+      setLeads(json.data);
       setTotal(json.total || 0);
       setTotalPages(json.totalPages || 1);
     } catch {
-      setLeads([]);
+      setLoadError("Leads could not be loaded. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -131,10 +133,11 @@ function LeadsPageContent() {
     URL.revokeObjectURL(url);
   }
 
+  if(loadError)return <DashboardReadError title="Leads" message={loadError} onRetry={()=>void fetchLeads()}/>;
   return (
     <>
       <DashboardHeader title="Leads" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <p className="text-sm text-gray-500">{total} total leads</p>
           <div className="flex gap-2">

@@ -231,7 +231,7 @@ export default function ManagersPage() {
         }
       />
 
-      <div className="flex-1 p-6 max-w-3xl">
+      <div className="mx-auto w-full flex-1 p-6 max-w-3xl">
         <div className="mb-5 space-y-1.5">
           <Label htmlFor="account-filter">Filter by app</Label>
           <select id="account-filter" value={appFilter} onChange={(event) => setAppFilter(event.target.value as ManagerRole | "all")} className="h-11 w-full rounded-md border bg-white px-3 text-sm">
@@ -249,7 +249,7 @@ export default function ManagersPage() {
           <div className="rounded-xl border border-dashed border-gray-200 bg-white p-10 text-center">
             <UserCircle2 className="h-10 w-10 mx-auto text-gray-300 mb-3" />
             <p className="text-sm font-medium text-gray-500">No managers yet</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               Add a staff account with access to the appropriate app
             </p>
             <Button
@@ -288,7 +288,7 @@ export default function ManagersPage() {
                   </div>
                   <p className="text-xs text-gray-500 truncate">{m.email}</p>
                   <p className="text-xs font-semibold text-gray-700 mt-1">{managerApps[m.role].label}</p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-[11px] text-gray-600 mt-0.5">
                     Added {formatDate(m.created_at)}
                   </p>
                 </div>
@@ -373,7 +373,7 @@ export default function ManagersPage() {
           }
         }}
       >
-        <DialogContent className="max-w-md max-h-[90dvh] overflow-y-auto">
+        <DialogContent data-hq className="max-w-md max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Staff Account</DialogTitle>
           </DialogHeader>
@@ -498,7 +498,7 @@ export default function ManagersPage() {
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}
       >
-        <AlertDialogContent>
+        <AlertDialogContent data-hq>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove account access?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -537,7 +537,7 @@ export default function ManagersPage() {
           }
         }}
       >
-        <DialogContent className="max-w-sm">
+        <DialogContent data-hq className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
           </DialogHeader>

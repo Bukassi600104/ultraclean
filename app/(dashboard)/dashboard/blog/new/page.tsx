@@ -7,7 +7,7 @@ export default function NewBlogPostPage() {
   return (
     <>
       <DashboardHeader title="New Blog Post" />
-      <div className="p-4 lg:p-8">
+      <div className="mx-auto w-full p-4 lg:p-8 max-w-7xl">
         <BlogForm />
       </div>
     </>

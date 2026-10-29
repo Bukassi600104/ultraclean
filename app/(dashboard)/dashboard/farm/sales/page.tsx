@@ -5,7 +5,7 @@ import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPan
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -31,6 +31,7 @@ import type { FarmSale } from "@/types";
 export default function FarmSalesPage() {
   const [sales, setSales] = useState<FarmSale[]>([]);
   const [total, setTotal] = useState(0);
+  const [loadError,setLoadError]=useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [product, setProduct] = useState("all");
   const [page, setPage] = useState(1);
@@ -39,7 +40,7 @@ export default function FarmSalesPage() {
 
   useEffect(() => {
     async function load() {
-      setIsLoading(true);
+      setIsLoading(true);setLoadError("");
       const params = new URLSearchParams();
       params.set("page", page.toString());
       params.set("limit", limit.toString());
@@ -48,10 +49,11 @@ export default function FarmSalesPage() {
       try {
         const res = await fetch(`/api/farm/sales?${params}`);
         const json = await res.json();
-        setSales(json.data || []);
+        if(!res.ok||!Array.isArray(json.data))throw Error();
+        setSales(json.data);
         setTotal(json.total || 0);
       } catch {
-        setSales([]);
+        setLoadError("Farm sales could not be loaded. Please retry.");
       } finally {
         setIsLoading(false);
       }
@@ -61,10 +63,11 @@ export default function FarmSalesPage() {
 
   const totalPages = Math.ceil(total / limit);
 
+  if(loadError)return <DashboardReadError title="Farm Sales" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
   return (
     <>
       <DashboardHeader title="Farm Sales" />
-      <div className="p-4 lg:p-8 space-y-4">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">{total} total sales</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
+import { businessMoney } from "@/components/dashboard/BusinessFinancialCharts";
 import {
   Table,
   TableBody,
@@ -50,14 +51,14 @@ export function SalesTable({ sales }: SalesTableProps) {
             <TableCell>
               <div>
                 <p className="font-medium">{s.buyer_name}</p>
-                <p className="text-xs text-gray-400">{s.buyer_email}</p>
+                <p className="text-xs text-gray-600">{s.buyer_email}</p>
               </div>
             </TableCell>
             <TableCell className="hidden sm:table-cell text-sm">
               {s.product?.name || "—"}
             </TableCell>
             <TableCell className="font-medium">
-              ${s.amount.toFixed(2)}
+              {businessMoney(s.amount,null)}
             </TableCell>
             <TableCell className="hidden md:table-cell text-sm text-gray-500 capitalize">
               {s.payment_method}

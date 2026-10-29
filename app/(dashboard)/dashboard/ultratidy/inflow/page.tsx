@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Download, Loader2, Trash2, X } from "lucide-react";
 
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,7 @@ export default function UltraTidyInflowPage() {
   const [count, setCount] = useState(0);
   const [page, setPage] = useState(1);
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [loadError,setLoadError]=useState("");
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
@@ -53,12 +54,13 @@ export default function UltraTidyInflowPage() {
   const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    const res = await fetch(`/api/ultratidy/inflow?page=${page}&limit=${LIMIT}&service=${serviceFilter}`);
+    setLoading(true);setLoadError("");
+    try {
+      const res = await fetch(`/api/ultratidy/inflow?page=${page}&limit=${LIMIT}&service=${serviceFilter}`);
     const j = await res.json();
-    setRecords(j.data || []);
-    setCount(j.count || 0);
-    setLoading(false);
+      if(!res.ok||!Array.isArray(j.data))throw Error();
+      setRecords(j.data);setCount(j.count??0);
+    }catch{setLoadError("UltraTidy Inflow records could not be loaded. Please retry.");}finally{setLoading(false);}
   }, [page, serviceFilter]);
 
   useEffect(() => { load(); }, [load]);
@@ -102,10 +104,11 @@ export default function UltraTidyInflowPage() {
 
   const totalPages = Math.ceil(count / LIMIT);
 
+  if(loadError)return <DashboardReadError title="UltraTidy Inflow" message={loadError} onRetry={()=>void load()}/>;
   return (
     <>
       <DashboardHeader title="UltraTidy — Inflow" />
-      <div className="p-4 lg:p-8 space-y-6 max-w-5xl">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-5xl">
         
 
         {/* Filters & Actions */}
@@ -171,38 +174,38 @@ export default function UltraTidyInflowPage() {
 
       {/* Add Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-md">
+        <DialogContent data-hq className="max-w-md">
           <DialogHeader><DialogTitle>Record Inflow</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             {formError && <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">{formError}</div>}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Date</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+                <Label htmlFor="entry-inflow-1">Date</Label>
+                <Input id="entry-inflow-1" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
               </div>
               <div className="space-y-1.5">
-                <Label>Amount (CAD)</Label>
-                <Input type="number" min="0.01" step="0.01" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                <Label htmlFor="entry-inflow-2">Amount (CAD)</Label>
+                <Input id="entry-inflow-2" type="number" min="0.01" step="0.01" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Client Name</Label>
-              <Input placeholder="e.g. Sarah Johnson" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
+              <Label htmlFor="entry-inflow-3">Client Name</Label>
+              <Input id="entry-inflow-3" placeholder="e.g. Sarah Johnson" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Service Type</Label>
+                <Label htmlFor="entry-inflow-4">Service Type</Label>
                 <Select value={form.service} onValueChange={(v) => setForm({ ...form, service: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-inflow-4"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SERVICES.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Payment Method</Label>
+                <Label htmlFor="entry-inflow-5">Payment Method</Label>
                 <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="entry-inflow-5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_METHODS.map((m) => <SelectItem key={m} value={m}>{m.replace(/-/g, " ")}</SelectItem>)}
                   </SelectContent>
@@ -210,14 +213,14 @@ export default function UltraTidyInflowPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Notes (optional)</Label>
-              <Input placeholder="e.g. 123 Main St, deep clean" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <Label htmlFor="entry-inflow-6">Notes (optional)</Label>
+              <Input id="entry-inflow-6" placeholder="e.g. 123 Main St, deep clean" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </div>
             <div className="flex gap-3 pt-1">
               <Button onClick={handleSave} disabled={saving} className="flex-1">
                 {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : "Save Record"}
               </Button>
-              <Button variant="ghost" onClick={() => setShowForm(false)} disabled={saving}><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" aria-label="Cancel entry" onClick={() => setShowForm(false)} disabled={saving}><X className="h-4 w-4" /></Button>
             </div>
           </div>
         </DialogContent>
@@ -225,7 +228,7 @@ export default function UltraTidyInflowPage() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent data-hq>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this record?</AlertDialogTitle>
             <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>

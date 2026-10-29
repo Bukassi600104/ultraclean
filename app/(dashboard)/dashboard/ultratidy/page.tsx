@@ -64,7 +64,7 @@ export default function UltraTidyOverviewPage() {
   return (
     <>
       <DashboardHeader title="UltraTidy Finances" />
-      <div className="p-4 lg:p-8 space-y-6">
+      <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
 
         <FinancialPeriodForm from={period.from} to={period.to}/>
         {loadError&&<p role="alert" className="text-red-700">Cleaning finances unavailable. <button className="underline min-h-11" onClick={()=>window.location.reload()}>Retry</button></p>}
@@ -74,7 +74,7 @@ export default function UltraTidyOverviewPage() {
             { label: "Total Inflow", value: CAD(totalInflow), icon: TrendingUp, color: "text-green-600", bg: "bg-green-50" },
             { label: "Total Expenses", value: CAD(totalExpenses), icon: TrendingDown, color: "text-red-500", bg: "bg-red-50" },
             { label: "Recorded operating result", value: CAD(netProfit), icon: DollarSign, color: netProfit >= 0 ? "text-primary" : "text-red-500", bg: netProfit >= 0 ? "bg-primary/10" : "bg-red-50" },
-            { label: "Low Stock Items", value: loading ? "—" : lowStock.toString(), icon: Package, color: lowStock > 0 ? "text-amber-600" : "text-gray-400", bg: "bg-amber-50" },
+            { label: "Low Stock Items", value: loading ? "—" : lowStock.toString(), icon: Package, color: lowStock > 0 ? "text-amber-600" : "text-gray-600", bg: "bg-amber-50" },
           ].map((c) => (
             <div key={c.label} className="rounded-xl border bg-card p-5 flex items-start gap-4">
               <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}>

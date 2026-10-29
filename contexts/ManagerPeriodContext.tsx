@@ -8,7 +8,7 @@ export function useManagerPeriod(){return useContext(Context);}
 export function useQueueIdentity():QueueIdentity|null{const scope=useManagerPeriod();return scope?{actorId:scope.actorId,business:scope.business,periodId:scope.periodId||"legacy"}:null;}
 export function useManagerStorageKey(base:string|null){const scope=useManagerPeriod();return base?`${base}:period:${scope?.periodId||(scope?"legacy":"admin")}`:null;}
 export function useManagerFetch(){
- const scope=useManagerPeriod(),key=scope?`${scope.actorId}:${scope.periodId}`:"admin",current=useRef(key),controller=useRef(new AbortController());
+ const {profile}=useAuth(),scope=useManagerPeriod(),key=scope?`${scope.actorId}:${scope.periodId}`:`admin:${profile?.id||"pending"}`,current=useRef(key),controller=useRef(new AbortController());
  current.current=key;
  useEffect(()=>{const active=controller.current;return()=>active.abort();},[key]);
  return useCallback(async(input:RequestInfo|URL,init:RequestInit={})=>{
