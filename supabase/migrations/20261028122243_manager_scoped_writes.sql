@@ -20,6 +20,7 @@ begin
  if p_target_period is not null and selected is not null and selected<>p_target_period then raise exception using errcode='42501',message='Correction must retain its original responsible period';end if;
  selected:=coalesce(p_target_period,selected);
  c:=manager_context(p_actor,p_business,selected);
+ if (select activated_at is not null and not enabled from operations_release_state) then raise exception using errcode='55000',message='Operations are briefly paused for the update. Keep this entry and retry shortly';end if;
  if c->>'mode'='personal' and (now() at time zone 'Africa/Lagos')::date<(c->>'startsOn')::date and not exists(select 1 from profiles where id=p_actor and role='admin') then
   raise exception using errcode='42501',message='Your work period has not started yet';end if;
  if c->>'status'<>'active' and not exists(select 1 from profiles where id=p_actor and role='admin') then
@@ -36,7 +37,7 @@ begin
     or exists(select 1 from farm_operation_receipts where actor_id=p_actor and request_id=p_request)
     or exists(select 1 from farm_feed_stock_receipts where actor_id=p_actor and request_id=p_request)) then
    raise exception using errcode='23514',message='This earlier retry has no verified responsibility period. Keep it for review';end if;
-  if receipt.request_id is not null and (receipt.period_id is distinct from (c->>'periodId')::uuid or receipt.fingerprint<>p_fingerprint) then
+  if receipt.request_id is not null and ((receipt.period_id is distinct from (c->>'periodId')::uuid and not (receipt.period_id is null and c->>'mode'='legacy' and c->>'actorId'=c->>'managerId')) or receipt.fingerprint<>p_fingerprint) then
    raise exception using errcode='23514',message='This retry belongs to a different period or entry. Keep it for review';end if;
   insert into manager_write_contexts(actor_id,request_id,period_id,fingerprint) values(p_actor,p_request,(c->>'periodId')::uuid,p_fingerprint) on conflict do nothing;
  end if;

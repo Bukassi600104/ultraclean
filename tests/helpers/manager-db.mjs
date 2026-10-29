@@ -10,8 +10,11 @@ export async function managerDatabase({through,legacyManagers=[]}={}){
  for(const [name,id]of Object.entries(ids)){await db.query('insert into auth.users(id) values($1)',[id]);await db.query('insert into profiles(id,role,name,suspended) values($1,$2,$3,$4)',[id,name==='admin'?'admin':'manager',name,name==='suspended']);}
  for(const {id,name}of legacyManagers){await db.query('insert into auth.users(id) values($1)',[id]);await db.query("insert into profiles(id,role,name) values($1,'manager',$2)",[id,name]);}
  const names=(await readdir(new URL('../../supabase/migrations/',import.meta.url))).filter(n=>n==='012_primefield_v2.sql'||n==='013_primefield_v2_write_boundary.sql'||/^2026\d{10}_/.test(n)).sort();
- for(const name of names){if(through&&name>through)break;await db.exec(await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8'));}
- await db.query("update profiles set role='property_manager' where id=$1",[ids.property]);await db.query("update profiles set role='content_manager' where id=$1",[ids.content]);
+ for(const name of names){if(through&&name>through)break;
+  if(name==='20261028120700_manager_periods_and_scope.sql'){const {rows}=await db.query("select coalesce(jsonb_agg(jsonb_build_object('id',id,'role',role) order by id),'[]') catalog from profiles");await db.query("select set_config('operations.expected_profiles',$1,false)",[JSON.stringify(rows[0].catalog)]);}
+  await db.exec(await readFile(new URL('../../supabase/migrations/'+name,import.meta.url),'utf8'));
+  if(name==='20261005113523_bossbimbz_operations.sql'){await db.query("update profiles set role='property_manager' where id=$1",[ids.property]);await db.query("update profiles set role='content_manager' where id=$1",[ids.content]);}
+ }
  return db;
 }
 export const scalar=async(db,sql,args=[])=>Object.values((await db.query(sql,args)).rows[0])[0];

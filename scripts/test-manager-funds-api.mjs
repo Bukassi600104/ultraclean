@@ -4,7 +4,7 @@ const actorId='00000000-0000-4000-8000-000000000002',periodId='00000000-0000-400
 let selectedAdmin=false,role='manager',calls=[],error=null,outcome={status:'posted',data:{id:actorId}},checks=0;
 const actor=()=>{if(!role)throw Error('Unauthorized');return {id:actorId,role};};
 const auth={requireManager:async()=>actor(),requirePropertyManager:async()=>actor(),requireContentManager:async()=>actor(),requireAdmin:async()=>{if(role!=='admin')throw Error('Unauthorized');return actor();}};
-const db={rpc:async(name,args)=>{calls.push([name,args]);if(name==='manager_context')return {data:{business:args.p_business,actorId,managerId:selectedAdmin?periodId:actorId,periodId,mode:role==='admin'&&!selectedAdmin?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}};return {data:outcome,error};}};
+const db={rpc:async(name,args)=>{calls.push([name,args]);if(name==='manager_context')return {data:{featureEnabled:true,business:args.p_business,actorId,managerId:selectedAdmin?periodId:actorId,periodId,mode:role==='admin'&&!selectedAdmin?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}};return {data:outcome,error};}};
 const load=typescriptLoader({'@/lib/auth':auth,'@/lib/supabase/server':{createServerClient:()=>db},'@/lib/farm-finance':{getFarmFinance:async()=>({closing_balance:1})}}),api=load('app/api/operations/funds/route.ts'),receipts=load('app/api/operations/funds/receipts/route.ts');
 const headers={'X-Manager-Actor':actorId,'X-Manager-Period':periodId,'Content-Type':'application/json'};
 const req=(body,path='/api/operations/funds',h=headers)=>new Request('http://localhost'+path,{method:body?'POST':'GET',headers:h,...(body?{body:JSON.stringify(body)}:{})});

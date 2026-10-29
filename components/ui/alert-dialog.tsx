@@ -30,8 +30,9 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
+>(({ className, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  const opener = React.useRef<HTMLElement | null>(null)
+  return <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
       ref={ref}
@@ -40,9 +41,11 @@ const AlertDialogContent = React.forwardRef<
         className
       )}
       {...props}
+      onOpenAutoFocus={event => {opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;onOpenAutoFocus?.(event)}}
+      onCloseAutoFocus={event => {onCloseAutoFocus?.(event);if (!event.defaultPrevented && opener.current?.isConnected) {event.preventDefault();opener.current.focus()}}}
     />
   </AlertDialogPortal>
-))
+})
 AlertDialogContent.displayName = AlertDialogPrimitive.Content.displayName
 
 const AlertDialogHeader = ({

@@ -10,7 +10,7 @@ import {formatExactCurrency,subtractMoney} from "@/lib/money";
 import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 const button="min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50";
 type Saved={request:Extract<CashRequest,{operation:"receive"|"handoff"}>;description:string};
-export function ManagerFunds({business}:{business:Business}){const scope=useManagerPeriod();return scope&&scope.business===business&&scope.mode!=="admin_all"?<ManagerFundsBody business={business}/>:null;}
+export function ManagerFunds({business}:{business:Business}){const scope=useManagerPeriod();return scope?.featureEnabled&&scope.business===business&&scope.mode==="personal"?<ManagerFundsBody business={business}/>:null;}
 function ManagerFundsBody({business}:{business:Business}){
  const {data,error,loading,refresh}=useOperationsFunds(business),send=useManagerFetch(),{profile}=useAuth(),key=useManagerStorageKey(profile?`manager-funds-receipt:${profile.id}:${business}`:null);
  const [open,setOpen]=useState(false),[direct,setDirect]=useState<CashEvent|null>(null),[source,setSource]=useState(""),[amount,setAmount]=useState(""),[date,setDate]=useState(farmDateToday()),[ack,setAck]=useState(false),[pending,setPending]=useState<Saved|null>(null),[saveError,setSaveError]=useState(""),[busy,setBusy]=useState(false),[storageFault,setStorageFault]=useState(false);
@@ -31,7 +31,7 @@ function ManagerFundsBody({business}:{business:Business}){
   lock.current=true;setBusy(true);setSaveError("");
   try{
    localStorage.setItem(key,JSON.stringify(saved));setPending(saved);
-   const response=await send("/api/operations/funds/receipts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(saved.request)}),result=await response.json();if(!response.ok||result.status!=="posted")throw Error(result.error||"Receipt could not be confirmed. Keep this saved entry and retry it.");
+   const response=await send("/api/operations/funds/receipts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(saved.request)}),result=await response.json();if(!response.ok||result.status!=="posted"){if([400,403,404,409].includes(response.status)){localStorage.setItem(key+":rejected:"+saved.request.request_id,JSON.stringify({...saved,outcome:result}));localStorage.removeItem(key);setPending(null);}throw Error(result.error||"Receipt could not be confirmed. Keep this saved entry and retry it.");}
    localStorage.removeItem(key);setPending(null);setOpen(false);setAmount("");setAck(false);refresh();window.dispatchEvent(new Event("operations-cash-updated"));
   }catch(e){setSaveError((e as Error).message);}finally{lock.current=false;setBusy(false);}
  }

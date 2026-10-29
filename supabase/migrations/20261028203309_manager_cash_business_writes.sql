@@ -133,6 +133,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended('manager-period-provisioning',0));
  c:=manager_context(p_actor,business_name,coalesce(nullif(coalesce(p_payload->>'manager_period_id',p_payload->0->>'manager_period_id'),'')::uuid,nullif(current_setting('operations.period',true),'')::uuid));
  cash_metadata:=(p_payload ?| array['cash_receiver','cash_payer_account_id','cash_payer_review','cash_bucket']) or exists(select 1 from jsonb_array_elements(case when jsonb_typeof(p_payload)='array' then p_payload else '[]'::jsonb end) value where value ?| array['cash_receiver','cash_payer_account_id','cash_payer_review','cash_bucket']);
+ if not(select enabled from operations_release_state) and ((select activated_at is not null from operations_release_state) or c->>'mode'='personal' or cash_metadata or exists(select 1 from operations_cash_events where resource=resource_name and record_id=p_id)) then raise exception using errcode='55000',message='Funds recording is briefly paused for the update. Keep this entry and retry shortly';end if;
  if c->>'mode'<>'personal' and not cash_metadata and not exists(select 1 from operations_cash_events where resource=resource_name and record_id=p_id) then
   execute format('select public.%I($1,$2,$3,$4,$5,$6,$7)',p_writer||'_before_business_cash') into result using p_actor,p_kind,p_operation,p_payload,p_id,p_reason,p_request_id;return result;
  end if;
@@ -196,6 +197,7 @@ declare entry manager_pending_expenses;before_value jsonb;c jsonb;account operat
 begin
  perform pg_advisory_xact_lock(hashtextextended('manager-period-provisioning',0));
  if not exists(select 1 from profiles where id=p_actor and role='admin' and not suspended) then raise exception using errcode='42501',message='Only Bimbo can resolve a funding gap';end if;
+ if not(select enabled from operations_release_state) then raise exception using errcode='55000',message='Funding decisions are briefly paused for the update';end if;
  select * into entry from manager_pending_expenses where id=p_id for update;
  if entry.id is null then raise exception using errcode='P0002',message='Pending expense not found';end if;
  if (p_payload ? 'business' and p_payload->>'business'<>entry.business) or (p_payload->>'manager_period_id' is not null and (p_payload->>'manager_period_id')::uuid<>entry.period_id) then raise exception using errcode='42501',message='This funding request belongs to a different business or manager period';end if;

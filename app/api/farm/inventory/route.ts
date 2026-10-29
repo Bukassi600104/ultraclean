@@ -29,7 +29,7 @@ async function legacyGET() {
   return NextResponse.json(data);
 }
 
-export async function GET(request: Request = new Request("http://localhost/api/farm/inventory")) {
+export async function GET(request: Request) {
  const scoped=await managerReadResponse(request,"farm","farm_inventory","array",false);
  return scoped ?? legacyGET();
 }

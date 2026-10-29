@@ -16,7 +16,7 @@ export async function resolveManagerScope(actor:Profile,business:Business,select
  }
  const {data,error}=await db.rpc("manager_context",{p_actor:actor.id,p_business:business,p_period_id:periodId??null});
  if(error)throw error;
- if(!data||data.actorId!==actor.id||data.business!==business||!["admin_all","legacy","personal"].includes(data.mode)||!["active","awaiting_handover","closed"].includes(data.status))failure("Invalid manager context","503");
+ if(!data||data.actorId!==actor.id||data.business!==business||typeof data.featureEnabled!=="boolean"||!["admin_all","legacy","personal"].includes(data.mode)||!["active","awaiting_handover","closed"].includes(data.status))failure("Invalid manager context","503");
  return data as ManagerScope;
 }
 export type RecordFilters={from?:string;to?:string;page?:number;limit?:number;[key:string]:unknown};

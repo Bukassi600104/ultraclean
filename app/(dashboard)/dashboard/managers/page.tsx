@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {useOperationsFeature} from "@/contexts/ManagerPeriodContext";
 import {businessForRole} from "@/lib/manager-period-types";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -39,6 +40,7 @@ interface Manager {
 }
 
 export default function ManagersPage() {
+  const {enabled,error:availabilityError,refresh:refreshAvailability}=useOperationsFeature();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -90,6 +92,7 @@ export default function ManagersPage() {
 
   async function handleAdd() {
     setAddError("");
+    if(enabled!==true){setAddError("Account creation is briefly paused for the update. Existing accounts remain available.");return;}
     if (!addName.trim() || !addEmail.trim()) {
       setAddError("Name and email are required.");
       return;
@@ -224,7 +227,7 @@ export default function ManagersPage() {
         title="Manage Accounts"
         subtitle="Staff access for Farm, Property and Content"
         actions={
-          <Button onClick={() => setShowAdd(true)} size="sm">
+          <Button disabled={enabled!==true} onClick={() => setShowAdd(true)} size="sm">
             <Plus className="h-4 w-4 mr-1.5" />
             Add Manager
           </Button>
@@ -232,6 +235,7 @@ export default function ManagersPage() {
       />
 
       <div className="mx-auto w-full flex-1 p-6 max-w-3xl">
+        {enabled!==true&&<p role={availabilityError?"alert":"status"} className="mb-4 rounded-lg border bg-white p-4 text-sm">{availabilityError||"Account creation is briefly paused for the update. Existing accounts and records remain available."}<button className="ml-2 min-h-11 underline" onClick={refreshAvailability}>Refresh availability</button></p>}
         <div className="mb-5 space-y-1.5">
           <Label htmlFor="account-filter">Filter by app</Label>
           <select id="account-filter" value={appFilter} onChange={(event) => setAppFilter(event.target.value as ManagerRole | "all")} className="h-11 w-full rounded-md border bg-white px-3 text-sm">
@@ -256,6 +260,7 @@ export default function ManagersPage() {
               size="sm"
               variant="outline"
               className="mt-4"
+              disabled={enabled!==true}
               onClick={() => setShowAdd(true)}
             >
               <Plus className="h-4 w-4 mr-1.5" />
@@ -292,7 +297,7 @@ export default function ManagersPage() {
                     Added {formatDate(m.created_at)}
                   </p>
                 </div>
-                <Link href={`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">View records</Link>
+                {enabled===true&&<Link href={`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">View records</Link>}
                 {!m.access_removed && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"

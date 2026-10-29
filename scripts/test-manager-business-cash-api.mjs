@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
 const id='00000000-0000-4000-8000-000000000086';let role='manager',calls=[],outcome={status:'pending_funding',id,currency:'NGN',shortfall:'300000'},checks=0;
 const actor=()=>({id,role}),auth={requireManager:async()=>actor(),requirePropertyManager:async()=>actor(),requireContentManager:async()=>actor(),requireAdmin:async()=>{if(role!=='admin')throw Error('Unauthorized');return actor();}};
-const db={rpc:async(name,args)=>{calls.push([name,args]);return name==='manager_context'?{data:{actorId:id,business:args.p_business,periodId:id,mode:role==='admin'?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}}:{data:outcome,error:null};}};
+const db={rpc:async(name,args)=>{calls.push([name,args]);return name==='manager_context'?{data:{featureEnabled:true,actorId:id,business:args.p_business,periodId:id,mode:role==='admin'?'admin_all':'personal',status:'active',startsOn:'2026-10-26'}}:{data:outcome,error:null};}};
 const load=typescriptLoader({'@/lib/auth':auth,'@/lib/supabase/server':{createServerClient:()=>db}}),headers={'Content-Type':'application/json','X-Request-ID':id,'X-Manager-Actor':id,'X-Manager-Period':id};
 const req=(body,path)=>new Request('http://localhost'+path,{method:'POST',headers,body:JSON.stringify(body)}),eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 for(const [file,payload]of[

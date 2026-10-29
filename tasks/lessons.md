@@ -46,3 +46,11 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 
 - A failed list/detail request must retain its Back link and explicit retry state, not present an empty ledger, zero totals or a false missing-record redirect. Controlled house dialogs also need focus restoration when opened without a Radix trigger.
 - Never install through a dependency junction into the primary live checkout. Give the isolated worktree its own directory and verify existing resolved versions/integrity after a dependency addition; scope compatible security patches to the new tree.
+
+### Production verification and manager release — 29 October 2026
+- Capture verified existing manager identities at first schema expansion under a profile lock; never grant broad legacy access to an identity created while the new feature is inactive. Gate new provisioning in the database as well as the interface.
+- Preserve an existing manager's logical legacy draft/queue key across activation, while sending the current verified database period in authenticated requests. Permit only its own matching legacy retry receipt, never reuse it in a later personal period.
+- Run Next.js builds and standalone TypeScript checks sequentially: they share generated .next/types/build info. Next route handlers must require the Request supplied by the framework; default parameters produce an invalid optional route signature.
+- Restore public grants and policies during preservation rehearsal. Compare normalized fingerprints with explicit collation, and distinguish managed-service restore warnings from missing business data or permissions.
+- Keep read failures visible when feature availability fails. A missing availability response must not turn a failed feed-history read into No records yet or discard unsaved form state.
+- Review older ad-hoc tests before executing them. Use the explicit isolated release-suite allowlist; never run a test that contains production credentials or creates/deletes live accounts. Keep credential retirement separate and coordinated, without silent signing-key/session changes.

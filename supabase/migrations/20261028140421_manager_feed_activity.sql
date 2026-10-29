@@ -92,6 +92,7 @@ declare c jsonb;s farm_feed_stock;a farm_feed_activities;m farm_feed_stock_movem
 begin
  perform pg_advisory_xact_lock(hashtextextended('manager-period-provisioning',0));
  c:=manager_context(p_actor,'farm',coalesce(nullif(p_payload->>'manager_period_id','')::uuid,nullif(current_setting('operations.period',true),'')::uuid));
+ if not(select enabled from operations_release_state) then raise exception using errcode='55000',message='Feed recording is briefly paused for the update. Keep this entry and retry shortly';end if;
  if jsonb_typeof(p_payload) is distinct from 'object' or octet_length(p_payload::text)>20000 or p_request_id is null then raise exception using errcode='22023',message='A valid feed entry and retry identifier are required';end if;
  if c->>'status'<>'active' and not (c->>'status'='awaiting_handover' and p_operation='starting') and not exists(select 1 from profiles where id=p_actor and role='admin') then raise exception using errcode='42501',message='Complete your inventory handover first';end if;
  period:=(c->>'periodId')::uuid;

@@ -1,6 +1,6 @@
 # Individual manager records, farm handover and funds reconciliation
 
-Status: design reviewed; both builder-check funding decisions confirmed by the user on 28 October 2026. Feed-inventory simplification and the CEO control-centre/data/design requirements were added by the user during plan review. Plan remains unapproved for implementation; no product implementation or production mutation yet.
+Status: approved by the user on 28 October 2026, including both funding decisions and the feed/CEO control-centre addenda. Implementation and isolated verification completed on 29 October; the explicit production release gate remains pending.
 
 ## Purpose and agreed requirements
 

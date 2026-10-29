@@ -78,6 +78,7 @@ begin
   if p_operation='get' then return jsonb_build_object('status','active','periodId',c->'periodId','sessionId',null,'steps','[]'::jsonb,'issues','[]'::jsonb);end if;
   raise exception using errcode='42501',message='Only the new manager can accept their inventory handover';
  end if;
+ if not (c->>'featureEnabled')::boolean then raise exception using errcode='55000',message='Handover is briefly paused for the update. Your saved confirmations are retained';end if;
  if p_operation not in ('get','save','finalize') or jsonb_typeof(p_items) is distinct from 'array' or jsonb_array_length(p_items)>500 or octet_length(p_items::text)>100000 then raise exception using errcode='22023',message='Invalid handover operation';end if;
  if p_operation<>'get' and p_request_id is null then raise exception using errcode='22023',message='A retry identifier is required';end if;
  perform pg_advisory_xact_lock(hashtextextended('primefield-v2-writes',0));

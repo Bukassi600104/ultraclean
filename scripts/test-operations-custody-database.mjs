@@ -41,7 +41,8 @@ try{
  eq(personal.accounts.some(a=>a.holder_type==='custodian'),false);eq(personal.sources.every(a=>a.holder_type==='custodian'),true);eq(personal.receipts.length,0);
  const all=await summary(ids.admin);eq(all.accounts.filter(a=>a.holder_type==='manager').length,1);eq(all.accounts.find(a=>a.id===fund.data.target_account_id).closing,'700000');
  const pending=await write(ids.admin,'handoff',{date:'2026-10-28',amount:'50',source_account_id:fund.data.target_account_id,recipient:{type:'manager',period_id:p.id}});eq(pending.status,'awaiting_receipt');eq((await summary(actor)).receipts[0].remaining,'50');eq(await balance(fund.data.target_account_id),'699950');
- const otherPeriod=await scalar(db,"select id from manager_periods where manager_id=$1 and business='farm'",[ids.farm]);
+ const legacyReceivingPeriod=await scalar(db,"select id from manager_periods where manager_id=$1 and business='farm' and ended_at is null",[ids.farm]);await periodWrite(db,ids.admin,'close',{period_id:legacyReceivingPeriod,reason:'Explicit isolated receiving period transition'});await periodWrite(db,ids.admin,'provision',{manager_id:ids.farm,business:'farm',starts_on:'2026-10-26'});
+ const otherPeriod=await scalar(db,"select id from manager_periods where manager_id=$1 and business='farm' and ended_at is null",[ids.farm]);
  await assert.rejects(()=>write(actor,'handoff',{date:'2026-10-28',amount:'1',source_account_id:fund.data.target_account_id,recipient:{type:'manager',period_id:otherPeriod}}),e=>e.code==='42501');checks++;
  const dated=await write(ids.admin,'fund',{date:'2026-10-26',amount:'500',recipient:{type:'custodian',name:'Dated source'},confirmed_receipt:true});
  await write(actor,'handoff',{date:'2026-10-28',amount:'500',source_account_id:dated.data.target_account_id});

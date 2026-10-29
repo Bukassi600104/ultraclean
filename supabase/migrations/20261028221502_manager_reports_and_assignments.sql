@@ -48,6 +48,7 @@ declare p manager_periods;result jsonb;before_value jsonb;reason text:=nullif(tr
 begin
  if not exists(select 1 from profiles where id=p_actor and role='admin' and not suspended) then raise exception using errcode='42501',message='CEO access required';end if;
  perform pg_advisory_xact_lock(hashtextextended('manager-period-provisioning',0));
+ if p_operation<>'activate' and not(select enabled from operations_release_state) then raise exception using errcode='55000',message='Workspace controls are briefly paused for the update';end if;
  if p_operation in ('close','assign') then
   select * into p from manager_periods where id=(p_payload->>'period_id')::uuid for update;if p.id is null then raise exception using errcode='P0002',message='Manager period not found';end if;before_value:=to_jsonb(p);
   if p_operation='close' and reason is null then raise exception using errcode='22023',message='Explain the period decision';end if;
@@ -110,7 +111,7 @@ create function public.operations_cash_summary(p_actor uuid,p_business text,p_pe
 returns jsonb language plpgsql stable security definer set search_path=public,pg_temp as $$
 declare result jsonb;receivers jsonb:='[]';begin
  result:=operations_cash_summary_before_control(p_actor,p_business,p_period_id,p_from,p_to,p_page,p_limit);
- if exists(select 1 from profiles where id=p_actor and role='admin' and not suspended) then select coalesce(jsonb_agg(jsonb_build_object('period_id',m.id,'name',p.name) order by p.name,m.id),'[]'::jsonb) into receivers from manager_periods m join profiles p on p.id=m.manager_id where m.business=p_business and m.ended_at is null and not p.suspended;end if;
+ if exists(select 1 from profiles where id=p_actor and role='admin' and not suspended) then select coalesce(jsonb_agg(jsonb_build_object('period_id',m.id,'name',p.name) order by p.name,m.id),'[]'::jsonb) into receivers from manager_periods m join profiles p on p.id=m.manager_id where m.business=p_business and m.mode='personal' and m.ended_at is null and not p.suspended;end if;
  return result||jsonb_build_object('manager_receivers',receivers);
 end $$;
 revoke all on function operations_cash_summary(uuid,text,uuid,date,date,integer,integer) from public,anon,authenticated;

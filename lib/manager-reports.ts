@@ -9,6 +9,7 @@ export type ManagerPeriod={id:string;manager_id:string;business:Business;mode:"l
 export type CashBridge={currency:string;owner_ledger:string;tracked_owner:string;unallocated_owner:string;sales_ledger:string;tracked_sales:string;unallocated_sales:string};
 export type ManagerSnapshot={scope:ManagerScope;manager:{id:string;name:string|null;suspended:boolean}|null;periods:ManagerPeriod[];from:string;to:string;asOf:string;records:Record<string,ReportRow[]>;assets:Record<string,ReportRow[]>;cash:CashSummary;cash_daily?:CashSummary;bridge:CashBridge|null;decisions:{handovers:ReportRow[];operational_requests?:ReportRow[];corrections?:ReportRow[]}};
 export async function getManagerSnapshot(scope:ManagerScope,dates:{from?:string;to?:string}={}):Promise<ManagerSnapshot>{
+ if(scope.featureEnabled!==true)throw Object.assign(Error("The updated reports are being prepared. Existing records remain available."),{code:"503"});
  const db=createServerClient();if(!db)throw Error("Reports are unavailable");const {data,error}=await db.rpc("manager_report_snapshot",{p_actor:scope.actorId,p_business:scope.business,p_period_id:scope.periodId,p_from:dates.from??null,p_to:dates.to??null});if(error)throw error;
  if(!data||!data.records||!data.assets||!data.cash||!Array.isArray(data.periods)||data.scope?.actorId!==scope.actorId||data.scope?.business!==scope.business||data.scope?.periodId!==scope.periodId)throw Error("The report scope could not be verified");return data;
 }

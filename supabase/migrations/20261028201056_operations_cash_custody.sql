@@ -63,6 +63,8 @@ create function operations_private.cash_account(p_actor uuid,p_business text,p_c
 returns uuid language plpgsql security definer set search_path=public,pg_temp as $$
 declare account uuid;
 begin
+ -- Legacy spending retains its original ledger flow and cannot debit new personal custody.
+ if p_type in ('manager','awaiting') and not exists(select 1 from manager_periods where id=p_period and business=p_business and mode='personal') then raise exception using errcode='42501',message='Verified manager funds require a personal operating period. Ask Bimbo to start one; legacy records and balances stay unchanged';end if;
  insert into operations_cash_accounts(business,currency,bucket,holder_type,holder_ref,period_id,name,created_by)
  values(p_business,p_currency,p_bucket,p_type,p_ref,p_period,p_name,p_actor) on conflict do nothing;
  select id into account from operations_cash_accounts where business=p_business and currency=p_currency and bucket=p_bucket and holder_type=p_type and holder_ref=p_ref;

@@ -1,5 +1,5 @@
 "use client";
-import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerStorageKey,useOperationsFeature} from "@/contexts/ManagerPeriodContext";
 
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -36,7 +36,7 @@ function fmtDate(date: string) {
 }
 
 export default function DailyFeed({admin=false}: {admin?:boolean}) {
- const managerFetch=useManagerFetch();
+ const managerFetch=useManagerFetch(),{enabled}=useOperationsFeature();
   const {profile}=useAuth();
   const [localOpened,setLocalOpened]=useState("0"),[foreignOpened,setForeignOpened]=useState("0");
   const [localOpening,setLocalOpening]=useState(""),[foreignOpening,setForeignOpening]=useState(""),[openings,setOpenings]=useState<FeedActivity[]>([]);
@@ -69,11 +69,12 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
     setLoadingRecords(true);
     try {
       const response=await managerFetch("/api/farm/daily-feed?limit=30",{cache:"no-store"});const res=await response.json();if(!response.ok)throw Error(res.error||"Unable to load feed history");setRecords(res.data||[]);
+      if(enabled!==true){setStockError("");setStockRows([]);setOpenings([]);return;}
       const stockResponse=await managerFetch("/api/farm/feed-stock",{cache:"no-store"});const stocks=await stockResponse.json();if(!stockResponse.ok)throw Error(stocks.error||"Unable to load available bags");setStockRows(stocks.data??[]);setStockError("");
       const openingResponse=await managerFetch("/api/farm/feed-stock?history=1&limit=500",{cache:"no-store"}),openingRows=await openingResponse.json();if(!openingResponse.ok)throw Error(openingRows.error||"Unable to load recorded openings");setOpenings((openingRows.data||[]).filter((row:FeedActivity)=>row.kind==="opened"));
     } catch(error) {setRecords([]);setStockRows([]);setOpenings([]);setStockError(error instanceof Error?error.message:"Unable to load feed history and available bags");}
     finally { setLoadingRecords(false); }
-  },[managerFetch]);
+  },[managerFetch,enabled]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
@@ -87,7 +88,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
       const values=[{feed_source:"local",num_bags:Number(localBags),bags_opened:Number(localOpened),...(localOpening?{opening_activity_id:localOpening}:{})},{feed_source:"foreign",num_bags:Number(foreignBags),bags_opened:Number(foreignOpened),...(foreignOpening?{opening_activity_id:foreignOpening}:{})}];
       if(values.every(row=>row.num_bags<=0))return toast.error("Enter at least one feeding quantity");
       if(values.some(row=>!Number.isFinite(row.num_bags)||row.num_bags<0||!Number.isInteger(row.bags_opened)||row.bags_opened<0||(row.bags_opened>0&&(row.num_bags<=0||row.opening_activity_id))))return toast.error("New bags opened must be a whole nonnegative count. An opening already recorded uses zero new bags.");
-      pending.current=values.filter(row=>row.num_bags>0).map(row=>({id:crypto.randomUUID(),payload:{date,feed_type:feedType,...row,notes:notes.trim()||undefined}}));
+      pending.current=values.filter(row=>row.num_bags>0).map(row=>({id:crypto.randomUUID(),payload:{date,feed_type:feedType,...(enabled===true?row:{feed_source:row.feed_source,num_bags:row.num_bags}),notes:notes.trim()||undefined}}));
     }
     lock.current=true;setSaving(true);
     function persist(){localStorage.setItem(storageKey!,JSON.stringify(pending.current));}
@@ -126,8 +127,9 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
         </div>
       </div>
 
-      <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Record feeding quantities separately from new bags opened. Opening a new bag deducts it immediately. Feeding from an already opened bag uses 0 new bags. <Link className="font-semibold underline" href={admin?"/dashboard/farm/feed-stock":"/feed-stock"}>View available feed and history</Link>.</p>
-      {stockError?<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}</p>:<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);return <p key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span><br/>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Starting count needed"}</p>;})}</div>}
+      {enabled===true&&<>      <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Record feeding quantities separately from new bags opened. Opening a new bag deducts it immediately. Feeding from an already opened bag uses 0 new bags. <Link className="font-semibold underline" href={admin?"/dashboard/farm/feed-stock":"/feed-stock"}>View available feed and history</Link>.</p>
+      {!stockError&&<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);return <p key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span><br/>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Starting count needed"}</p>;})}</div>}</>}
+      {stockError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}<button type="button" className="ml-2 min-h-11 underline" onClick={()=>void loadRecords()}>Retry feed history</button></p>}
       {saveError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
       {uncertain&&<p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A saved entry is awaiting confirmation. Retry it without changing its values. Confirmed entries are not sent again.</p>}
       <fieldset disabled={saving||uncertain} className="min-w-0 space-y-4">
@@ -200,8 +202,8 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">{[{label:"Local new bags opened",value:localOpened,set:setLocalOpened},{label:"Foreign new bags opened",value:foreignOpened,set:setForeignOpened}].map(field=><label key={field.label} className="text-sm font-semibold">{field.label}<input aria-label={field.label} type="number" min={0} step={1} inputMode="numeric" className="mt-2 w-full rounded-xl border p-3" value={field.value} onChange={event=>field.set(event.target.value)}/></label>)}</div>
-        {[{source:"local",value:localOpening,set:setLocalOpening,opened:setLocalOpened},{source:"foreign",value:foreignOpening,set:setForeignOpening,opened:setForeignOpened}].map(field=><label key={field.source} className="block text-sm font-medium capitalize">{field.source} recorded opening (optional)<select className="mt-1 min-h-11 w-full rounded-xl border p-3 text-sm normal-case" value={field.value} onChange={e=>{field.set(e.target.value);if(e.target.value)field.opened("0");}}><option value="">No opening selected</option>{openings.filter(row=>row.feed_type===feedType&&row.feed_source===field.source&&row.activity_date<=date).map(row=><option key={row.id} value={row.id}>{row.activity_date} · {row.bags} bags opened</option>)}</select></label>)}
+        {enabled===true&&<>        <div className="grid grid-cols-2 gap-3">{[{label:"Local new bags opened",value:localOpened,set:setLocalOpened},{label:"Foreign new bags opened",value:foreignOpened,set:setForeignOpened}].map(field=><label key={field.label} className="text-sm font-semibold">{field.label}<input aria-label={field.label} type="number" min={0} step={1} inputMode="numeric" className="mt-2 w-full rounded-xl border p-3" value={field.value} onChange={event=>field.set(event.target.value)}/></label>)}</div>
+        {[{source:"local",value:localOpening,set:setLocalOpening,opened:setLocalOpened},{source:"foreign",value:foreignOpening,set:setForeignOpening,opened:setForeignOpened}].map(field=><label key={field.source} className="block text-sm font-medium capitalize">{field.source} recorded opening (optional)<select className="mt-1 min-h-11 w-full rounded-xl border p-3 text-sm normal-case" value={field.value} onChange={e=>{field.set(e.target.value);if(e.target.value)field.opened("0");}}><option value="">No opening selected</option>{openings.filter(row=>row.feed_type===feedType&&row.feed_source===field.source&&row.activity_date<=date).map(row=><option key={row.id} value={row.id}>{row.activity_date} · {row.bags} bags opened</option>)}</select></label>)}</>}
         {/* Notes */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -228,7 +230,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
           <div className="space-y-2">
             {[1, 2].map((i) => <div key={i} className="h-14 rounded-2xl bg-gray-100 animate-pulse" />)}
           </div>
-        ) : records.length === 0 ? (
+        ) : stockError ? null : records.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">No records yet</p>
         ) : (
           <div className="space-y-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import {useOperationsFeature} from "@/contexts/ManagerPeriodContext";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -140,6 +141,7 @@ function NavContent({
   pathname: string;
   onClose?: () => void;
 }) {
+  const {enabled}=useOperationsFeature();
   return (
     <nav className="flex-1 overflow-y-auto py-3">
       {NAV_SECTIONS.map((section) => (
@@ -152,7 +154,7 @@ function NavContent({
             <div className="my-2 mx-3 border-t border-white/8" />
           )}
           <div className="px-3 space-y-0.5">
-            {section.items.map((item) => {
+            {section.items.filter(item=>item.href!=="/dashboard/funds"||enabled===true).map((item) => {
               const isActive = isDashboardDestinationActive(pathname, item.href, NAV_SECTIONS.flatMap(section => section.items.map(link => link.href)));
               return (
                 <Link

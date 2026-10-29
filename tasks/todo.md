@@ -229,11 +229,13 @@ Called "Instant Quote" — placed in strategic CTAs on Hero, Services, CTASectio
 - [x] Implement linked funds custody/receipts and exact reconciliation.
 - [x] Make CEO the all-business activity, reconciliation and approval control centre; check every sidebar/nested layout and centred form/dialog using actual data and truthful empty/error states only.
 - [x] Implement the two eligible accounts' genuine XLSX exports.
-- [ ] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
+- [x] Restore/rehearse additive migrations and run account, isolation, funds/concurrency, export and workflow tests.
 - [ ] Release only the verified compatible application/schema, with preservation comparisons and rollback evidence.
 
-Current stage: Tasks 1–6 implemented and verified in the isolated branch. Personal records, handover, manager-led dated feed activity, true cash custody, pending funding and internal CEO reports are integrated. Tasks 6A and 7 complete the CEO layout/read-error/keyboard matrix and restricted exports; Task 8 preservation, rollout guards and release verification remain. No production records, figures, account state, schema or deployment have changed.
+Current stage: Tasks 1–7 and Task 8 implementation, preservation rehearsal, regression testing and independent review are complete in the isolated branch. Production release remains pending the approved plan’s final release gate and explicit handling of the confirmed existing signup/service-credential exposure. No production records, figures, account state, schema, credentials or deployment have been changed by this update.
 
 Task 6A evidence: docs/superpowers/plans/2026-10-28-ceo-layout-verification.md. Read-only route checks use actual pages and house components; synthetic boundary fixtures remain isolated from runtime.
 
 Task 7: SQL24, actual XLSX40, API35, export UI13 and existing CEO report UI14 passed; TypeScript/lint clean. Own frozen-lock install and scoped dependency patches retain all original entries/versions. See docs/superpowers/plans/2026-10-29-legacy-export-validation.md. Production remains unchanged.
+
+Task 8 verified: lint, production build and sequential generated TypeScript checks pass;81 unchanged public browser tests pass;62 explicitly isolated suites are verified across execution groups, with affected regressions rerun after review fixes. CEO matrix144 across32pages, operational Back links87, actual provider14, fundsUI36, reportUI19, feedUI41 and XLSX SQL24/workbook40/API35/UI13 are covered. Full original84table fingerprints survive all8migrations/activation and coordinated pause/resume. Real two-connection PostgreSQL races13 pass. Independent review’s3findings plus movement-date follow-up are resolved. See docs/superpowers/plans/2026-10-29-manager-handover-release.md for exact boundaries, security release conditions and rollback limits.

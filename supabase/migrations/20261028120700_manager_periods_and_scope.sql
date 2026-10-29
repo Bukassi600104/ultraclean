@@ -1,11 +1,20 @@
 -- Preconditions: existing Primefield V2, operations, feed and livestock migrations.
 -- Adds scope metadata only; no original row/value/legacy actor is backfilled or updated.
--- NULL starts_on means unknown legacy start. Activation captures existing account IDs,
--- not their historical balances. Locks serialize activation with existing business writes.
+-- NULL starts_on/created_by retain unknown legacy attribution. Capture reviewed identities now,
+-- never at later activation. Set operations.expected_profiles to the verified ID/role JSON array
+-- sorted by ID before applying; any intervening account change aborts without changing records.
+-- Profile INSERT/role changes pause until activation. Existing reads/operating records remain.
 -- Before personal activity, rollback can leave these additive tables dormant. Afterwards
 -- retain the scope boundary and use compatible code; disabling UI must never restore
 -- business-wide access for a personal account. No destructive down migration is safe.
 begin;
+set local lock_timeout='5s';
+lock table public.profiles in share row exclusive mode;
+do $$ declare expected jsonb:=nullif(current_setting('operations.expected_profiles',true),'')::jsonb;actual jsonb;
+begin
+ select coalesce(jsonb_agg(jsonb_build_object('id',id,'role',role) order by id),'[]') into actual from profiles;
+ if expected is null or expected<>actual then raise exception using errcode='55000',message='Account catalog changed or was not verified. Refresh the read-only baseline before applying this migration';end if;
+end $$;
 create schema if not exists operations_private;
 revoke all on schema operations_private from public,anon,authenticated,service_role;
 create table public.operations_release_state(
@@ -18,11 +27,20 @@ create table public.manager_periods(
  business text not null check(business in ('farm','property','content')),
  mode text not null check(mode in ('legacy','personal')),starts_on date,
  status text not null check(status in ('active','awaiting_handover','closed')),
- ended_at timestamptz,created_by uuid not null references profiles(id),created_at timestamptz not null default now(),
+ ended_at timestamptz,created_by uuid references profiles(id),created_at timestamptz not null default now(),
  check((mode='legacy' and starts_on is null) or (mode='personal' and starts_on is not null)),
  check((status='closed')=(ended_at is not null))
 );
 create unique index manager_period_active on manager_periods(manager_id,business) where ended_at is null;
+insert into manager_periods(manager_id,business,mode,status,created_by)
+ select id,case role when 'manager' then 'farm' when 'property_manager' then 'property' else 'content' end,'legacy','active',null
+ from profiles where role in ('manager','property_manager','content_manager');
+create function operations_private.profile_setup_pause() returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+begin
+ if not(select enabled from operations_release_state) and (tg_op='INSERT' or old.role is distinct from new.role) then raise exception using errcode='55000',message='New account setup is briefly paused for the update. Existing accounts remain unchanged';end if;
+ return new;
+end $$;
+create trigger manager_setup_pause before insert or update of role on profiles for each row execute function operations_private.profile_setup_pause();
 create table public.manager_record_links(
  resource text not null,record_id uuid not null,period_id uuid references manager_periods(id),
  recorded_by uuid references profiles(id),linked_at timestamptz not null default now(),primary key(resource,record_id)
@@ -63,23 +81,23 @@ $$;
 
 create function public.manager_context(p_actor uuid,p_business text,p_period_id uuid default null)
 returns jsonb language plpgsql stable security definer set search_path=public,pg_temp as $$
-declare a profiles; p manager_periods; activated timestamptz; expected_role text;
+declare a profiles; p manager_periods; activated timestamptz; released boolean; expected_role text;
 begin
  select * into a from profiles where id=p_actor and not suspended;
  expected_role:=case p_business when 'farm' then 'manager' when 'property' then 'property_manager' when 'content' then 'content_manager' end;
  if a.id is null or expected_role is null or a.role not in ('admin',expected_role) then raise exception using errcode='42501',message='Manager access required';end if;
+ select enabled,activated_at into released,activated from operations_release_state;
  if a.role='admin' and p_period_id is null then
-  return jsonb_build_object('business',p_business,'actorId',a.id,'mode','admin_all','managerId',null,'periodId',null,'startsOn',null,'status','active');
+  return jsonb_build_object('business',p_business,'actorId',a.id,'mode','admin_all','managerId',null,'periodId',null,'startsOn',null,'status','active','featureEnabled',released);
  end if;
  if p_period_id is not null then select * into p from manager_periods where id=p_period_id and business=p_business;
  else select * into p from manager_periods where manager_id=a.id and business=p_business and ended_at is null;end if;
  if p_period_id is not null and (p.id is null or (a.role<>'admin' and p.manager_id<>a.id)) then raise exception using errcode='42501',message='Own manager period only';end if;
  if p.id is null then
-  select activated_at into activated from operations_release_state;
-  if activated is not null then raise exception using errcode='42501',message='Account setup is incomplete. Ask Bimbo to finish assigning access.';end if;
-  return jsonb_build_object('business',p_business,'actorId',a.id,'mode','legacy','managerId',a.id,'periodId',null,'startsOn',null,'status','active');
+  raise exception using errcode='42501',message='Account setup is incomplete. Ask Bimbo to finish assigning access.';
  end if;
- return jsonb_build_object('business',p.business,'actorId',a.id,'mode',p.mode,'managerId',p.manager_id,'periodId',p.id,'startsOn',p.starts_on,'status',p.status);
+ if activated is null and p.mode<>'legacy' then raise exception using errcode='42501',message='This workspace is not active yet';end if;
+ return jsonb_build_object('business',p.business,'actorId',a.id,'mode',p.mode,'managerId',p.manager_id,'periodId',case when activated is null then null else p.id end,'startsOn',p.starts_on,'status',p.status,'featureEnabled',released);
 end $$;
 
 create function public.manager_period_write(p_actor uuid,p_operation text,p_payload jsonb default '{}')
@@ -92,13 +110,11 @@ begin
   perform pg_advisory_xact_lock(hashtextextended('primefield-v2-writes',0));
   perform pg_advisory_xact_lock(hashtextextended('property-operations',0));
   perform pg_advisory_xact_lock(hashtextextended('content-operations',0));
-  if (select activated_at is not null from operations_release_state) then return jsonb_build_object('active',true);end if;
-  insert into manager_periods(manager_id,business,mode,status,created_by)
-   select id,case role when 'manager' then 'farm' when 'property_manager' then 'property' else 'content' end,'legacy','active',p_actor
-   from profiles where role in ('manager','property_manager','content_manager');
-  update operations_release_state set enabled=true,activated_at=now(),activated_by=p_actor;
+  if (select activated_at is not null from operations_release_state) then return jsonb_build_object('active',(select enabled from operations_release_state));end if;
+  update operations_release_state set enabled=true,activated_at=clock_timestamp(),activated_by=p_actor;
   return jsonb_build_object('active',true);
  end if;
+ if not(select enabled from operations_release_state) then raise exception using errcode='55000',message='New workspace setup is briefly paused for the update';end if;
  if p_operation='provision' then
   select * into person from profiles where id=(p_payload->>'manager_id')::uuid and not suspended;
   business_name:=case person.role when 'manager' then 'farm' when 'property_manager' then 'property' when 'content_manager' then 'content' end;
