@@ -39,5 +39,12 @@ try{
  await db.query('begin');await purchase(db,'payment',cost,order.id);settled=false;
  const overpay=purchase(other,'payment',cost,order.id).then(()=>null,e=>e).finally(()=>{settled=true;});await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.equal((await overpay)?.code,'23514');
  assert.equal(await scalar(db,'select sum(amount)::text from farm_purchase_payments'),'15');
- console.log('PASS PostgreSQL 17 concurrent retry, closing/write, partial delivery and payment limits; synthetic database '+database);
+ const credit=(client,op,values,id=null,request=crypto.randomUUID())=>scalar(client,'select farm_credit_write($1,$2,$3::jsonb,$4,$5)',[ids.admin,op,JSON.stringify(values),id,request]);
+ const customer=await credit(db,'customer',{name:'Concurrent actual customer'});await credit(db,'terms',{days:7,reason:'Approved'},customer.id);
+ await credit(db,'invoice',{date:'2026-10-30',customer_id:customer.id,credit:true,sale:{product:'other',other_product_name:'Untracked produce',quantity:1,unit_price:100,pricing_basis:'per_unit'}});
+ const receipt={date:'2026-10-30',customer_id:customer.id,amount:'75',cash_receiver:{type:'self'}};
+ await db.query('begin');await credit(db,'receipt',receipt);settled=false;const concurrent=credit(other,'receipt',receipt).finally(()=>{settled=true;});await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');await concurrent;
+ assert.equal(await scalar(db,'select sum(amount)::text from farm_receipt_allocations'),'100');
+ assert.equal(await scalar(db,'select sum(amount)::text from farm_customer_receipts'),'150');
+ console.log('PASS PostgreSQL 17 concurrent retry, closing/write, partial delivery/payment limits and simultaneous FIFO allocation; synthetic database '+database);
 }finally{await db.query('rollback').catch(()=>{});await db.end();await other.end();}

@@ -13,14 +13,14 @@ export async function getFarmFinance(scope: { date: string; from?: string; to?: 
    return scoped.map(row=>({...row,amount:row.amount_exact??row.amount,cost:row.cost_exact??row.cost,total_amount:row.total_amount_exact??row.total_amount})) as unknown as FinancialRow[];
   }
   for (let offset = 0; ; offset += 500) {
-   const columns: Record<string,string> = {farm_purchase_payments:"date,category,amount::text,expense_source,voided_at",farm_sales:"date,product,total_amount::text,voided_at",farm_expenses:"date,category,amount::text,expense_source,voided_at",farm_feed_purchases:"date,cost::text",farm_fund_transfers:"date,amount::text,voided_at"};
+   const columns: Record<string,string> = {farm_customer_receipts:"date,amount::text,voided_at",farm_customer_refunds:"date,amount::text,voided_at",farm_credit_notes:"date,amount::text,voided_at",farm_purchase_payments:"date,category,amount::text,expense_source,voided_at",farm_sales:"date,product,total_amount::text,voided_at,invoice_id",farm_expenses:"date,category,amount::text,expense_source,voided_at",farm_feed_purchases:"date,cost::text",farm_fund_transfers:"date,amount::text,voided_at"};
    const { data, error } = await supabase!.from(table).select(columns[table]).lte("date", maxDate).order("id").range(offset, offset + 499);
    // The client type parser does not model PostgREST numeric-to-text casts.
    if (error) throw error; rows.push(...((data ?? []) as unknown as FinancialRow[])); if (!data || data.length < 500) return rows;
   }
  }
- const [transfers, expenses, feed, sales, purchases] = await Promise.all([all("farm_fund_transfers"), all("farm_expenses"), all("farm_feed_purchases"), all("farm_sales"),all("farm_purchase_payments")]);
- const result=calculateFarmFinance({ transfers, expenses, feed, sales, purchases }, scope);
+ const [transfers, expenses, feed, sales, purchases,receipts,refunds,credits] = await Promise.all([all("farm_fund_transfers"), all("farm_expenses"), all("farm_feed_purchases"), all("farm_sales"),all("farm_purchase_payments"),all("farm_customer_receipts"),all("farm_customer_refunds"),all("farm_credit_notes")]);
+ const result=calculateFarmFinance({ transfers, expenses, feed, sales, purchases,receipts,refunds,credits }, scope);
  if(manager?.mode!=="personal")return result;
  return applyPersonalFarmCash(result,await getCashSummary(manager,{from:scope.date,to:scope.date}));
 }

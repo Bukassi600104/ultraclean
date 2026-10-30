@@ -1,4 +1,4 @@
-import {withManagerWrite} from "@/lib/manager-write-api";
+import {withManagerWrite,managerRpc} from "@/lib/manager-write-api";
 import {managerReadResponse} from "@/lib/manager-read-api";
 import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
@@ -13,6 +13,7 @@ import {cashReceiver} from "@/lib/operations-cash-validation";
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
+  customer_id:z.string().uuid().optional(),credit:z.boolean().optional(),
   batch_id: z.string().uuid().nullable().optional(),
     egg_batch_id: z.string().uuid().nullable().optional(),
   cash_receiver:cashReceiver.optional(),
@@ -111,6 +112,13 @@ async function legacyPOST(request: NextRequest) {
   }
 
   const rows = parsed.data.map((item) => ({ ...item, pricing_basis: item.pricing_basis ?? (FARM_PRODUCTS.find(product => product.key === item.product)!.pricingBasis) }));
+  if(rows.some(row=>row.customer_id)){
+    if(rows.some(row=>!row.customer_id))return NextResponse.json({error:'Choose a customer for each invoice'},{status:400});
+    const requestId=request.headers.get('X-Request-ID')||(Array.isArray(body)?body[0]?.request_id:null);
+    if(!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:'Retry identity is required'},{status:400});
+    const {data,error}=await managerRpc(supabase,'farm_credit_write',{p_actor:profile.id,p_operation:'invoice_batch',p_payload:{rows},p_request:requestId});
+    if(error)return farmErrorResponse(error);return NextResponse.json({data:data.rows},{status:201});
+  }
   const { data, error } = await farmWrite(profile, "sale", "create", rows, { requestId: request.headers.get("X-Request-ID") || (Array.isArray(body) ? body[0]?.request_id : (body as { request_id?: string })?.request_id) || undefined });
   if (error) return farmErrorResponse(error);
   return NextResponse.json({ data }, { status: 201 });

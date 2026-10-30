@@ -21,3 +21,9 @@ console.log('PASS: dated mortality includes complete history for reversals, incl
 const purchaseTotals=calculateFarmFinance({transfers:[{date:prior,amount:'500000'}],expenses:[],feed:[],sales:[],purchases:[{date:prior,amount:'100000',category:'feed',expense_source:'owner_fund'},{date:day,amount:'200000',category:'feed',expense_source:'owner_fund'},{date:day,amount:'90000',category:'feed',voided_at:day},{date:day,amount:'50.10',category:'repair',expense_source:'sales_cash'}]},{date:day,from:day,to:day});
 assert.equal(purchaseTotals.opening_balance,400000);assert.equal(purchaseTotals.feed_expenses,200000);assert.equal(purchaseTotals.total_expenses,200050.1);assert.equal(purchaseTotals.closing_balance,200000);assert.equal(purchaseTotals.sales_cash_balance,-50.1);
 console.log('PASS purchase payments counted once, feed/owner funding, voids and true opening balances');
+
+const creditCash=calculateFarmFinance({transfers:[],expenses:[],feed:[],sales:[{date:prior,total_amount:'100000',invoice_id:'invoice'},{date:prior,total_amount:'50'}],receipts:[{date:prior,amount:'40000'},{date:day,amount:'35000'}],refunds:[{date:day,amount:'1000'}],credits:[{date:day,amount:'5000'}]},{date:day,from:day,to:day});
+assert.equal(creditCash.opening_sales_cash_balance,undefined);
+assert.equal(creditCash.period_reconciliation.opening_sales_cash_balance,40050);
+assert.equal(creditCash.collections,34000);assert.equal(creditCash.sales_cash_balance,74050);assert.equal(creditCash.revenue,-5000);assert.equal(creditCash.total_expenses,0);
+console.log('PASS invoice revenue does not become cash; actual receipts/refunds preserve true openings and credits are not expenses');

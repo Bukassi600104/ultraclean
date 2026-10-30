@@ -1,4 +1,5 @@
 "use client";
+import {FarmCustomerPicker} from '@/components/manager/FarmCustomerPicker';
 import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
 import {CashReceiverSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
@@ -79,7 +80,7 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type SaleDraft={form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
+type SaleDraft={customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
 
 export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
@@ -90,6 +91,7 @@ export default function SaleProductPage() {
   const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
 
+  const [customerId,setCustomerId]=useState(''),[credit,setCredit]=useState(false);
   const [batchId,setBatchId]=useState('');
   const [eggBatchId,setEggBatchId]=useState('');
   useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey]);
@@ -113,7 +115,7 @@ export default function SaleProductPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
   const [receiver,setReceiver]=useState("");
-  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setRequestId(submission.pending.id);},[submission.pending]);
 
 
   useEffect(() => {
@@ -148,7 +150,8 @@ export default function SaleProductPage() {
 
   function validate(): string | null {
     if (!form.date) return "Select a date";
-    if(personal&&!receiver)return "Choose who actually received the payment";
+    if(personal&&!customerId&&!submission.pending)return "Choose a customer for this invoice";
+    if(!credit&&customerId&&!receiver)return "Choose who actually received the payment";
     if ((productKey === "crops" || (productKey === "other"&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
     if(eggBatchId&&!Number.isInteger(Number(form.quantity)))return "Enter a whole egg count";
     if (productKey === "catfish") {
@@ -202,7 +205,8 @@ export default function SaleProductPage() {
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: form.customer_name.trim() || undefined,
-        ...(personal?{cash_receiver:selectedCashReceiver(receiver)}:{}),
+        ...(customerId?{customer_id:customerId,credit}:{}),
+        ...(!credit&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
 
       if (productKey === "catfish") {
@@ -215,7 +219,7 @@ export default function SaleProductPage() {
         if (productKey === "crops" || (productKey === "other"&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId},requestId);
+      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId,customerId,credit},requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -361,7 +365,7 @@ export default function SaleProductPage() {
           </div>
         )}
 
-        {personal&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
+        {personal&&!credit&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {/* 4. Payment method */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Payment Method</label>
@@ -380,12 +384,7 @@ export default function SaleProductPage() {
           </div>
         </div>
 
-        {/* 5. Customer name — optional, at bottom */}
-        <div>
-          <label htmlFor="sale-customer" className="text-xs font-bold uppercase tracking-wider text-gray-500">Customer Name <span className="font-normal normal-case text-gray-400">(optional)</span></label>
-          <input id="sale-customer" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
-            placeholder="Enter customer name" value={form.customer_name} onChange={(e) => updateField("customer_name", e.target.value)} />
-        </div>
+        <>{personal?<FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={setCredit}/>:<label className="block text-sm font-semibold">Customer name (optional)<input className="mt-1 min-h-11 w-full rounded-xl border p-3" value={form.customer_name} onChange={e=>updateField("customer_name",e.target.value)}/></label>}</>
 
         {/* 6. Notes — optional */}
         <div>

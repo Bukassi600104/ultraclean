@@ -262,7 +262,7 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [x] Private photographs, durable offline media, batch daily logs, mortality proof and recorded questions/replies implemented and checked in isolation.
 - [x] Structured purchasing approvals, actual payments and confirmed/partial deliveries.
 - [x] Egg store, all-store physical counts/decisions and defensible feed-coverage estimates.
-- [ ] New sale invoices, actual receipts, credit/part-payments and customer debt reconciliation across Farm and CEO.
+- [x] New sale invoices, actual receipts, credit/part-payments and customer debt reconciliation across Farm and CEO.
 - [ ] Health schedules/proof and measured batch performance with transparent unknown/unallocated values.
 - [ ] CEO urgent controls, report exports, configured summaries and timezone/display-currency support.
 - [ ] Consistent mobile/PWA experience, optional scoped support access/additional sites and staff handover.
