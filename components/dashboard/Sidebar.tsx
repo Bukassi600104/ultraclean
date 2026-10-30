@@ -68,7 +68,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/ultratidy", label: "UltraTidy", icon: Sparkles },
       { href: "/dashboard/dba", label: "DBA Products", icon: ShoppingBag },
       { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
-      { href: "/dashboard/farm", label: "Farm", icon: Tractor },
+      { href: "/dashboard/farm/control", label: "Farm", icon: Tractor },
       { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
       { href: "/dashboard/farm/credit", label: "Customers & payments", icon: Package },
       { href: "/dashboard/farm/health", label: "Health tasks", icon: Package },

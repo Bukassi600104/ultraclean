@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  body:has([data-farm-report]) [data-hq] > aside,
+  body:has([data-farm-report]) [data-hq] > button,
+  body:has([data-farm-report]) header { display: none !important; }
+  body:has([data-farm-report]) [data-hq],
+  body:has([data-farm-report]) [data-ceo-content] { display: block; height: auto; overflow: visible; background: white; }
+  [data-farm-report] { color: black; font-size: 11pt; }
+  [data-farm-report] a { text-decoration: none; }
+  [data-farm-report] pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

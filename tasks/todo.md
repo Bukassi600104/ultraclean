@@ -272,3 +272,5 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 
 - [x] Pulse Task4 purchasing implemented locally: separate approvals/payments/deliveries, funding review, immutable reports, safe receipt links and complete financial totals; isolated regression and preservation evidence recorded.
 - [ ] Pulse Tasks5–10: stores/eggs/counts, sales credit/receipts, health/performance, CEO reporting/configuration, full visual adaptation and final release verification.
+
+- Pulse Task8: CEO control/reporting and opt-in summaries implemented locally; targeted SQL/API/UI tests pass. No production changes. Remaining: Task9 interface/access, Task10 full release gates.

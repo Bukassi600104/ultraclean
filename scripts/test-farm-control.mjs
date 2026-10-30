@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';import {managerDatabase,ids,scalar,periodWrite} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase();
+try{
+ await periodWrite(db,ids.admin,'activate');
+ const data=await scalar(db,'select farm_control_read($1,null,$2::date,$3::date)',[ids.admin,'2026-10-01','2026-10-30']);
+ assert.equal(data.report.scope.actorId,ids.admin);assert.equal(data.config,null);assert.equal(data.report.records.farm_purchase_lines.length,0);assert.equal(data.health.tasks.length,0);
+ await assert.rejects(()=>scalar(db,'select farm_control_read($1,null,$2::date,$3::date)',[ids.farm,'2026-10-01','2026-10-30']),e=>e.code==='42501');
+ const config=await scalar(db,'select farm_reporting_config_write($1,$2::jsonb,$3)',[ids.admin,JSON.stringify({timezone:'America/Toronto',mortality_alert_count:2,feed_alert_days:3,display_currency:'CAD',exchange_rate:'0.001',rate_date:'2026-10-30',rate_valid_until:'2026-11-05',rate_source:'Owner supplied actual rate',reason:'Approved report preferences'}),crypto.randomUUID()]);assert.equal(config.timezone,'America/Toronto');
+ await assert.rejects(()=>scalar(db,'select farm_reporting_config_write($1,$2::jsonb,$3)',[ids.farm,JSON.stringify({timezone:'Africa/Lagos',reason:'Attempt'}),crypto.randomUUID()]),e=>e.code==='42501');
+ const settings=await scalar(db,'select farm_summary_configure($1,$2::jsonb)',[ids.admin,JSON.stringify({channel:'email',enabled:true,recipient:'isolated@example.test',sender:'verified@example.test',timezone:'Africa/Lagos',delivery_time:'00:00',reason:'Isolated delivery test'})]);
+ const day=await scalar(db,"select ((now() at time zone 'Africa/Lagos')::date-1)::text");
+ const job=await scalar(db,'select farm_summary_claim($1,$2::date,$3)',[settings.id,day,'Original daily snapshot']);
+ assert.ok(job.id);assert.equal(await scalar(db,'select farm_summary_claim($1,$2::date,$3)',[settings.id,day,'Updated source']),null);
+ await scalar(db,"select farm_summary_finish($1,$2,'failed',null,'Provider rejected')",[job.id,job.claim_id]);
+ await db.query("update farm_summary_deliveries set claimed_at=now()-interval '16 minutes' where id=$1",[job.id]);
+ const retried=await scalar(db,'select farm_summary_claim($1,$2::date,$3)',[settings.id,day,'Changed source must not replace retry snapshot']);assert.equal(retried.summary,'Original daily snapshot');assert.equal(retried.attempts,2);
+ await scalar(db,"select farm_summary_finish($1,$2,'sent','isolated-provider-id',null)",[retried.id,retried.claim_id]);
+ const changed=await scalar(db,'select farm_summary_configure($1,$2::jsonb)',[ids.admin,JSON.stringify({channel:'email',enabled:true,recipient:'isolated@example.test',sender:'verified@example.test',timezone:'UTC',delivery_time:'00:00',reason:'Changed timezone'})]);
+ assert.equal(await scalar(db,'select farm_summary_claim($1,$2::date,$3)',[changed.id,day,'Must not send twice']),null);
+ const actor='00000000-0000-4000-8000-000000000084';await db.query('insert into auth.users(id) values($1)',[actor]);await db.query("insert into profiles(id,role,name) values($1,'manager','Isolated manager')",[actor]);
+ const period=await periodWrite(db,ids.admin,'provision',{manager_id:actor,business:'farm',starts_on:'2026-10-30'});await db.query("update manager_periods set status='active' where id=$1",[period.id]);
+ await scalar(db,"select farm_credit_write($1,'customer',$2::jsonb,null,$3)",[ids.admin,JSON.stringify({name:'Unassigned customer'}),crypto.randomUUID()]);
+ const scoped=await scalar(db,'select farm_control_read($1,$2,$3::date,$4::date)',[ids.admin,period.id,'2026-10-01','2026-10-30']);assert.equal(scoped.credit.customers.length,0);
+ const {load}=await import('./load-pure-typescript.mjs'),{displayConversion,farmAlerts}=load('lib/farm-summary.ts');
+ assert.match(displayConversion('100000',config,'2026-10-30'),/CAD 100.00/);assert.match(displayConversion('100000',config,'2026-11-06'),/expired/);
+ const alertSource={...data,currentCredit:{...data.currentCredit,invoices:[{id:'late',number:'PF-test',customer_name:'Actual customer',owed:'25000',overdue_days:1}]}};assert.equal(farmAlerts(alertSource)[0].id,'late');
+ const {writeFile}=await import('node:fs/promises'),os=await import('node:os'),path=await import('node:path');await writeFile(path.join(os.tmpdir(),'primefield-control-fixture.json'),JSON.stringify(data));
+ console.log('PASS CEO consistent control snapshot, scoped source children, empty configuration and genuine preferences');
+ console.log('PASS daily delivery ownership, retained retry snapshot, once-per-day across timezone changes and stale currency separation');
+}catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}

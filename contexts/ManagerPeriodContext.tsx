@@ -22,18 +22,24 @@ export function useManagerFetch(){
   if(controller.current.signal.aborted)controller.current=new AbortController();
   const headers=new Headers(init.headers);
   if(scope){headers.set("X-Manager-Actor",scope.actorId);headers.set("X-Manager-Period",scope.periodId||"legacy");}
+  if(scope?.periodId&&scope.actorId!==scope.managerId){
+   const url=new URL(input instanceof Request?input.url:String(input),window.location.origin);
+   if(url.origin!==window.location.origin)throw Error('Scoped requests must stay within this application');
+   url.searchParams.set('period_id',scope.periodId);input=input instanceof Request?new Request(url,input):url;
+  }
   const response=await fetch(input,{...init,cache:"no-store",headers,signal:AbortSignal.any([controller.current.signal,...(init.signal?[init.signal]:[])])});
   if(current.current!==key)throw new DOMException("Manager changed","AbortError");return response;
  },[key,scope]);
 }
-export function ManagerPeriodProvider({business,actorId,children}:{business:Business;actorId?:string;children:ReactNode}){
+export function ManagerPeriodProvider({business,actorId,periodId,children}:{business:Business;actorId?:string;periodId?:string;children:ReactNode}){
  const {profile}=useAuth(),identity=actorId||profile?.id;
+ const workspaceKey=`${identity}:${business}:${periodId||''}`;
  const [state,setState]=useState<{key:string;scope:ManagerScope}|null>(null),[error,setError]=useState(""),[retry,setRetry]=useState(0);
  useEffect(()=>{if(!identity)return;const controller=new AbortController();setError("");setState(null);
-  fetch(`/api/operations/manager-context?business=${business}`,{cache:"no-store",signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok)throw Error(body.error);if(body.actorId!==identity||body.business!==business||typeof body.featureEnabled!=="boolean")throw Error("Manager identity changed. Refresh before continuing.");if(!controller.signal.aborted)setState({key:identity,scope:body});}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});
+  fetch(`/api/operations/manager-context?business=${business}${periodId?'&period_id='+encodeURIComponent(periodId):''}`,{cache:"no-store",signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok)throw Error(body.error);if(body.actorId!==identity||body.business!==business||typeof body.featureEnabled!=="boolean"||(periodId&&body.periodId!==periodId))throw Error("Manager identity changed. Refresh before continuing.");if(!controller.signal.aborted)setState({key:workspaceKey,scope:body});}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});
   return()=>controller.abort();
- },[identity,business,retry]);
- if(!state||state.key!==identity)return <div className="mx-auto max-w-xl p-6" role={error?"alert":"status"}>{error||"Loading your workspace…"}{error&&<button className="ml-3 min-h-11 underline" onClick={()=>setRetry(v=>v+1)}>Retry</button>}</div>;
+ },[identity,business,retry,periodId,workspaceKey]);
+ if(!state||state.key!==workspaceKey)return <div className="mx-auto max-w-xl p-6" role={error?"alert":"status"}>{error||"Loading your workspace…"}{error&&<button className="ml-3 min-h-11 underline" onClick={()=>setRetry(v=>v+1)}>Retry</button>}</div>;
  if(state.scope.mode==="personal"&&!state.scope.featureEnabled)return <div className="mx-auto max-w-xl p-6" role="status">Your workspace is briefly paused for an update. Saved entries are retained.<button className="ml-3 min-h-11 underline" onClick={()=>setRetry(v=>v+1)}>Refresh workspace</button></div>;
  return <Context.Provider value={state.scope}><div key={`${state.key}:${state.scope.periodId}`}>{children}</div></Context.Provider>;
 }
