@@ -260,8 +260,8 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [ ] Implementation in progress: verify baseline and isolated restore, then complete the ten linked phases. Production release still requires the plan's explicit release approval.
 - [x] Verified live preconditions and linked named sites/batches in isolation, retaining legacy quantities and manager boundaries.
 - [x] Private photographs, durable offline media, batch daily logs, mortality proof and recorded questions/replies implemented and checked in isolation.
-- [ ] Structured purchasing approvals, actual payments and confirmed/partial deliveries.
-- [ ] Egg store, all-store physical counts/decisions and defensible feed-coverage estimates.
+- [x] Structured purchasing approvals, actual payments and confirmed/partial deliveries.
+- [x] Egg store, all-store physical counts/decisions and defensible feed-coverage estimates.
 - [ ] New sale invoices, actual receipts, credit/part-payments and customer debt reconciliation across Farm and CEO.
 - [ ] Health schedules/proof and measured batch performance with transparent unknown/unallocated values.
 - [ ] CEO urgent controls, report exports, configured summaries and timezone/display-currency support.

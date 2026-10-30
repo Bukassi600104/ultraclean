@@ -7,6 +7,7 @@ import { FARM_PRODUCT_KEYS } from "@/lib/farm-products";
 import {cashReceiver} from "@/lib/operations-cash-validation";
 export const runtime = "nodejs";
 const schema = z.object({
+  batch_id:z.string().uuid().nullable().optional(),egg_batch_id:z.string().uuid().nullable().optional(),
   cash_receiver:cashReceiver.optional(),
   product: z.enum(FARM_PRODUCT_KEYS).optional(),
   quantity: z.number().positive().optional(), unit_price: z.number().positive().optional(),

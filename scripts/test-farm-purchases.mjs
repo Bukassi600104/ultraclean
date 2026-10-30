@@ -46,6 +46,7 @@ try{
  assert.equal(await scalar(db,'select sum(amount)::text from operations_cash_postings where account_id=$1',[confirmation.data.target_account_id]),'0');
  await assert.rejects(()=>write(actor,'payment',{...payment,amount:'1'},order.id),e=>e.code==='23514');
  const read=await scalar(db,'select farm_purchase_read($1,$2)',[actor,period.id]);assert.equal(read.purchases[0].paid_exact,'300000');
+ assert.equal(await scalar(db,"select operations_private.store_unit_cost('feed',id,'2026-10-30')::text from farm_feed_stock where feed_type='fish' and feed_source='local'"),'30000.000000000000','Confirmed paid receipts provide unit-cost estimates');
  await write(ids.admin,'void_payment',{expected_revision:0,reason:'Verified duplicate supplier payment'},paid.id);
  assert.equal(await scalar(db,'select sum(amount)::text from operations_cash_postings where account_id=$1',[confirmation.data.target_account_id]),'200000');
  assert.equal(await scalar(db,"select current_bags from farm_feed_stock where feed_type='fish' and feed_source='local'"),10,'Voiding payment cannot remove delivered stock');
@@ -67,6 +68,10 @@ try{
  const supplyLine=await scalar(db,'select id from farm_purchase_lines where purchase_id=$1',[supplies.id]);
  await write(ids.admin,'delivery',{date:'2026-10-30',line_id:supplyLine,quantity:'2'},supplies.id);
  assert.equal(Number(await scalar(db,'select current_quantity from farm_supply_inventory where id=$1',[supply.id])),2);
+ assert.equal(await scalar(db,"select operations_private.store_unit_cost('supply',$1,'2026-10-30')::text",[supply.id]),null,'Unpaid receipt costs remain unavailable');
+ const counted=await scalar(db,"select farm_store_write($1,'count',$2::jsonb,null,$3)",[ids.admin,JSON.stringify({date:'2026-10-30',resource:'supply',stock_id:supply.id,quantity:1,unit:'pieces'}),crypto.randomUUID()]);
+ await scalar(db,"select farm_store_write($1,'decide_count',$2::jsonb,$3,$4)",[ids.admin,JSON.stringify({decision:'approve',reason:'Verified missing tool'}),counted.id,crypto.randomUUID()]);
+ assert.equal(Number(await scalar(db,'select current_quantity from farm_supply_inventory where id=$1',[supply.id])),1,'Count adjustment reuses the supply ledger');
  await write(ids.admin,'policy',{automatic_limit:null,require_quote:true});
  await assert.rejects(()=>write(actor,'request',payload),e=>e.code==='23514');
  const proofRetry=crypto.randomUUID(),proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'c'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:'2026-10-30',target_resource:'farm_purchase_exceptions'}),proofRetry]);
@@ -81,3 +86,4 @@ try{
  await assert.rejects(()=>scalar(db,"select farm_v2_write($1,'feed','create',$2::jsonb,null,null,$3)",[actor,JSON.stringify({date:'2026-10-30',feed_type:'fish',feed_source:'local',num_bags:1,cost:20,weight_unit:'kg',weight_amount:25}),crypto.randomUUID()]),e=>e.code==='23514');
  console.log('PASS purchase manual approval, exact totals, scope, pending funds, separate partial delivery and retry protection');
 }catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}
+

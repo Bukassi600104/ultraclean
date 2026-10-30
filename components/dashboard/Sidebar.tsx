@@ -70,6 +70,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/courses", label: "Courses", icon: GraduationCap },
       { href: "/dashboard/farm", label: "Farm", icon: Tractor },
       { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
+      { href: "/dashboard/farm/stores", label: "Stores & counts", icon: Package },
       { href: "/dashboard/farm/feed-stock", label: "Feed Inventory", icon: Package },
       { href: "/dashboard/farm/daily-reports", label: "Daily Reports", icon: FileText },
       { href: "/dashboard/farm/purchases", label: "Purchases & deliveries", icon: ClipboardList },

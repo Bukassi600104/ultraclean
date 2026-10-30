@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import { AlertTriangle, X } from "lucide-react";
 
+import {FarmEggPicker} from '@/components/manager/FarmEggPicker';
 import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
 import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
@@ -78,7 +79,7 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type SaleDraft={form:FormValues;batchId?:string;stockGroup:string;receiver:string};
+type SaleDraft={form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
 
 export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
@@ -90,6 +91,8 @@ export default function SaleProductPage() {
   const [today, setToday] = useState("");
 
   const [batchId,setBatchId]=useState('');
+  const [eggBatchId,setEggBatchId]=useState('');
+  useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey]);
   const [stockGroup,setStockGroup] = useState("");
   const [form, setForm] = useState<FormValues>({
     date: "",
@@ -110,7 +113,7 @@ export default function SaleProductPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
   const [receiver,setReceiver]=useState("");
-  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
 
 
   useEffect(() => {
@@ -146,7 +149,8 @@ export default function SaleProductPage() {
   function validate(): string | null {
     if (!form.date) return "Select a date";
     if(personal&&!receiver)return "Choose who actually received the payment";
-    if (productKey === "crops" && !form.crop_type.trim()) return "Enter crop type";
+    if ((productKey === "crops" || (productKey === "other"&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
+    if(eggBatchId&&!Number.isInteger(Number(form.quantity)))return "Enter a whole egg count";
     if (productKey === "catfish") {
       if (!form.quantity || Number(form.quantity) <= 0) return "Enter number of fish";
       if (!form.kg || Number(form.kg) <= 0) return "Enter weight in kg";
@@ -193,6 +197,7 @@ export default function SaleProductPage() {
         product: productKey,
         ...(batchId?{batch_id:batchId}:{stock_group_id:stockGroup||null}),
         pricing_basis: config.pricingBasis,
+        ...(productKey==='other'&&eggBatchId?{egg_batch_id:eggBatchId,other_product_name:'Eggs'}:{}),
         request_id: requestId,
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
@@ -207,10 +212,10 @@ export default function SaleProductPage() {
       } else {
         payload.quantity = Number(form.quantity);
         payload.unit_price = Number(form.unit_price);
-        if (productKey === "crops") payload.other_product_name = form.crop_type.trim();
+        if (productKey === "crops" || (productKey === "other"&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId},requestId);
+      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId},requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -240,7 +245,7 @@ export default function SaleProductPage() {
     }
   }
 
-  if (!selectedProduct || productKey === "other") return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
+  if (!selectedProduct) return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
 
   if (isDayClosed&&!submission.pending) {
     return (
@@ -279,6 +284,7 @@ export default function SaleProductPage() {
       {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">This sale is awaiting confirmation. Its original date and values are retained. Retry this saved sale before entering another here.</p>}
       <fieldset disabled={saving||!!submission.pending} className="min-w-0 space-y-4">
       {/* Form */}
+      {productKey==='other'&&<FarmEggPicker value={eggBatchId} onChange={setEggBatchId}/>}
       <FarmBatchPicker product={productKey} value={batchId} onChange={setBatchId} refreshKey={requestId}/>
       {!batchId&&<LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
@@ -291,7 +297,7 @@ export default function SaleProductPage() {
         </div>
 
         {/* 2. Crops: crop type */}
-        {productKey === "crops" && (
+        {(productKey === "crops" || (productKey === "other"&&!eggBatchId)) && (
           <div>
             <label htmlFor="sale-crop" className="text-xs font-bold uppercase tracking-wider text-gray-500">Crop Type *</label>
             <input id="sale-crop" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"

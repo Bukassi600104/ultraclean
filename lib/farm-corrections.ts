@@ -17,6 +17,7 @@ const revision = z.number().int().nonnegative();
 const schemas: Record<FarmRecordType, z.ZodType> = {
   sale: z.object({ cash_receiver:cashReceiver.optional(),...classificationFields, expected_revision: revision, date, customer_name: text,
     batch_id: z.string().uuid().nullable().optional(),
+    egg_batch_id: z.string().uuid().nullable().optional(),
     product: z.enum(["catfish","goat","chicken","pig","turkey","cattle","other","crops"]).optional(),
     quantity: positive, unit_price: positive, weight_kg: positive.nullable(),
     pricing_basis: z.enum(["per_kg","per_head","per_unit"]).optional(),

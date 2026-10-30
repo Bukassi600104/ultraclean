@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
   batch_id: z.string().uuid().nullable().optional(),
+    egg_batch_id: z.string().uuid().nullable().optional(),
   cash_receiver:cashReceiver.optional(),
   ...classificationFields,
   product: z.enum(FARM_PRODUCT_KEYS),
