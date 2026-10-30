@@ -17,3 +17,7 @@ assert.equal(mortalityByProduct(movements,{from:'2026-10-27',to:'2026-10-27'}).t
 assert.deepEqual(mortalityByProduct([],{to:'2026-10-27'}),{total:0,products:[]});
 assert.equal(mortalityByProduct(Array.from({length:501},(_,i)=>({id:String(i),date:'2026-10-27',product:'goat',action:'mortality',quantity:1})),{to:'2026-10-27'}).total,501);
 console.log('PASS: dated mortality includes complete history for reversals, inclusive boundaries and 501 movements.');
+
+const purchaseTotals=calculateFarmFinance({transfers:[{date:prior,amount:'500000'}],expenses:[],feed:[],sales:[],purchases:[{date:prior,amount:'100000',category:'feed',expense_source:'owner_fund'},{date:day,amount:'200000',category:'feed',expense_source:'owner_fund'},{date:day,amount:'90000',category:'feed',voided_at:day},{date:day,amount:'50.10',category:'repair',expense_source:'sales_cash'}]},{date:day,from:day,to:day});
+assert.equal(purchaseTotals.opening_balance,400000);assert.equal(purchaseTotals.feed_expenses,200000);assert.equal(purchaseTotals.total_expenses,200050.1);assert.equal(purchaseTotals.closing_balance,200000);assert.equal(purchaseTotals.sales_cash_balance,-50.1);
+console.log('PASS purchase payments counted once, feed/owner funding, voids and true opening balances');

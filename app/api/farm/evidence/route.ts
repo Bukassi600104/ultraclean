@@ -12,7 +12,7 @@ import {cashDate} from '@/lib/operations-cash-validation';
 
 export const runtime='nodejs';
 const bucket='farm-evidence';
-const metadata=z.object({request_id:z.string().uuid(),activity_date:cashDate,batch_id:z.string().uuid().optional(),target_resource:z.enum(['farm_inventory_transactions','farm_daily_reports','farm_operational_requests','farm_sales','farm_feed_purchases','farm_batch_records','farm_purchase_requests','farm_health_tasks'])}).strict();
+const metadata=z.object({request_id:z.string().uuid(),activity_date:cashDate,batch_id:z.string().uuid().optional(),target_resource:z.enum(['farm_inventory_transactions','farm_daily_reports','farm_operational_requests','farm_sales','farm_feed_purchases','farm_batch_records','farm_purchase_requests','farm_purchases','farm_purchase_payments','farm_purchase_deliveries','farm_purchase_exceptions','farm_health_tasks'])}).strict();
 async function boundedForm(request:Request){
  if(!request.body)throw Error('Choose a photo');
  const reader=request.body.getReader(),chunks:Uint8Array[]=[];let size=0;

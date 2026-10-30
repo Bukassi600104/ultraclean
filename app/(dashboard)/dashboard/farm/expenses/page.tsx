@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
@@ -39,7 +40,8 @@ interface FeedPurchase {
 
 type DisplayRow =
   | { _type: "expense"; data: FarmExpense }
-  | { _type: "feed"; data: FeedPurchase };
+  | { _type: "feed"; data: FeedPurchase }
+  | { _type: "purchase"; data: {id:string;date:string;amount:number;recipient:string;category:string} };
 
 export default function FarmExpensesPage() {
   const [rows, setRows] = useState<DisplayRow[]>([]);
@@ -73,7 +75,7 @@ export default function FarmExpensesPage() {
 
   // Grand total amount for current page
   const pageTotalAmount =
-    rows.reduce((sum, row) => sum + Number(row._type === "expense" ? row.data.amount : row.data.cost), 0);
+    rows.reduce((sum, row) => sum + Number(row._type === "feed" ? row.data.cost : row.data.amount), 0);
 
   if(loadError)return <DashboardReadError title="Farm Expenses" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
   return (
@@ -128,6 +130,7 @@ export default function FarmExpensesPage() {
                 </TableHeader>
                 <TableBody>
                   {rows.map((row) => {
+                    if(row._type === "purchase")return <TableRow key={`purchase-${row.data.id}`}><TableCell>{format(new Date(row.data.date),"MMM d")}</TableCell><TableCell>{row.data.category}</TableCell><TableCell>{row.data.recipient}</TableCell><TableCell>{formatCurrency(row.data.amount)}</TableCell><TableCell><Link className="inline-flex min-h-11 items-center text-emerald-800 underline" href="/dashboard/farm/purchases">View purchase payment</Link></TableCell><TableCell className="hidden md:table-cell">Recorded payment</TableCell></TableRow>;
                     if (row._type === "feed") {
                       const f = row.data;
                       return (

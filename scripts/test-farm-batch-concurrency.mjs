@@ -25,5 +25,19 @@ try{
  await new Promise(r=>setTimeout(r,150));assert.equal(settled,false,'Concurrent retry waits for the original transaction');await db.query('commit');assert.deepEqual(await second,first);assert.equal(await scalar(db,'select count(*)::int from farm_batch_records'),1);
  await db.query('begin');await scalar(db,"select farm_v2_write($1,'day','close','{\"date\":\"2026-10-31\"}')",[ids.farm]);settled=false;
  const blocked=write(other,{...payload,date:'2026-10-31'},crypto.randomUUID()).then(()=>null,e=>e).finally(()=>{settled=true;});await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.equal((await blocked)?.code,'23514');assert.equal(await scalar(db,'select count(*)::int from farm_batch_records'),1);
- console.log('PASS PostgreSQL 17 concurrent retry and closing/write lock: one record, original result, closed date rejected; synthetic database '+database);
+ const purchase=(client,op,values,id=null,request=crypto.randomUUID())=>scalar(client,'select farm_purchase_write($1,$2,$3::jsonb,$4,$5)',[ids.admin,op,JSON.stringify(values),id,request]);
+ await scalar(db,"select farm_feed_stock_write($1,'starting',$2::jsonb,null,null,$3)",[ids.admin,JSON.stringify({date:'2026-10-30',feed_type:'fish',feed_source:'local',bags:0}),crypto.randomUUID()]);
+ const order=await purchase(db,'request',{date:'2026-10-30',supplier:'Concurrent supplier',category:'feed',description:'Actual order',lines:[{description:'Feed',quantity:'10',unit_price:'2',unit:'bags',destination:'feed',feed_type:'fish',feed_source:'local'}]});
+ await purchase(db,'approve',{expected_revision:0,reason:'Verified order'},order.id);
+ const line=await scalar(db,'select id from farm_purchase_lines where purchase_id=$1',[order.id]);
+ const delivery={date:'2026-10-30',line_id:line,quantity:'7',included_in_starting_count:false};
+ await db.query('begin');await purchase(db,'delivery',delivery,order.id);settled=false;
+ const overflow=purchase(other,'delivery',delivery,order.id).then(()=>null,e=>e).finally(()=>{settled=true;});await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.equal((await overflow)?.code,'23514');
+ assert.equal(await scalar(db,'select sum(quantity)::text from farm_purchase_deliveries'),'7');
+ const funding=await scalar(db,"select operations_cash_write($1,'fund',$2::jsonb,$3)",[ids.admin,JSON.stringify({business:'farm',currency:'NGN',date:'2026-10-30',amount:'1000',recipient:{type:'ceo'},confirmed_receipt:true}),crypto.randomUUID()]);
+ const cost={date:'2026-10-30',amount:'15',recipient:'Concurrent supplier',cash_payer_account_id:funding.data.target_account_id};
+ await db.query('begin');await purchase(db,'payment',cost,order.id);settled=false;
+ const overpay=purchase(other,'payment',cost,order.id).then(()=>null,e=>e).finally(()=>{settled=true;});await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.equal((await overpay)?.code,'23514');
+ assert.equal(await scalar(db,'select sum(amount)::text from farm_purchase_payments'),'15');
+ console.log('PASS PostgreSQL 17 concurrent retry, closing/write, partial delivery and payment limits; synthetic database '+database);
 }finally{await db.query('rollback').catch(()=>{});await db.end();await other.end();}

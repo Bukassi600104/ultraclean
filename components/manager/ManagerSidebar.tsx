@@ -31,6 +31,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Record",
     items: [
       { href: "/sales", label: "Sales", icon: TrendingUp },
+      { href: "/purchases", label: "Purchases & deliveries", icon: Receipt },
       { href: "/expenses", label: "Expenses", icon: Receipt },
       { href: "/daily-report", label: "Daily Report", icon: ClipboardList },
       { href: "/operational-requests", label: "Operational Requests", icon: MessageSquare },

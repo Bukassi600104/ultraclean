@@ -269,3 +269,6 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [ ] Isolated tests, restoration rehearsal, preservation evidence and explicit approval before any production migration/deployment.
 
 Implementation is local on codex/primefield-pulse. Production settings, records, accounts, figures and deployment remain unchanged for this request. The reference's spending approval concerns purchases; consuming already-held feed remains separate. Existing special historical exports and clean personal manager periods remain protected.
+
+- [x] Pulse Task4 purchasing implemented locally: separate approvals/payments/deliveries, funding review, immutable reports, safe receipt links and complete financial totals; isolated regression and preservation evidence recorded.
+- [ ] Pulse Tasks5–10: stores/eggs/counts, sales credit/receipts, health/performance, CEO reporting/configuration, full visual adaptation and final release verification.

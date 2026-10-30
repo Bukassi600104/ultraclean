@@ -59,7 +59,8 @@ export async function managerReadResponse(request:Request,business:Business,reso
   if(shape==="expenses"){
    const expenses=await allManagerRecords(scope,"farm_expenses",{...filters,active:true}),feed=await allManagerRecords(scope,"farm_feed_purchases",{from:filters.from,to:filters.to});
    const category=params.get("category")||"all";
-   const rows=[...(category==="feed"?[]:expenses.map(data=>({_type:"expense",data}))),...(!["all","feed"].includes(category)?[]:feed.map(data=>({_type:"feed",data})))].sort((a,b)=>String(b.data.date).localeCompare(String(a.data.date))||String(b.data.id).localeCompare(String(a.data.id)));
+   const purchases=(await allManagerRecords(scope,"farm_purchase_payments",{from:filters.from,to:filters.to,active:true})).filter(r=>!r.voided_at&&(category==="all"||r.category===category));
+   const rows=[...purchases.map(data=>({_type:"purchase",data})),...(category==="feed"?[]:expenses.map(data=>({_type:"expense",data}))),...(!["all","feed"].includes(category)?[]:feed.map(data=>({_type:"feed",data})))].sort((a,b)=>String(b.data.date).localeCompare(String(a.data.date))||String(b.data.id).localeCompare(String(a.data.id)));
    return NextResponse.json({data:rows.slice(page*limit,(page+1)*limit),total:rows.length,page:page+1,limit});
   }
   return NextResponse.json(shape==="array"?result.data:{...result,...(zeroBased?{page}:{} )},{headers:{"Cache-Control":"private, no-store"}});

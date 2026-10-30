@@ -1,10 +1,10 @@
 import {moneyNumber, subtractMoney, sumMoney, type MoneyInput} from "./money";
 export interface FinancialRow { date: string; amount?: MoneyInput; cost?: MoneyInput; total_amount?: MoneyInput; expense_source?: string | null; product?: string; category?: string; voided_at?: string | null }
-export function calculateFarmFinance(rows: {transfers: FinancialRow[]; expenses: FinancialRow[]; feed: FinancialRow[]; sales: FinancialRow[]}, scope: {date: string; from?: string; to?: string}) {
+export function calculateFarmFinance(rows: {transfers: FinancialRow[]; expenses: FinancialRow[]; feed: FinancialRow[]; sales: FinancialRow[]; purchases?: FinancialRow[]}, scope: {date: string; from?: string; to?: string}) {
  const {date, from = "0000-01-01", to = date} = scope;
  const active = (r: FinancialRow) => !r.voided_at;
  const sum = (rs: FinancialRow[], key: "amount" | "cost" | "total_amount") => sumMoney(rs.map(r => r[key] as MoneyInput));
- const transfers = rows.transfers.filter(active), expenses = rows.expenses.filter(active), sales = rows.sales.filter(active), feed = rows.feed;
+ const transfers = rows.transfers.filter(active), expenses = [...rows.expenses,...(rows.purchases||[]).filter(r=>r.category!=="feed")].filter(active), sales = rows.sales.filter(active), feed = [...rows.feed,...(rows.purchases||[]).filter(r=>r.category==="feed"&&active(r)).map(r=>({...r,cost:r.amount}))];
  const before = (r: FinancialRow) => r.date < date, through = (r: FinancialRow) => r.date <= date, today = (r: FinancialRow) => r.date === date, range = (r: FinancialRow) => r.date >= from && r.date <= to;
  // NULL legacy sources retain the established owner-funded interpretation.
  const owner = (r: FinancialRow) => r.expense_source !== "sales_cash";

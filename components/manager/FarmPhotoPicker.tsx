@@ -12,7 +12,7 @@ export function FarmPhotoPicker({date,batchId,resource,value,onChange,onBusyChan
  const queued=new Set(identity?getPendingItems(identity).flatMap(item=>item.mediaIds||[]):[]);
  const available=photos.filter(photo=>photo.details.activity_date===date&&photo.details.batch_id===batchId&&photo.details.target_resource===resource&&!queued.has(photo.id));
  return <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3"><legend className="px-1 text-sm font-semibold">Supporting photos</legend>
-  <p className="text-xs text-slate-600">Required for deaths. Up to six photos, stored on this phone until the record is confirmed.</p>
+  <p className="text-xs text-slate-600">Up to six supporting photos, stored on this phone until the record is confirmed.</p>
   <label className="block text-sm">Add a photo<input aria-label="Add a photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" disabled={busy||!identity||value.length>=6} className="mt-1 block w-full min-w-0 text-sm" onChange={async e=>{
    const file=e.target.files?.[0];e.target.value='';if(!file||!identity)return;setBusy(true);onBusyChange?.(true);setError('');
    try{const upload=await prepareFarmPhoto(file);if(current.current!==key)return;const photo=await saveFarmMedia(identity,file,{activity_date:date,target_resource:resource,...(batchId?{batch_id:batchId}:{})},upload);if(current.current!==key)return;setPhotos(rows=>[...rows,photo]);onChange([...selection.current,photo.id]);}

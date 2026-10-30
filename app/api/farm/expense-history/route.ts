@@ -14,14 +14,14 @@ async function legacyGET(request: NextRequest) {
   const db = createServerClient();
   if (!db) return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   type Row = { id: string; date: string; created_at: string; [key: string]: unknown };
-  async function source(type: "expense" | "feed") {
+  async function source(type: "expense" | "feed" | "purchase") {
     if ((category === "feed" && type === "expense") || (category !== "all" && category !== "feed" && type === "feed")) return { rows: [], total: 0 };
-    const rows: {_type: "expense" | "feed"; data: Row}[] = [];
+    const rows: {_type: "expense" | "feed" | "purchase"; data: Row}[] = [];
     let total = 0;
     for (let offset = 0; offset < page * limit; offset += 500) {
-      let q = db!.from(type === "expense" ? "farm_expenses" : "farm_feed_purchases").select("*", { count: "exact" });
-      if (type === "expense") q = q.is("voided_at", null);
-      if (category !== "all" && category !== "feed") q = q.eq("category", category);
+      let q = db!.from(type === "expense" ? "farm_expenses" : type === "feed" ? "farm_feed_purchases" : "farm_purchase_payments").select("*", { count: "exact" });
+      if (type !== "feed") q = q.is("voided_at", null);
+      if ((category !== "all" && category !== "feed") || (category === "feed" && type === "purchase")) q = q.eq("category", category);
       if (dates.date) q = q.eq("date", dates.date);
       if (dates.from) q = q.gte("date", dates.from);
       if (dates.to) q = q.lte("date", dates.to);
@@ -34,9 +34,9 @@ async function legacyGET(request: NextRequest) {
     return { rows, total };
   }
   try {
-    const [expenses, feed] = await Promise.all([source("expense"), source("feed")]);
-    const rows = [...expenses.rows, ...feed.rows].sort((a, b) => b.data.date.localeCompare(a.data.date) || b.data.created_at.localeCompare(a.data.created_at) || b.data.id.localeCompare(a.data.id) || b._type.localeCompare(a._type));
-    return NextResponse.json({ data: rows.slice((page - 1) * limit, page * limit), total: expenses.total + feed.total, page, limit }, { headers: { "Cache-Control": "private, no-store" } });
+    const [expenses, feed, purchases] = await Promise.all([source("expense"), source("feed"),source("purchase")]);
+    const rows = [...expenses.rows, ...feed.rows,...purchases.rows].sort((a, b) => b.data.date.localeCompare(a.data.date) || b.data.created_at.localeCompare(a.data.created_at) || b.data.id.localeCompare(a.data.id) || b._type.localeCompare(a._type));
+    return NextResponse.json({ data: rows.slice((page - 1) * limit, page * limit), total: expenses.total + feed.total + purchases.total, page, limit }, { headers: { "Cache-Control": "private, no-store" } });
   } catch { return NextResponse.json({ error: "Expense history unavailable. Please retry." }, { status: 500 }); }
 }
 

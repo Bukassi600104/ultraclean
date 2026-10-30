@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
 let selected, reads=0;
-const rows={farm_sales:[{date:'2026-10-28',product:'goat',total_amount_exact:'200.00'}],farm_expenses:[{date:'2026-10-28',amount_exact:'100.00',expense_source:'bimbo_transfer'}],farm_feed_purchases:[],farm_fund_transfers:[]};
+const rows={farm_sales:[{date:'2026-10-28',product:'goat',total_amount_exact:'200.00'}],farm_expenses:[{date:'2026-10-28',amount_exact:'100.00',expense_source:'bimbo_transfer'}],farm_purchase_payments:[],farm_feed_purchases:[],farm_fund_transfers:[]};
 const cash={accounts:[{holder_type:'manager',currency:'NGN',bucket:'owner',opening:'300',closing:'200',funds_received:'0',funds_received_total:'300',paid_spending:'100',paid_spending_total:'100'},{holder_type:'manager',currency:'NGN',bucket:'sales',closing:'0'},{holder_type:'awaiting',currency:'NGN',bucket:'owner',closing:'900'}]};
 const load=typescriptLoader({'@/lib/supabase/server':{createServerClient:()=>({})},'./manager-read-api':{allManagerRecords:async(scope,table)=>{selected=scope;reads++;return rows[table]}},'./operations-cash':{getCashSummary:async()=>cash}}),{getFarmFinance}=load('lib/farm-finance.ts');
 const scope={actorId:'A',business:'farm',managerId:'A',periodId:'P',startsOn:'2026-10-26',mode:'personal',status:'active'};
 const result=await getFarmFinance({date:'2026-10-28',from:'2026-10-26',to:'2026-10-28'},scope);
-assert.equal(selected,scope);assert.equal(reads,4);assert.equal(result.closing_balance,200);assert.equal(result.opening_balance,300);assert.equal(result.revenue,200);assert.equal(result.total_expenses,100);assert.equal(result.sales_cash_balance,0);assert.equal(result.total_transferred,300);assert.equal(result.personal_cash,cash);assert.equal(result.period_reconciliation,undefined);
+assert.equal(selected,scope);assert.equal(reads,5);assert.equal(result.closing_balance,200);assert.equal(result.opening_balance,300);assert.equal(result.revenue,200);assert.equal(result.total_expenses,100);assert.equal(result.sales_cash_balance,0);assert.equal(result.total_transferred,300);assert.equal(result.personal_cash,cash);assert.equal(result.period_reconciliation,undefined);
 console.log('PASS10 personal Farm finance checks: recorded work differs from true cash, awaiting receipts excluded and actual custody opening/closing retained');

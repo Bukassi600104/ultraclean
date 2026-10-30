@@ -1,6 +1,8 @@
 "use client";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
+import type {PurchaseData} from "@/lib/farm-purchases";
+import {formatExactCurrency} from "@/lib/money";
 import { formatCurrency } from "@/lib/utils";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { farmDateToday } from "@/lib/farm-products";
@@ -40,7 +42,8 @@ interface FeedPurchase {
   _type: "feed";
 }
 
-type ListItem = Expense | FeedPurchase;
+type PurchaseCost={id:string;date:string;amount_exact:string;recipient:string;category:string;_type:"purchase"};
+type ListItem = Expense | FeedPurchase | PurchaseCost;
 
 interface DailyRecord {
   date: string;
@@ -51,7 +54,7 @@ interface DailyRecord {
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType; href: string }> = {
   labor: { label: "Labour", color: "#6366f1", icon: Users, href: "/expenses/labor" },
-  feed: { label: "Feed", color: "#f59e0b", icon: Package, href: "/expenses/feed" },
+  feed: { label: "Feed", color: "#f59e0b", icon: Package, href: "/purchases" },
   utilities: { label: "Utilities", color: "#3b82f6", icon: Zap, href: "/expenses/utilities" },
   veterinary: { label: "Veterinary", color: "#ef4444", icon: HeartPulse, href: "/expenses/veterinary" },
   transport: { label: "Transport", color: "#10b981", icon: Truck, href: "/expenses/transport" },
@@ -78,6 +81,7 @@ export default function ExpensesOverviewPage() {
   const router = useRouter();
   const today = getTodayStr();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [purchasePayments,setPurchasePayments]=useState<PurchaseCost[]>([]);
   const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
   const [dayRecord, setDayRecord] = useState<DailyRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,13 +96,15 @@ export default function ExpensesOverviewPage() {
     setLoading(true);setLoadError(false);setSummary(null);
     try {
       const read = async (url:string) => {const response=await managerFetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
-      const [expRes, feedRes, recordRes, financeRes] = await Promise.all([
+      const [expRes, feedRes, recordRes, financeRes, purchaseRes] = await Promise.all([
         read(`/api/farm/expenses?date=${today}&limit=100`),
         read(`/api/farm/feed-purchases?date=${today}&limit=100`),
         read(`/api/farm/daily-record?date=${today}`),
         managerFetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
+        read("/api/farm/purchases"),
       ]);
       setSummary(financeRes);
+      setPurchasePayments((purchaseRes as PurchaseData).purchases.flatMap(o=>o.payments.filter(p=>p.date===today&&!p.voided_at).map(p=>({...p,category:o.category,_type:"purchase" as const}))));
       setExpenses(expRes.data || []);
       setFeedPurchases((feedRes.data || []).map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
       setDayRecord(recordRes.record || null);
@@ -114,7 +120,7 @@ export default function ExpensesOverviewPage() {
   // Merge list — expenses first then feed purchases, sorted by created_at desc
   const allItems: ListItem[] = [
     ...expenses.map((e) => ({ ...e, _type: "expense" as const })),
-    ...feedPurchases,
+    ...feedPurchases,...purchasePayments,
   ];
 
   // Chart data — expenses by category only
@@ -224,6 +230,7 @@ export default function ExpensesOverviewPage() {
         ) : (
           <div className="space-y-2">
             {allItems.map((item) => {
+              if(item._type==="purchase")return <div key={`purchase-${item.id}`} className="rounded-2xl border border-gray-100 bg-white p-4"><p className="text-sm font-semibold">{item.category} purchase payment</p><p className="text-sm text-slate-600">{item.recipient} � {formatExactCurrency(item.amount_exact,"NGN")}</p><button className="mt-2 min-h-11 text-sm text-emerald-900 underline" onClick={()=>router.push("/purchases")}>View purchase and payment</button></div>;
               if (item._type === "feed") {
                 const feed = item as FeedPurchase;
                 return (
