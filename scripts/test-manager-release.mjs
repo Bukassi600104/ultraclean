@@ -1,6 +1,7 @@
 import {spawnSync} from 'node:child_process';
 // Explicit isolated suites only: older ad-hoc Auth scripts can mutate production.
 const suites=[
+ 'test-farm-batches-database','test-farm-batches-api',
  'test-manager-legacy-custody','test-manager-rollout-database','test-manager-periods-database','test-manager-scoped-writes','test-manager-scope-api','test-manager-offline-identity','test-manager-scope-ui',
  'test-manager-accounts','test-manager-accounts-ui','test-bossbimbz-routing','test-bossbimbz-access','test-bossbimbz-property','test-bossbimbz-property-ui','test-bossbimbz-content','test-bossbimbz-content-ui',
  'test-manager-handover-database','test-manager-handover-api','test-manager-handover-ui','test-feed-inventory-workflow','test-feed-legacy-preservation','test-bossbimbz-feed-api','test-bossbimbz-daily-feed-api','test-bossbimbz-feed-ui',

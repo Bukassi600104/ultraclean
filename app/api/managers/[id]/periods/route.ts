@@ -8,7 +8,7 @@ import {cashError} from "@/lib/operations-cash";
 const schema=z.discriminatedUnion("operation",[
  z.object({operation:z.literal("provision"),starts_on:cashDate,reason:z.string().trim().min(1).max(2000),request_id:z.string().uuid()}).strict(),
  z.object({operation:z.literal("close"),period_id:z.string().uuid(),reason:z.string().trim().min(1).max(2000),request_id:z.string().uuid()}).strict(),
- z.object({operation:z.literal("assign"),period_id:z.string().uuid(),assets:z.array(z.object({resource:z.string().min(1),record_id:z.string().uuid()}).strict()).min(1).max(1000),reason:z.string().trim().min(1).max(2000),request_id:z.string().uuid()}).strict()
+ z.object({operation:z.enum(["assign","unassign"]),period_id:z.string().uuid(),assets:z.array(z.object({resource:z.string().min(1),record_id:z.string().uuid()}).strict()).min(1).max(1000),reason:z.string().trim().min(1).max(2000),request_id:z.string().uuid()}).strict()
 ]);
 export const runtime="nodejs";export const dynamic="force-dynamic";
 export async function GET(_request:Request,{params}:{params:{id:string}}){try{try{await requireAdmin();}catch{return NextResponse.json({error:"CEO access required"},{status:403});}if(!z.string().uuid().safeParse(params.id).success)return NextResponse.json({error:"Invalid manager"},{status:400});const db=createServerClient();if(!db)throw Error();const {data,error}=await db.from("manager_periods").select("*").eq("manager_id",params.id).order("created_at",{ascending:false});if(error)throw error;return NextResponse.json({periods:data},{headers:{"Cache-Control":"private, no-store"}});}catch(e){return cashError(e);}}

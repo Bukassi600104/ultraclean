@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {managerDatabase,ids,scalar,periodWrite,asRole} from '../tests/helpers/manager-db.mjs';
-const db=await managerDatabase();let checks=0;
+const db=await managerDatabase({through:'20261029004043_legacy_manager_export.sql'});let checks=0;
 const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
 const call=(actor,operation,session=null,items=[],request=null)=>scalar(db,'select handover_write($1,$2,$3::uuid,$4::jsonb,$5::uuid)',[actor,operation,session,JSON.stringify(items),request||(operation==='get'?null:crypto.randomUUID())]);
 const all=state=>state.steps.flatMap(step=>step.items),decision=(item,status='confirmed')=>({itemId:item.itemId,status,version:item.version});
@@ -11,6 +12,8 @@ try{
  await periodWrite(db,ids.admin,'activate');
  const manager='00000000-0000-4000-8000-000000000031';await db.query('insert into auth.users(id) values($1)',[manager]);await db.query("insert into profiles(id,role,name) values($1,'manager','New farm manager')",[manager]);
  const period=await periodWrite(db,ids.admin,'provision',{manager_id:manager,business:'farm',starts_on:'2026-10-28'});
+ // A period already created before the update keeps its original handover contract.
+ await db.exec(await readFile('supabase/migrations/20261030155050_primefield_named_batches.sql','utf8'));
  await assert.rejects(()=>scalar(db,"select manager_read_records($1,'farm','farm_sales')",[manager]),e=>e.code==='42501');checks++;
  const original=await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'stock_moves',(select count(*) from farm_inventory_transactions),'feed_moves',(select count(*) from farm_feed_stock_movements),'purchases',(select jsonb_agg(to_jsonb(t) order by id) from farm_feed_purchases t),'supplies',(select count(*) from farm_supply_transactions))");
  let state=await call(manager,'get');eq(state.status,'awaiting_handover');eq(all(state).filter(r=>r.resource==='farm_inventory').length,2);
