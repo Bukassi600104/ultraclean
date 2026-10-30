@@ -16,6 +16,7 @@ import { ArrowLeft, Menu } from "lucide-react";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
+  "/today": "Today",
   "/sales": "Record Sales",
   "/sales/catfish": "Catfish Sales",
   "/sales/cattle": "Cattle Sales",

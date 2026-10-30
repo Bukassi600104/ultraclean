@@ -1,4 +1,5 @@
 "use client";
+import {FarmRecordDiscussion} from "@/components/manager/FarmRecordThread";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,8 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
     }catch(error){toast.error(error instanceof Error?error.message:"Correction failed");}finally{setSaving(false);}
   }
   if(row.voided_at||row.archived_at)return null;
-  return <><Button variant="outline" size="sm" onClick={start}>{requestId?"Review and apply":"Correct"}</Button>
+  const discussion=({sale:"farm_sales",expense:"farm_expenses",feed:"farm_feed_purchases",daily_feed:"farm_daily_feed",inventory_transaction:"farm_inventory_transactions"} as Record<string,string>)[recordType];
+  return <>{discussion&&<FarmRecordDiscussion resource={discussion} recordId={String(row.id)}/>}<Button variant="outline" size="sm" onClick={start}>{requestId?"Review and apply":"Correct"}</Button>
     <Dialog open={open} onOpenChange={value=>{if(!saving)setOpen(value);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Correct {label(recordType)}</DialogTitle></DialogHeader>
       <p className="text-sm text-gray-500">The change and its original values will remain in activity history.</p>
       {recordType==='sale'&&!row.pricing_basis&&<p className="text-sm text-gray-500">This is a legacy sale. Its historical amount and stock movements are preserved unless you explicitly correct the amount.</p>}

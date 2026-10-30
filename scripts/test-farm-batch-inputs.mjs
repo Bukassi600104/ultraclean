@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const load=typescriptLoader(),id='00000000-0000-4000-8000-000000000001';
+const {farmInventoryTransactionSchema,farmSaleSchema}=load('lib/validations.ts');
+const input={product:'catfish',action:'mortality',quantity:1,date:'2026-10-30',batch_id:id,evidence_ids:[id]};
+assert.equal(farmInventoryTransactionSchema.parse(input).batch_id,id);
+assert.deepEqual(farmInventoryTransactionSchema.parse(input).evidence_ids,[id]);
+assert.equal(farmInventoryTransactionSchema.safeParse({...input,batch_id:'invalid'}).success,false);
+assert.equal(farmInventoryTransactionSchema.safeParse({...input,evidence_ids:Array(7).fill(id)}).success,false);
+assert.equal(farmSaleSchema.parse({product:'catfish',date:input.date,customer_name:'Customer',quantity:1,unit_price:10,payment_method:'cash',batch_id:id}).batch_id,id);
+const {parseFarmCorrection}=load('lib/farm-corrections.ts');
+assert.equal(parseFarmCorrection('sale',{expected_revision:0,batch_id:id}).data.batch_id,id);
+assert.equal(parseFarmCorrection('inventory_transaction',{batch_id:id,quantity:1}).data.batch_id,id);
+console.log('PASS batch and evidence fields survive validated write/correction boundaries');

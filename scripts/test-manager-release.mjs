@@ -1,6 +1,7 @@
 import {spawnSync} from 'node:child_process';
 // Explicit isolated suites only: older ad-hoc Auth scripts can mutate production.
 const suites=[
+ 'test-farm-batch-stock','test-farm-batch-records','test-farm-batch-records-api','test-farm-record-messages','test-farm-media-record-sync','test-farm-batch-inputs','test-farm-photo-prepare','test-farm-today-ui',
  'test-farm-batches-database','test-farm-batches-api',
  'test-farm-evidence-image','test-farm-evidence-database','test-farm-evidence-api','test-farm-offline-media',
  'test-manager-legacy-custody','test-manager-rollout-database','test-manager-periods-database','test-manager-scoped-writes','test-manager-scope-api','test-manager-offline-identity','test-manager-scope-ui',

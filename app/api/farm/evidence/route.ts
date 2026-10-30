@@ -1,3 +1,4 @@
+import {discussionResource} from '@/lib/farm-record-messages';
 import {NextResponse} from 'next/server';
 import {createHash} from 'node:crypto';
 import {z} from 'zod';
@@ -51,9 +52,16 @@ export async function POST(request:Request){return withManagerWrite(request,'far
 export async function GET(request:Request){
  try{
   const scope=await requestManagerScope(request,'farm');
-  const id=new URL(request.url).searchParams.get('id');
-  if(!z.string().uuid().safeParse(id).success)return NextResponse.json({error:'Choose a valid photo'},{status:400});
+  const params=new URL(request.url).searchParams,id=params.get('id');
   const db=createServerClient();if(!db)return farmErrorResponse({code:'503',message:'Photo service unavailable'});
+  if(!id){
+   const source=z.object({resource:discussionResource,record_id:z.string().uuid()}).safeParse({resource:params.get('resource'),record_id:params.get('record_id')});
+   if(!source.success)return NextResponse.json({error:'Choose a valid photo or farm record'},{status:400});
+   const result=await db.rpc('farm_record_evidence_read',{p_actor:scope.actorId,p_resource:source.data.resource,p_record:source.data.record_id,p_period:scope.periodId});
+   if(result.error)return farmErrorResponse(result.error);
+   return NextResponse.json({data:result.data},{headers:{'Cache-Control':'private, no-store'}});
+  }
+  if(!z.string().uuid().safeParse(id).success)return NextResponse.json({error:'Choose a valid photo'},{status:400});
   const {data,error}=await db.rpc('farm_evidence_read',{p_actor:scope.actorId,p_id:id,p_period:scope.periodId});
   if(error)return farmErrorResponse(error);
   if(data.status!=='uploaded')return NextResponse.json({error:'Photo upload is still pending'},{status:409});

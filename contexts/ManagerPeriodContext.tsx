@@ -1,5 +1,5 @@
 "use client";
-import {createContext,useCallback,useContext,useEffect,useRef,useState,type ReactNode} from "react";
+import {createContext,useCallback,useContext,useEffect,useRef,useState,useMemo,type ReactNode} from "react";
 import {useAuth} from "@/contexts/AuthContext";
 import type {Business,ManagerScope} from "@/lib/manager-period-types";
 import type {QueueIdentity} from "@/lib/offline-storage";
@@ -12,7 +12,7 @@ export function OperationsFeatureProvider({actorId,children}:{actorId:string;chi
  useEffect(()=>{const controller=new AbortController();setState(null);setError("");fetch("/api/operations/manager-context?business=farm",{cache:"no-store",signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok)throw Error(body.error||"Unable to verify operations availability");if(body.actorId!==actorId||body.business!=="farm"||typeof body.featureEnabled!=="boolean")throw Error("Operations availability could not be verified");if(!controller.signal.aborted)setState({actor:actorId,enabled:body.featureEnabled});}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();},[actorId,version]);
  return <FeatureContext.Provider value={{enabled:state?.actor===actorId?state.enabled:null,error,refresh}}>{children}</FeatureContext.Provider>;
 }
-export function useQueueIdentity():QueueIdentity|null{const scope=useManagerPeriod();return scope?{actorId:scope.actorId,business:scope.business,periodId:scope.mode==="personal"?scope.periodId!:scope.mode==="legacy"?"legacy":"admin"}:null;}
+export function useQueueIdentity():QueueIdentity|null{const scope=useManagerPeriod();return useMemo(()=>scope?{actorId:scope.actorId,business:scope.business,periodId:scope.mode==="personal"?scope.periodId!:scope.mode==="legacy"?"legacy":"admin"}:null,[scope]);}
 export function useManagerStorageKey(base:string|null){const scope=useManagerPeriod();return base?`${base}:period:${scope?.mode==="personal"?scope.periodId:scope?.mode==="legacy"?"legacy":"admin"}`:null;}
 export function useManagerFetch(){
  const {profile}=useAuth(),scope=useManagerPeriod(),key=scope?`${scope.actorId}:${scope.periodId}`:`admin:${profile?.id||"pending"}`,current=useRef(key),controller=useRef(new AbortController());

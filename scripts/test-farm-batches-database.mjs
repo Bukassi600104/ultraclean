@@ -22,7 +22,7 @@ try {
   await write(ids.admin, 'transfer', {...payload,to_batch_id:second.id,quantity:5});
   assert.equal(await scalar(db, 'select sum(quantity)::int from farm_batch_movements where batch_id=$1',[first.id]),25);
   assert.equal(await scalar(db, 'select sum(quantity)::int from farm_batch_movements where batch_id=$1',[second.id]),15);
-  await assert.rejects(()=>scalar(db,"select farm_v2_write($1,'inventory_transaction','create',$2::jsonb,null,null,$3)",[ids.admin,JSON.stringify({product:'catfish',action:'mortality',quantity:1,date:'2026-10-30'}),crypto.randomUUID()]),e=>e.code==='23514','Unbatched depletion must not consume assigned batch stock');
+  await assert.rejects(()=>scalar(db,"select farm_v2_write($1,'inventory_transaction','create',$2::jsonb,null,null,$3)",[ids.admin,JSON.stringify({product:'catfish',action:'remove',quantity:1,date:'2026-10-30'}),crypto.randomUUID()]),e=>e.code==='23514','Unbatched depletion must not consume assigned batch stock');
   assert.deepEqual(await scalar(db, 'select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t'),before);
   assert.equal(await scalar(db, 'select count(*)::int from farm_inventory_transactions'),0);
   await assert.rejects(() => write(ids.farm, 'site', {name:'Forbidden'}), e => e.code==='42501');

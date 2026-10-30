@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FARM_PRODUCTS, farmDateToday } from "@/lib/farm-products";
+import {FarmRecordDiscussion} from '@/components/manager/FarmRecordThread';
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Lock, AlertTriangle, ChevronRight } from "lucide-react";
@@ -242,6 +243,7 @@ export default function SalesPage() {
                     <div className="text-right flex-shrink-0">
                       <p className="font-bold text-gray-900">{fmt(sale.total_amount)}</p>
                       <FarmCorrectionRequest recordType="sale" recordId={sale.id} />
+                      <div className="mt-2"><FarmRecordDiscussion resource="farm_sales" recordId={sale.id}/></div>
                     </div>
                   </div>
                 </div>

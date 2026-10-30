@@ -100,6 +100,7 @@ export const dbaSaleSchema = z.object({
 // ── Farm ──
 export const farmSaleSchema = z.object({
   ...classificationFields,
+  batch_id: z.string().uuid().nullable().optional(),
   date: z.string(),
   customer_name: z.string().min(1, "Customer name is required"),
   product: z.enum(FARM_PRODUCT_KEYS),
@@ -130,6 +131,8 @@ export const farmExpenseSchema = z.object({
 
 export const farmInventoryTransactionSchema = z.object({
   ...classificationFields,
+  batch_id: z.string().uuid().nullable().optional(),
+  evidence_ids: z.array(z.string().uuid()).max(6).optional(),
   product: z.string().min(1, "Product is required").max(100),
   action: z.enum(["add", "remove", "sale", "mortality"]),
   request_id: z.string().uuid().optional(),

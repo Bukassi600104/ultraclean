@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const id='00000000-0000-4000-8000-000000000001';let calls=[];
+const db={rpc:async(name,args)=>{calls.push([name,args]);return {data:{id,batches:[],records:[]},error:null}}};
+const load=typescriptLoader({'@/lib/auth':{requireManager:async()=>({id,role:'manager'})},'@/lib/supabase/server':{createServerClient:()=>db},'@/lib/manager-read-api':{requestManagerScope:async()=>({actorId:id,periodId:id}),managerReadError:()=>Response.json({error:'Forbidden'},{status:403})},'@/lib/manager-write-api':{withManagerWrite:async(r,b,fn)=>fn(),managerRpc:(d,n,a)=>d.rpc(n,a)}});
+const api=load('app/api/farm/batch-records/route.ts'),messages=load('app/api/farm/record-messages/route.ts');
+const request=body=>new Request('http://localhost/api/farm/batch-records',{method:'POST',body:JSON.stringify(body)});
+const body={operation:'submit',payload:{batch_id:id,date:'2026-10-30',deaths:0},request_id:id};
+assert.equal((await api.POST(request(body))).status,201);assert.equal(calls.at(-1)[1].p_actor,id);
+assert.equal((await api.POST(request({...body,payload:{...body.payload,actor_id:id}}))).status,400);
+assert.equal((await api.POST(request({...body,payload:{...body.payload,deaths:-1}}))).status,400);
+assert.equal((await api.POST(request({...body,payload:{batch_id:id,date:'2026-10-30'}}))).status,400);
+assert.equal((await api.GET(new Request('http://localhost/api/farm/batch-records?date=2026-02-30'))).status,400);
+assert.equal((await api.GET(new Request('http://localhost/api/farm/batch-records?date=2026-10-30'))).status,200);
+assert.equal(calls.at(-1)[0],'farm_today_read');
+assert.equal((await messages.POST(request({resource:'farm_batch_records',record_id:id,kind:'question',body:'Please explain this entry',request_id:id}))).status,201);
+assert.equal((await messages.POST(request({resource:'profiles',record_id:id,kind:'question',body:'Forbidden',request_id:id}))).status,400);
+console.log('PASS batch record/message APIs: persisted responses, authoritative reads, actor derivation, dates and strict payloads');

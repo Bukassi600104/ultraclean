@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import { AlertTriangle, X } from "lucide-react";
 
+import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
 import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
 type Product = FarmProduct;
@@ -77,7 +78,7 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type SaleDraft={form:FormValues;stockGroup:string;receiver:string};
+type SaleDraft={form:FormValues;batchId?:string;stockGroup:string;receiver:string};
 
 export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
@@ -88,6 +89,7 @@ export default function SaleProductPage() {
   const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
 
+  const [batchId,setBatchId]=useState('');
   const [stockGroup,setStockGroup] = useState("");
   const [form, setForm] = useState<FormValues>({
     date: "",
@@ -108,7 +110,7 @@ export default function SaleProductPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
   const [receiver,setReceiver]=useState("");
-  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setReceiver(submission.pending.draft.receiver);setRequestId(submission.pending.id);},[submission.pending]);
 
 
   useEffect(() => {
@@ -189,7 +191,7 @@ export default function SaleProductPage() {
       const payload: Record<string, unknown> = {
         date: form.date,
         product: productKey,
-        stock_group_id: stockGroup||null,
+        ...(batchId?{batch_id:batchId}:{stock_group_id:stockGroup||null}),
         pricing_basis: config.pricingBasis,
         request_id: requestId,
         payment_method: form.payment_method,
@@ -208,7 +210,7 @@ export default function SaleProductPage() {
         if (productKey === "crops") payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver},requestId);
+      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId},requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -277,7 +279,8 @@ export default function SaleProductPage() {
       {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">This sale is awaiting confirmation. Its original date and values are retained. Retry this saved sale before entering another here.</p>}
       <fieldset disabled={saving||!!submission.pending} className="min-w-0 space-y-4">
       {/* Form */}
-      <LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />
+      <FarmBatchPicker product={productKey} value={batchId} onChange={setBatchId} refreshKey={requestId}/>
+      {!batchId&&<LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
         {/* 1. Date */}
         <div>

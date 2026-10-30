@@ -9,6 +9,7 @@ import { InventoryActivity } from "@/components/manager/InventoryActivity";
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { PlusSquare, Check } from "lucide-react";
 
+import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
 import { LivestockClassificationFields } from "@/components/manager/LivestockClassificationFields";
 import { emptyClassification, validClassification } from "@/lib/farm-livestock-categories";
 
@@ -23,6 +24,7 @@ export default function StockPage() {
     setToday(t);
     setDate(t);
   }, []);
+  const [batchId,setBatchId]=useState('');
   const [product, setProduct] = useState("catfish");
   const [classification,setClassification] = useState(emptyClassification);
   const [quantity, setQuantity] = useState("");
@@ -35,7 +37,7 @@ export default function StockPage() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   async function handleSave() {
-    if (!validClassification(product,classification)) return toast.error("Select the animal type and growth stage");
+    if (!batchId && !validClassification(product,classification)) return toast.error("Select the animal type and growth stage");
     if (!Number.isInteger(Number(quantity))) return toast.error("Enter a whole-animal quantity");
     if (!quantity || Number(quantity) <= 0) return toast.error("Enter a valid quantity");
 
@@ -44,7 +46,7 @@ export default function StockPage() {
       const res = await managerFetch("/api/farm/inventory/transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: requestId, product, classification, action: "add", quantity: Number(quantity), date, reason: reason.trim() || "New batch arrived", notes: notes.trim() || undefined }),
+        body: JSON.stringify({ request_id: requestId, product, ...(batchId?{batch_id:batchId}:{classification}), action: "add", quantity: Number(quantity), date, reason: reason.trim() || "New batch arrived", notes: notes.trim() || undefined }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Failed to save");
@@ -60,7 +62,7 @@ export default function StockPage() {
   }
 
   return (
-    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="mx-auto max-w-lg space-y-4">
       <div className="rounded-2xl px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "#dcfce7", borderLeft: "4px solid #16a34a" }}>
         <PlusSquare className="h-6 w-6 text-green-700 flex-shrink-0" />
         <div>
@@ -94,7 +96,8 @@ export default function StockPage() {
           </div>
         </div>
 
-        <LivestockClassificationFields product={product} value={classification} onChange={setClassification} />
+        <FarmBatchPicker product={product} value={batchId} onChange={setBatchId} refreshKey={savedId}/>
+        {!batchId&&<LivestockClassificationFields product={product} value={classification} onChange={setClassification} />}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity *</label>
           <input type="number" inputMode="numeric"

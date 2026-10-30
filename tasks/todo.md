@@ -258,8 +258,8 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [x] Verify all report links and 60 cropped UI captures; render and visually inspect the 16-page companion at output/pdf/2026-10-30-pulse-farm-demo-visual-audit.pdf. Browser phone emulation only; backend transactions, physical devices and full-version services remain unverified. Research changed documentation only.
 - [x] User approval of the updated implementation plan, including manager-only Farm app, CEO-only oversight and multiple manager accounts.
 - [ ] Implementation in progress: verify baseline and isolated restore, then complete the ten linked phases. Production release still requires the plan's explicit release approval.
-- [ ] Verified live preconditions and linked named sites/batches, retaining legacy quantities and manager boundaries.
-- [ ] Private photographs, durable offline media, batch daily logs, mortality proof and recorded questions/replies.
+- [x] Verified live preconditions and linked named sites/batches in isolation, retaining legacy quantities and manager boundaries.
+- [x] Private photographs, durable offline media, batch daily logs, mortality proof and recorded questions/replies implemented and checked in isolation.
 - [ ] Structured purchasing approvals, actual payments and confirmed/partial deliveries.
 - [ ] Egg store, all-store physical counts/decisions and defensible feed-coverage estimates.
 - [ ] New sale invoices, actual receipts, credit/part-payments and customer debt reconciliation across Farm and CEO.
@@ -268,4 +268,4 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 - [ ] Consistent mobile/PWA experience, optional scoped support access/additional sites and staff handover.
 - [ ] Isolated tests, restoration rehearsal, preservation evidence and explicit approval before any production migration/deployment.
 
-Planning only. No application code, production settings, records, accounts, figures or deployment changed for this request. The reference's spending approval concerns purchases; consuming already-held feed remains separate. Existing special historical exports and clean personal manager periods remain protected.
+Implementation is local on codex/primefield-pulse. Production settings, records, accounts, figures and deployment remain unchanged for this request. The reference's spending approval concerns purchases; consuming already-held feed remains separate. Existing special historical exports and clean personal manager periods remain protected.

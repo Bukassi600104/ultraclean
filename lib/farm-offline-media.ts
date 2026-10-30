@@ -1,7 +1,7 @@
 import {queueIdentityKey,type QueueIdentity} from './offline-storage';
 
 type PhotoDetails={activity_date:string;target_resource:string;batch_id?:string};
-export type FarmMedia={id:string;owner:string;identity:QueueIdentity;blob:Blob;details:PhotoDetails;requestId:string;createdAt:string;status:'phone'|'pending'|'uploaded';evidenceId?:string;error?:string};
+export type FarmMedia={id:string;owner:string;identity:QueueIdentity;blob:Blob;uploadBlob?:Blob;details:PhotoDetails;requestId:string;createdAt:string;status:'phone'|'pending'|'uploaded';evidenceId?:string;error?:string};
 const database='primefield-private-photos';
 function open(){return new Promise<IDBDatabase>((resolve,reject)=>{
  const request=indexedDB.open(database,1);
@@ -21,10 +21,10 @@ async function put(item:FarmMedia){
   transaction.objectStore('photos').put(item);
  });}finally{db.close();}
 }
-export async function saveFarmMedia(identity:QueueIdentity,blob:Blob,details:PhotoDetails){
+export async function saveFarmMedia(identity:QueueIdentity,blob:Blob,details:PhotoDetails,uploadBlob?:Blob){
  const key=owner(identity);if(!blob.size)throw Error('Choose a photo');
  const requestId=crypto.randomUUID();
- const item:FarmMedia={id:key+':'+requestId,owner:key,identity:{...identity},blob,details:{...details},requestId,createdAt:new Date().toISOString(),status:'phone'};
+ const item:FarmMedia={id:key+':'+requestId,owner:key,identity:{...identity},blob,uploadBlob,details:{...details},requestId,createdAt:new Date().toISOString(),status:'phone'};
  await put(item);return item;
 }
 export async function getFarmMedia(identity:QueueIdentity):Promise<FarmMedia[]>{
@@ -48,7 +48,7 @@ export async function syncFarmMedia(identity:QueueIdentity,{send=fetch,isCurrent
   if(!isCurrent()||signal?.aborted)break;if(original.status==='uploaded')continue;
   const item:FarmMedia={...original,status:'pending'};
   await put(item);if(!isCurrent()||signal?.aborted)break;
-  const form=new FormData();form.set('file',item.blob,'photo');form.set('request_id',item.requestId);
+  const form=new FormData();form.set('file',item.uploadBlob||item.blob,'photo');form.set('request_id',item.requestId);
   for(const [key,value] of Object.entries(item.details))if(value)form.set(key,value);
   try{
    const response=await send('/api/farm/evidence',{method:'POST',headers:{'X-Manager-Actor':identity.actorId,'X-Manager-Period':identity.periodId},body:form,signal});

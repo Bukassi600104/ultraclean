@@ -24,6 +24,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Main",
     items: [
       { href: "/", label: "Overview", icon: Home },
+      { href: "/today", label: "Today", icon: ClipboardList },
     ],
   },
   {

@@ -16,6 +16,7 @@ const positive = z.number().finite().positive().optional();
 const revision = z.number().int().nonnegative();
 const schemas: Record<FarmRecordType, z.ZodType> = {
   sale: z.object({ cash_receiver:cashReceiver.optional(),...classificationFields, expected_revision: revision, date, customer_name: text,
+    batch_id: z.string().uuid().nullable().optional(),
     product: z.enum(["catfish","goat","chicken","pig","turkey","cattle","other","crops"]).optional(),
     quantity: positive, unit_price: positive, weight_kg: positive.nullable(),
     pricing_basis: z.enum(["per_kg","per_head","per_unit"]).optional(),
@@ -24,7 +25,7 @@ const schemas: Record<FarmRecordType, z.ZodType> = {
   expense: z.object({ ...cashPayerFields,expected_revision: revision, date, category: z.enum(["feed","labor","utilities","veterinary","transport","equipment","produce"]).optional(), amount: positive, paid_to: text, item_name: text, payment_method: z.enum(["cash","transfer","pos"]).optional(), expense_source: z.enum(["bimbo_transfer","sales_cash"]).optional(), notes: text }),
   fund: z.object({ expected_revision: revision, date, amount: positive, notes: text }),
   inventory: z.object({ ...classificationFields, target_quantity: z.number().finite().nonnegative(), expected_current_stock: z.number().finite(), date }),
-  inventory_transaction: z.object({ ...classificationFields, product: z.string().min(1).max(100).optional(), quantity: positive, notes: text, date }),
+  inventory_transaction: z.object({ ...classificationFields, batch_id: z.string().uuid().nullable().optional(), product: z.string().min(1).max(100).optional(), quantity: positive, notes: text, date }),
   supply: z.object({ expected_revision: revision, item_name: z.string().trim().min(1).max(200).optional(), category: z.string().max(100).optional(), unit: z.string().min(1).max(50).optional(), restock_threshold: z.number().finite().nonnegative().nullable().optional(), notes: text, quantity_change: z.number().finite().optional(), date }),
   supply_transaction: z.object({ quantity_change: z.number().finite(), date }),
   feed: z.object({ ...cashPayerFields,expected_revision: revision, date, feed_type: z.enum(["fish","goat","chicken","pig","turkey","cattle","other"]).optional(), feed_source: z.enum(["local","foreign"]).optional(), weight_unit: z.enum(["tons","kg"]).optional(), weight_amount: positive, num_bags: z.number().int().positive().optional(), cost: positive, notes: text }),
