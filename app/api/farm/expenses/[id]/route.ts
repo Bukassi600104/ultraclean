@@ -12,7 +12,7 @@ const schema = z.object({
   expense_source: z.enum(["bimbo_transfer", "sales_cash"]).optional(), item_name: z.string().max(200).nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   payment_method: z.enum(["cash", "transfer", "pos"]).optional(), notes: z.string().max(1000).nullable().optional(),
-  reason: z.string().trim().min(1).max(1000), expected_revision: z.number().int().nonnegative(),
+  reason: z.string().trim().min(1).max(1000), batch_id:z.string().uuid().nullable().optional(),expected_revision: z.number().int().nonnegative(),
 });
 async function mutate(request: NextRequest, id: string, operation: "update" | "void") {
   let profile;

@@ -14,7 +14,7 @@ export function calculateFarmFinance(rows: {transfers: FinancialRow[]; expenses:
  const total_spent_before = sumMoney([sum(expenses.filter(r=>before(r)&&owner(r)),"amount"),sum(feed.filter(before),"cost")]);
  const opening_balance = subtractMoney(sum(transfers.filter(before),"amount"),total_spent_before);
  const total_spent_today = sumMoney([sum(expenses.filter(r=>today(r)&&owner(r)),"amount"),sum(feed.filter(today),"cost")]);
- const total_sales_today = sum(sales.filter(today),"total_amount"), total_sales_cash_expenses = sum(expenses.filter(r=>today(r)&&!owner(r)),"amount");
+ const total_sales_today = subtractMoney(sum(sales.filter(today),"total_amount"),sum(credits.filter(today),"amount")), total_sales_cash_expenses = sum(expenses.filter(r=>today(r)&&!owner(r)),"amount");
  const closing_balance = subtractMoney(sumMoney([opening_balance,transferred_today]),total_spent_today);
  const sales_cash_balance = subtractMoney(sum(cashSales.filter(through),"total_amount"),sum(expenses.filter(r=>through(r)&&!owner(r)),"amount"));
  const range_sales = sales.filter(range), range_expenses = expenses.filter(range), range_feed = feed.filter(range);
@@ -30,7 +30,7 @@ export function calculateFarmFinance(rows: {transfers: FinancialRow[]; expenses:
  const latest = (rs: FinancialRow[]) => rs.filter(r=>r.date<=to).map(r=>r.date).sort().at(-1)??null;
  const last_entries = {sales:latest(sales),general_expenses:latest(expenses),feed:latest(feed),transfers:latest(transfers)};
  const amounts = {gross_revenue,credit_adjustments,collections,collections_today:sum(cashSales.filter(today),"total_amount"),opening_balance,closing_balance,transferred_today,total_transferred,total_spent_before,total_spent_today,total_sales_today,total_sales_cash_expenses,sales_cash_balance,total_owner_spent:sumMoney([total_spent_before,total_spent_today]),net_position:sumMoney([closing_balance,sales_cash_balance]),revenue,general_expenses,feed_expenses,total_expenses:sumMoney([general_expenses,feed_expenses]),operational_net:subtractMoney(revenue,general_expenses,feed_expenses),today_total_expenses:sumMoney([total_spent_today,total_sales_cash_expenses]),today_operational_net:subtractMoney(total_sales_today,total_spent_today,total_sales_cash_expenses)};
- return {...Object.fromEntries(Object.entries(amounts).map(([key,value])=>[key,moneyNumber(value)])) as {[K in keyof typeof amounts]:number},daily,period_reconciliation,last_entries,sales_by_product:grouped(range_sales,"product","total_amount"),expenses_by_category};
+ return {...Object.fromEntries(Object.entries(amounts).map(([key,value])=>[key,moneyNumber(value)])) as {[K in keyof typeof amounts]:number},daily,period_reconciliation,last_entries,sales_by_product:grouped([...range_sales,...credits.filter(range).map(r=>({...r,total_amount:subtractMoney("0",r.amount as MoneyInput)}))],"product","total_amount"),expenses_by_category};
 }
 
 export function applyPersonalFarmCash(result:ReturnType<typeof calculateFarmFinance>,cash:import("./operations-cash-validation").CashSummary){

@@ -1,4 +1,5 @@
 "use client";
+import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
 import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
 import {CashPayerSelect} from "@/components/manager/CashPartySelect";
@@ -87,7 +88,7 @@ function getTodayStr() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type ExpenseDraft={form:FormValues;feedSource:string;delivery:string;deliveryDate:string;deliveryId:string;included:string;payer:string};
+type ExpenseDraft={batchId?:string;form:FormValues;feedSource:string;delivery:string;deliveryDate:string;deliveryId:string;included:string;payer:string};
 
 export default function ExpenseCategoryPage() {
  const managerFetch=useManagerFetch();
@@ -95,6 +96,7 @@ export default function ExpenseCategoryPage() {
   const router = useRouter();
   const categoryKey = (category as Category) in CATEGORY_CONFIG ? (category as Category) : "labor";
   const config = CATEGORY_CONFIG[categoryKey];
+  const [batchId,setBatchId]=useState('');
   const [today, setToday] = useState("");
   const [delivery,setDelivery]=useState("order"),[feedSource,setFeedSource]=useState("local"),[deliveryDate,setDeliveryDate]=useState(""),[deliveryId,setDeliveryId]=useState(""),[included,setIncluded]=useState("");
   const [deliveries,setDeliveries]=useState<FeedActivity[]>([]),[feedStocks,setFeedStocks]=useState<FeedInventoryRow[]>([]),[deliveryError,setDeliveryError]=useState("");
@@ -123,7 +125,7 @@ export default function ExpenseCategoryPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<ExpenseDraft>("expense:"+categoryKey);
   const [payerChoice,setPayerChoice]=useState(""),[fundingNotice,setFundingNotice]=useState("");
-  useEffect(()=>{if(!submission.pending)return;const draft=submission.pending.draft;setForm(draft.form);setFeedSource(draft.feedSource);setDelivery(draft.delivery);setDeliveryDate(draft.deliveryDate);setDeliveryId(draft.deliveryId);setIncluded(draft.included);setPayerChoice(draft.payer);requestId.current=submission.pending.id;},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;const draft=submission.pending.draft;setForm(draft.form);setBatchId(draft.batchId||'');setFeedSource(draft.feedSource);setDelivery(draft.delivery);setDeliveryDate(draft.deliveryDate);setDeliveryId(draft.deliveryId);setIncluded(draft.included);setPayerChoice(draft.payer);requestId.current=submission.pending.id;},[submission.pending]);
 
 
   useEffect(() => {
@@ -170,11 +172,11 @@ export default function ExpenseCategoryPage() {
         label=`Feed (${form.feed_type})`;endpoint="/api/farm/feed-purchases";
       }else{
         const produce=categoryKey==="produce";
-        payload={date:form.date,category:categoryKey,amount:produce?moneyNumber(multiplyMoney(form.produce_quantity||"0",form.produce_unit_price||"0")):moneyNumber(form.amount||"0"),paid_to:form.paid_to.trim()||undefined,payment_method:form.payment_method,expense_source:form.expense_source,notes:produce?`${form.produce_quantity} units @ ₦${form.produce_unit_price}${form.notes.trim()?" — "+form.notes.trim():""}`:form.notes.trim()||undefined,...(produce?{item_name:form.produce_type}:categoryKey==="equipment"?{item_name:form.item_name.trim()}:{}),...payer};
+        payload={...(batchId?{batch_id:batchId}:{}),date:form.date,category:categoryKey,amount:produce?moneyNumber(multiplyMoney(form.produce_quantity||"0",form.produce_unit_price||"0")):moneyNumber(form.amount||"0"),paid_to:form.paid_to.trim()||undefined,payment_method:form.payment_method,expense_source:form.expense_source,notes:produce?`${form.produce_quantity} units @ ₦${form.produce_unit_price}${form.notes.trim()?" — "+form.notes.trim():""}`:form.notes.trim()||undefined,...(produce?{item_name:form.produce_type}:categoryKey==="equipment"?{item_name:form.item_name.trim()}:{}),...payer};
         label=produce?form.produce_type:config.label;endpoint="/api/farm/expenses";
       }
       requestId.current??=crypto.randomUUID();
-      const response=await submission.send(endpoint,[payload],{form,feedSource,delivery,deliveryDate,deliveryId,included,payer:payerChoice},requestId.current),result=await response.json();
+      const response=await submission.send(endpoint,[payload],{form,feedSource,delivery,deliveryDate,deliveryId,included,payer:payerChoice,batchId},requestId.current),result=await response.json();
       if(!response.ok)throw Error(result.error||"Unable to confirm this saved expense");
       requestId.current=null;setDirty(false);
       if(response.status===202){setFundingNotice("Saved for Bimbo’s funding review; not yet posted.");setShowSuccess(false);}
@@ -438,6 +440,7 @@ export default function ExpenseCategoryPage() {
             <option value="bimbo_transfer">Bimbo’s funds</option><option value="sales_cash">Farm sales proceeds</option>
           </select>
         </div> : <p className="text-sm text-gray-500">Feed purchases are paid from Bimbo’s funds.</p>}
+        {categoryKey!=="feed"&&<FarmBatchPicker product="all" value={batchId} onChange={setBatchId}/>}
         {personal&&<CashPayerSelect business="farm" currency="NGN" bucket={categoryKey!=="feed"&&form.expense_source==="sales_cash"?"sales":"owner"} value={payerChoice} onChange={setPayerChoice} disabled={saving||!!submission.pending}/>}
         {/* Payment method */}
         <div>

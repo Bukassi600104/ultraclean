@@ -43,6 +43,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/inventory", label: "Inventory", icon: Layers },
       { href: "/daily-feed", label: "Daily Feed", icon: Droplets },
+      { href: "/health", label: "Health tasks", icon: ClipboardList },
+      { href: "/performance", label: "Batch performance", icon: TrendingUp },
       { href: "/stores", label: "Physical counts & eggs", icon: Package },
       { href: "/feed-stock", label: "Feed Inventory", icon: Package },
       { href: "/stock", label: "Add Stock", icon: PlusSquare },

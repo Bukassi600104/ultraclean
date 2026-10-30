@@ -12,6 +12,7 @@ import {financialResponse} from "@/lib/operations-cash";
 export const runtime = "nodejs";
 
 const expenseItemSchema = z.object({
+  batch_id:z.string().uuid().nullable().optional(),
   ...cashPayerFields,
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   category: z.enum(["labor", "utilities", "veterinary", "transport", "equipment", "produce"]),

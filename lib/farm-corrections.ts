@@ -23,7 +23,7 @@ const schemas: Record<FarmRecordType, z.ZodType> = {
     pricing_basis: z.enum(["per_kg","per_head","per_unit"]).optional(),
     gender: z.enum(["male","female"]).nullable().optional(), other_product_name: text,
     total_amount: z.number().finite().nonnegative().optional(), payment_method: z.enum(["cash","transfer","pos"]).optional(), notes: text }),
-  expense: z.object({ ...cashPayerFields,expected_revision: revision, date, category: z.enum(["feed","labor","utilities","veterinary","transport","equipment","produce"]).optional(), amount: positive, paid_to: text, item_name: text, payment_method: z.enum(["cash","transfer","pos"]).optional(), expense_source: z.enum(["bimbo_transfer","sales_cash"]).optional(), notes: text }),
+  expense: z.object({ batch_id:z.string().uuid().nullable().optional(),...cashPayerFields,expected_revision: revision, date, category: z.enum(["feed","labor","utilities","veterinary","transport","equipment","produce"]).optional(), amount: positive, paid_to: text, item_name: text, payment_method: z.enum(["cash","transfer","pos"]).optional(), expense_source: z.enum(["bimbo_transfer","sales_cash"]).optional(), notes: text }),
   fund: z.object({ expected_revision: revision, date, amount: positive, notes: text }),
   inventory: z.object({ ...classificationFields, target_quantity: z.number().finite().nonnegative(), expected_current_stock: z.number().finite(), date }),
   inventory_transaction: z.object({ ...classificationFields, batch_id: z.string().uuid().nullable().optional(), product: z.string().min(1).max(100).optional(), quantity: positive, notes: text, date }),

@@ -38,7 +38,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-// ── Navigation structure ────────────────────────────────────────────────────
+// â”€â”€ Navigation structure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const NAV_SECTIONS = [
   {
@@ -71,6 +71,8 @@ const NAV_SECTIONS = [
       { href: "/dashboard/farm", label: "Farm", icon: Tractor },
       { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
       { href: "/dashboard/farm/credit", label: "Customers & payments", icon: Package },
+      { href: "/dashboard/farm/health", label: "Health tasks", icon: Package },
+      { href: "/dashboard/farm/performance", label: "Batch performance", icon: Package },
       { href: "/dashboard/farm/stores", label: "Stores & counts", icon: Package },
       { href: "/dashboard/farm/feed-stock", label: "Feed Inventory", icon: Package },
       { href: "/dashboard/farm/daily-reports", label: "Daily Reports", icon: FileText },
@@ -89,7 +91,7 @@ const NAV_SECTIONS = [
   },
 ];
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BrandLogo({ collapsed }: { collapsed: boolean }) {
   return (
@@ -271,7 +273,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
   );
 }
 
-// ── Main Sidebar export ─────────────────────────────────────────────────────
+// â”€â”€ Main Sidebar export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -281,7 +283,7 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ── Desktop sidebar ── */}
+      {/* â”€â”€ Desktop sidebar â”€â”€ */}
       <aside
         className={cn(
           "hidden lg:flex flex-col border-r border-white/5 bg-[#1B1464] transition-all duration-200 relative shrink-0",
@@ -324,7 +326,7 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* ── Mobile sidebar ── */}
+      {/* â”€â”€ Mobile sidebar â”€â”€ */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetTrigger asChild>
           <Button

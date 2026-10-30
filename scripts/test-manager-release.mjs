@@ -1,6 +1,7 @@
 import {spawnSync} from 'node:child_process';
 // Explicit isolated suites only: older ad-hoc Auth scripts can mutate production.
 const suites=[
+ 'test-farm-health','test-farm-health-api','test-farm-health-ui','test-farm-performance',
  'test-farm-credit','test-farm-credit-api','test-farm-credit-ui',
  'test-farm-stores','test-farm-stores-api','test-farm-stores-ui',
  'test-farm-purchases','test-farm-purchases-api','test-farm-purchases-ui',
