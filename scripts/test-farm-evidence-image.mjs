@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import sharp from 'sharp';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const {prepareEvidenceImage,MAX_EVIDENCE_BYTES}=typescriptLoader()('lib/farm-evidence-image.ts');
+const png=await sharp({create:{width:3,height:3,channels:3,background:'#123456'}}).png().toBuffer();
+const image=await prepareEvidenceImage(png,'image/png');
+assert.equal(image.mime,'image/jpeg');assert.equal((await sharp(image.bytes).metadata()).format,'jpeg');
+assert.equal((await prepareEvidenceImage(png,'image/png')).sha256,image.sha256);
+await assert.rejects(()=>prepareEvidenceImage(png,'image/jpeg'),/match/i);
+await assert.rejects(()=>prepareEvidenceImage(Buffer.from('<svg onload="alert(1)"></svg>'),'image/png'));
+await assert.rejects(()=>prepareEvidenceImage(Buffer.alloc(MAX_EVIDENCE_BYTES+1),'image/png'),/size/i);
+await assert.rejects(()=>prepareEvidenceImage(png.subarray(0,20),'image/png'));
+console.log('PASS private evidence decoding: MIME mismatch, corrupt/oversize content, normalized JPEG and stable hash');
