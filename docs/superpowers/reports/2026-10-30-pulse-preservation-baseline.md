@@ -31,3 +31,8 @@ Daily records preserve missing measurements separately from entered zero, link p
 Actual browser checks cover persisted scoped drafts, mandatory new mortality evidence, uploaded-photo viewing, slow-submission input locking, retained closed-day entries and centred forms at 375, 390, 768 and 1440 pixels. Two real PostgreSQL connections verify serialized retries and closing/write races. Regression groups cover existing accounts, handover, custody, financial reports, exports, Property/Content, classifications, navigation and installation behavior. A timing-sensitive handover keyboard check passed on isolated rerun; an old mortality fixture was updated to supply the now-required photograph.
 
 This is development evidence, not release certification. Production build/release gates and physical-phone camera, keyboard and cross-tab checks remain pending with the later phases. No production migration, push or deployment was performed.
+
+
+## Final implementation checkpoint
+
+All nine forward migrations and the complete implementation are now covered by [the final verification report](2026-10-31-pulse-final-verification.md). The earlier checkpoint statements above are historical progress notes. No production rollout is claimed.
