@@ -66,7 +66,9 @@ export default function LoginPage() {
         .eq("id", user.id)
         .single();
 
-      if (profile?.role === "manager") {
+      if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){
+        router.push('/farm-support');
+      } else if (profile?.role === "manager") {
         window.location.href = "https://farm.primefieldagric.com";
       } else if (profile?.role === "property_manager") {
         router.push("/property");

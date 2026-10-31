@@ -71,6 +71,7 @@ const NAV_SECTIONS = [
       { href: "/dashboard/farm/control", label: "Farm", icon: Tractor },
       { href: "/dashboard/farm/supplies", label: "Farm Supplies", icon: Package },
       { href: "/dashboard/farm/credit", label: "Customers & payments", icon: Package },
+      { href: "/dashboard/farm/batches", label: "Sites and batches", icon: Package },
       { href: "/dashboard/farm/health", label: "Health tasks", icon: Package },
       { href: "/dashboard/farm/performance", label: "Batch performance", icon: Package },
       { href: "/dashboard/farm/stores", label: "Stores & counts", icon: Package },
@@ -335,7 +336,7 @@ export function Sidebar() {
             aria-label="Open navigation"
             className={cn("lg:hidden absolute left-3 top-3.5 z-50 text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white shadow-sm rounded-lg h-11 w-11", isCeoHome && "h-11 w-11")}
           >
-            <Menu className="h-4 w-4" />
+            <span className="flex flex-col items-center justify-center"><Menu className="h-4 w-4" /><span className="text-[9px] font-semibold">More</span></span>
           </Button>
         </SheetTrigger>
         <SheetContent

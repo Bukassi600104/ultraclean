@@ -6,7 +6,7 @@ const write=(actor,op,payload,id=null,retry=crypto.randomUUID())=>scalar(db,'sel
 try{
  await periodWrite(db,ids.admin,'activate');
  await db.query('insert into auth.users(id) values($1)',[actor]);await db.query("insert into profiles(id,role,name) values($1,'manager','Receipt tester')",[actor]);
- const period=await periodWrite(db,ids.admin,'provision',{manager_id:actor,business:'farm',starts_on:'2026-10-30'});await db.query("update manager_periods set status='active' where id=$1",[period.id]);
+ const period=await periodWrite(db,ids.admin,'provision',{manager_id:actor,business:'farm',starts_on:'2026-10-28'});await db.query("update manager_periods set status='active' where id=$1",[period.id]);
  const customer=await write(actor,'customer',{name:'Verified customer',phone:'Actual supplied contact'});
  await assert.rejects(()=>write(actor,'terms',{days:30,reason:'Unauthorized'},customer.id),e=>e.code==='42501');
  await write(ids.admin,'terms',{days:30,reason:'Approved payment terms'},customer.id);
@@ -54,5 +54,26 @@ try{
  await write(actor,'receipt',{...receipt,customer_id:secondCustomer.id,amount:'150'});
  assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[firstEqual.id])),0);assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[nextEqual.id])),50);
  await assert.rejects(()=>write(actor,'receipt',{...receipt,customer_id:secondCustomer.id,date:'2026-10-29',amount:'10'}),e=>['40001','42501'].includes(e.code));
+ const returnCustomer=await write(actor,'customer',{name:'Paid invoice return customer'});await write(ids.admin,'terms',{days:10,reason:'Actual terms'},returnCustomer.id);
+ const paidInvoice=await write(actor,'invoice',{...payload,customer_id:returnCustomer.id,sale:{...payload.sale,quantity:1,unit_price:100}});
+ const paidReceipt=await write(actor,'receipt',{...receipt,customer_id:returnCustomer.id,amount:'100'});
+ const returnCredit=await write(ids.admin,'credit_note',{date:'2026-10-30',amount:'40',reason:'Actual commercial return'},paidInvoice.id);
+ assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[paidInvoice.id])),0);
+ const returned=await write(ids.admin,'refund',{date:'2026-10-30',amount:'40',reason:'Actual money returned'},paidReceipt.id);
+ assert.equal(await scalar(db,'select voided_at from farm_customer_receipts where id=$1',[paidReceipt.id]),null);
+ await assert.rejects(()=>write(ids.admin,'void_credit',{reason:'Would erase money returned'},returnCredit.id),e=>e.code==='23514');
+ await assert.rejects(()=>write(ids.admin,'refund',{date:'2026-10-30',amount:'1',reason:'No available credit'},paidReceipt.id),e=>e.code==='23514');
+ await write(ids.admin,'void_refund',{reason:'Refund rejected by bank'},returned.id);await write(ids.admin,'void_credit',{reason:'Return cancelled'},returnCredit.id);
+ assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[paidInvoice.id])),0);
+ const cancelled=await write(actor,'invoice',{...payload,customer_id:returnCustomer.id,sale:{...payload.sale,quantity:1,unit_price:100}});
+ await scalar(db,"select farm_v2_write($1,'sale','void','{\"expected_revision\":0}'::jsonb,$2,'Cancelled unpaid invoice',$3)",[ids.admin,cancelled.sale_id,crypto.randomUUID()]);
+ await assert.rejects(()=>write(ids.admin,'credit_note',{date:'2026-10-30',amount:'50',reason:'Invalid voided invoice'},cancelled.id),e=>e.code==='23514');
+ const datedCustomer=await write(actor,'customer',{name:'Dated refund example'});await write(ids.admin,'terms',{days:10,reason:'Actual terms'},datedCustomer.id);
+ const datedInvoice=await write(actor,'invoice',{...payload,date:'2026-10-28',customer_id:datedCustomer.id,sale:{...payload.sale,date:'2026-10-28',quantity:1,unit_price:100}});
+ const datedReceipt=await write(actor,'receipt',{...receipt,date:'2026-10-28',customer_id:datedCustomer.id,amount:'100'});
+ const earlyCredit=await write(ids.admin,'credit_note',{date:'2026-10-29',amount:'40',reason:'Earlier return'},datedInvoice.id);
+ await write(ids.admin,'refund',{date:'2026-10-29',amount:'40',reason:'Earlier actual refund'},datedReceipt.id);
+ await write(ids.admin,'credit_note',{date:'2026-10-30',amount:'40',reason:'Later independent return'},datedInvoice.id);
+ await assert.rejects(()=>write(ids.admin,'void_credit',{reason:'Later credit cannot fund earlier refund'},earlyCredit.id),e=>e.code==='23514');
  console.log('PASS invoices separate revenue, receipt cash, FIFO debt, overpayments and audited reversal');
 }catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}

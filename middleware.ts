@@ -24,6 +24,16 @@ export async function middleware(request: NextRequest) {
     hostname === "bboconcepts.com" ||
     hostname === "www.bboconcepts.com";
 
+  if(pathname==='/farm-support'||pathname.startsWith('/farm-support/')){
+    const {supabaseResponse,user,supabase}=await updateSession(request);
+    const {data:profile}=user?await supabase.from('profiles').select('role, suspended').eq('id',user.id).single():{data:null};
+    if(!profile||profile.suspended||!['farm_vet','farm_accountant'].includes(profile.role)){
+      if(profile?.suspended)await supabase.auth.signOut();
+      const url=request.nextUrl.clone();url.pathname='/login';url.search='';return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
+
   if (isFarmDomain) {
     // Refresh session first so we can check auth
     const result = await updateSession(request);
@@ -55,6 +65,11 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
+    if(profile?.suspended&&['farm_vet','farm_accountant'].includes(profile.role)){await supabase.auth.signOut();const url=request.nextUrl.clone();url.pathname='/login';return NextResponse.redirect(url);}
+    if(profile&&!profile.suspended&&['farm_vet','farm_accountant'].includes(profile.role)){
+      if(pathname.startsWith('/api/'))return supabaseResponse;
+      const url=request.nextUrl.clone();url.pathname='/farm-support';url.search='';return NextResponse.redirect(url);
+    }
     if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
@@ -108,6 +123,7 @@ export async function middleware(request: NextRequest) {
     if (pathname === "/login") {
       if (user) {
         const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+        if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){const url=request.nextUrl.clone();url.pathname='/farm-support';url.search='';return NextResponse.redirect(url);}
         if (profile?.role === "property_manager" || profile?.role === "content_manager") {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = profile.role === "property_manager" ? "/property" : "/content";
@@ -194,7 +210,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect("https://farm.primefieldagric.com");
       }
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = profile?.role === "property_manager" ? "/property"
+      redirectUrl.pathname = profile&&['farm_vet','farm_accountant'].includes(profile.role)?'/farm-support':profile?.role === "property_manager" ? "/property"
         : profile?.role === "content_manager" ? "/content" : "/dashboard";
       return NextResponse.redirect(redirectUrl);
     }

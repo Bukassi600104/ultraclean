@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';import {managerDatabase,ids,scalar,asRole,periodWrite} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase(),vet='00000000-0000-4000-8000-000000000091';
+try{
+ await periodWrite(db,ids.admin,'activate');
+ await db.query('alter table auth.users add column raw_app_meta_data jsonb,add column banned_until timestamptz');
+ await db.query("insert into auth.users(id,raw_app_meta_data,banned_until) values($1,'{\"manager_setup_pending\":true}',now()+interval '1 day')",[vet]);
+ await db.query("insert into profiles(id,role,name) values($1,'admin','New blocked profile')",[vet]);
+ const profile=await scalar(db,'select farm_support_account_provision($1,$2,$3,$4)',[ids.admin,vet,'farm_vet','Assigned veterinarian']);assert.equal(profile.role,'farm_vet');
+ assert.equal(await scalar(db,'select count(*)::int from manager_periods where manager_id=$1',[vet]),0);
+ const data=await scalar(db,'select farm_support_read($1,$2::date,$3::date)',[vet,'2026-10-01','2026-10-30']);assert.equal(data.tasks.length,0);assert.deepEqual(data.records,{});
+ await assert.rejects(()=>scalar(db,"select manager_context($1,'farm',null)",[vet]),e=>e.code==='42501');
+ await assert.rejects(()=>scalar(db,"select farm_support_access_write($1,'grant',$2::jsonb,null)",[vet,JSON.stringify({support_id:vet,capability:'finance',reason:'Escalation'})]),e=>e.code==='42501');
+ await assert.rejects(()=>asRole(db,'authenticated',vet,()=>db.query('select * from farm_support_grants')),e=>['42501'].includes(e.code));
+ const batchWrite=(op,p)=>scalar(db,'select farm_batch_write($1,$2,$3::jsonb,$4)',[ids.admin,op,JSON.stringify(p),crypto.randomUUID()]);
+ const site=await batchWrite('site',{name:'Assigned support site'}),batch=await batchWrite('batch',{site_id:site.id,name:'Assigned support flock',kind:'flock',product:'chicken'}),period=await scalar(db,"select id from manager_periods where manager_id=$1 and business='farm'",[ids.farm]);
+ await periodWrite(db,ids.admin,'assign',{period_id:period,assets:[{resource:'farm_batches',record_id:batch.id}]});
+ const task=await scalar(db,"select farm_health_write($1,'schedule',$2::jsonb,null,$3)",[ids.admin,JSON.stringify({batch_id:batch.id,period_id:period,title:'Actual health task',instructions:'Actual approved instruction',due_date:'2026-10-30'}),crypto.randomUUID()]);
+ const access=(op,p,id=null)=>scalar(db,'select farm_support_access_write($1,$2,$3::jsonb,$4)',[ids.admin,op,JSON.stringify(p),id]);
+ const grant=await access('grant',{support_id:vet,capability:'health',batch_id:batch.id,reason:'Assigned clinical oversight'});
+ const read=()=>scalar(db,'select farm_support_read($1,$2::date,$3::date)',[vet,'2026-10-01','2026-10-30']);assert.equal((await read()).tasks.length,1);
+ const retry=crypto.randomUUID(),recommend=()=>scalar(db,'select farm_support_recommend($1,$2,$3,$4)',[vet,task.id,'Review actual findings with the manager',retry]);
+ const note=await recommend();assert.deepEqual(await recommend(),note);assert.equal((await scalar(db,'select farm_health_read($1,null,$2::date)',[ids.farm,'2026-10-30'])).recommendations[0].id,note.id);
+ assert.deepEqual(await scalar(db,'select farm_support_evidence_read($1,$2)',[vet,task.id]),[]);
+ await access('revoke',{reason:'Assignment ended'},grant.id);assert.equal((await read()).tasks.length,0);await assert.rejects(recommend,e=>e.code==='42501');await assert.rejects(()=>scalar(db,'select farm_support_evidence_read($1,$2)',[vet,task.id]),e=>e.code==='42501');
+ const accountant='00000000-0000-4000-8000-000000000092';await db.query('insert into auth.users(id) values($1)',[accountant]);await db.query("insert into profiles(id,role,name) values($1,'farm_accountant','Assigned accountant')",[accountant]);
+ await scalar(db,"select farm_v2_write($1,'expense','create',$2::jsonb,null,null,$3)",[ids.farm,JSON.stringify({date:'2026-10-30',category:'labor',amount:50}),crypto.randomUUID()]);
+ const finance=()=>scalar(db,'select farm_support_read($1,$2::date,$3::date)',[accountant,'2026-10-01','2026-10-30']);assert.equal((await finance()).records.farm_expenses.length,0);
+ await assert.rejects(()=>access('grant',{support_id:accountant,capability:'finance',reason:'Missing explicit scope'}),e=>e.code==='22023');
+ const financeGrant=await access('grant',{support_id:accountant,capability:'finance',period_id:period,reason:'Review this responsibility only'});assert.equal((await finance()).records.farm_expenses.length,1);assert.equal((await finance()).tasks.length,0);
+ await assert.rejects(()=>scalar(db,"select farm_v2_write($1,'expense','create',$2::jsonb,null,null,$3)",[accountant,JSON.stringify({date:'2026-10-30',category:'labor',amount:1}),crypto.randomUUID()]),e=>e.code==='42501');
+ await db.query('update profiles set suspended=true where id=$1',[accountant]);await assert.rejects(finance,e=>e.code==='42501');await db.query('update profiles set suspended=false where id=$1',[accountant]);await access('revoke',{reason:'Review ended'},financeGrant.id);assert.equal((await finance()).records.farm_expenses.length,0);
+ console.log('PASS explicitly limited support identity, no manager period, empty default access and denied direct database access');
+ console.log('PASS granted health advice, retained idempotent recommendations, manager visibility, private evidence revocation and read-only scoped accounting');
+}catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}

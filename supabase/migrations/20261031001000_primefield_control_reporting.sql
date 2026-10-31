@@ -47,6 +47,8 @@ begin
  report:=jsonb_set(report,'{records,farm_purchase_lines}',children);
  select coalesce(jsonb_agg(to_jsonb(a)||jsonb_build_object('_source_json',row_to_json(a)::text,'amount_exact',a.amount::text)),'[]') into children from farm_receipt_allocations a where exists(select 1 from jsonb_array_elements(report->'records'->'farm_customer_receipts') r where r->>'id'=a.receipt_id::text);
  report:=jsonb_set(report,'{records,farm_receipt_allocations}',children);
+ select coalesce(jsonb_agg(to_jsonb(x)||jsonb_build_object('_source_json',row_to_json(x)::text,'amount_exact',x.amount::text)),'[]') into children from farm_allocation_releases x join farm_receipt_allocations a on a.id=x.allocation_id where exists(select 1 from jsonb_array_elements(report->'records'->'farm_customer_receipts') r where r->>'id'=a.receipt_id::text);
+ report:=jsonb_set(report,'{records,farm_allocation_releases}',children);
  for child in select * from (values ('farm_customer_terms','customer_id','farm_customers'),('farm_customer_assignments','customer_id','farm_customers'),('farm_stock_count_decisions','count_id','farm_stock_counts')) t(tab,col,parent) loop
  execute format('select coalesce(jsonb_agg(to_jsonb(t)||jsonb_build_object(''_source_json'',row_to_json(t)::text)),''[]''::jsonb) from %I t where exists(select 1 from jsonb_array_elements($1) p where p->>''id''=t.%I::text)',child.tab,child.col) into children using coalesce(report->'records'->child.parent,'[]'::jsonb);
  report:=jsonb_set(report,array['records',child.tab],children);

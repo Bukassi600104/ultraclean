@@ -15,6 +15,6 @@ export const batchRecordSchema=z.object({operation:z.enum(['submit','correct']),
  if(value.operation==='correct'&&(!value.id||!value.payload.reason))context.addIssue({code:'custom',message:'Choose the original record and explain the correction'});
  if(value.operation==='submit'&&value.id)context.addIssue({code:'custom',message:'A new record cannot replace a sent record'});
 });
-export type FarmBatchRecord={id:string;batch_id:string;date:string;actor_id:string;period_id:string|null;feed_kg:number|null;feed_bags:number|null;deaths:number|null;eggs:number|null;sample_weight_kg:number|null;sample_count:number|null;notes:string|null;mortality_id:string|null;daily_feed_id:string|null;supersedes_id:string|null;created_at:string;batch_name:string;reason:string|null};
+export type FarmBatchRecord={batch?:AssignedFarmBatch;id:string;batch_id:string;date:string;actor_id:string;period_id:string|null;feed_kg:number|null;feed_bags:number|null;deaths:number|null;eggs:number|null;sample_weight_kg:number|null;sample_count:number|null;notes:string|null;mortality_id:string|null;daily_feed_id:string|null;supersedes_id:string|null;created_at:string;batch_name:string;reason:string|null};
 export type AssignedFarmBatch={id:string;name:string;kind:string;product:string;stock_group_id:string|null;site_id:string;site_name:string;quantity_exact:string;chicken_type:string|null;sex:string|null};
 export type FarmToday={batches:AssignedFarmBatch[];records:FarmBatchRecord[];as_of:string};

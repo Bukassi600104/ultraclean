@@ -6,8 +6,9 @@ import {prepareFarmPhoto} from '@/lib/farm-photo-prepare';
 import {getPendingItems,queueIdentityKey} from '@/lib/offline-storage';
 
 export function FarmPhotoPicker({date,batchId,resource,value,onChange,onBusyChange}:{date:string;batchId?:string;resource:string;value:string[];onChange:(ids:string[])=>void;onBusyChange?:(busy:boolean)=>void}){
- const identity=useQueueIdentity(),key=(identity?queueIdentityKey(identity):'')+':'+date+':'+(batchId||'')+':'+resource,current=useRef(key),selection=useRef(value);current.current=key;selection.current=value;
+ const identity=useQueueIdentity(),key=(identity?queueIdentityKey(identity):'')+':'+date+':'+(batchId||'')+':'+resource,current=useRef(key),previous=useRef(key),selection=useRef(value);current.current=key;selection.current=value;
  const [photos,setPhotos]=useState<FarmMedia[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ useEffect(()=>{if(previous.current!==key){previous.current=key;if(selection.current.length){onChange([]);setError('The record date or batch changed. Photos remain saved on this phone; select photos for the current record before sending.');}}},[key,onChange]);
  useEffect(()=>{current.current=key;let active=true;setPhotos([]);if(identity)getFarmMedia(identity).then(rows=>{if(active)setPhotos(rows);}).catch(()=>{if(active)setError('Photo storage is unavailable on this device. Keep your original photos.');});return()=>{active=false;current.current='';};},[key,date,batchId,resource,identity]);
  const queued=new Set(identity?getPendingItems(identity).flatMap(item=>item.mediaIds||[]):[]);
  const available=photos.filter(photo=>photo.details.activity_date===date&&photo.details.batch_id===batchId&&photo.details.target_resource===resource&&!queued.has(photo.id));

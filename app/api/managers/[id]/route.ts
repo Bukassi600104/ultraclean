@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { managerUpdateSchema } from "@/lib/validations";
-import { isManagerRole } from "@/lib/manager-accounts";
+import { isManagedStaffRole, isSupportRole } from "@/lib/manager-accounts";
 import {businessForRole} from "@/lib/manager-period-types";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ async function account(id: string) {
   const { data: target, error } = await supabase.from("profiles").select("id, role, name, suspended").eq("id", id).single();
   if (error) return { response: fail("Unable to load account", 503) };
   if (!target) return { response: fail("Account not found", 404) };
-  if (!isManagerRole(target.role) || id === actor.id) return { response: fail("Only staff accounts can be managed here", 403) };
+  if (!isManagedStaffRole(target.role) || id === actor.id) return { response: fail("Only staff accounts can be managed here", 403) };
   const { data: auth, error: authError } = await supabase.auth.admin.getUserById(id);
   if (authError || !auth.user) return { response: fail("Unable to load account status", 503) };
   return { supabase, actor, target, user: auth.user };
@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (error) return fail("Unable to suspend account", 503);
   }
   if (changes.password || changes.suspended !== undefined) {
-    if(user.app_metadata?.manager_setup_pending===true&&changes.suspended===false){
+    if(user.app_metadata?.manager_setup_pending===true&&changes.suspended===false&&!isSupportRole(target.role)){
       const {error:periodError}=await supabase.rpc("manager_context",{p_actor:params.id,p_business:businessForRole(target.role),p_period_id:null});
       if(periodError)return fail("Account setup is incomplete. Finish its responsibility period before enabling sign-in.",409);
     }

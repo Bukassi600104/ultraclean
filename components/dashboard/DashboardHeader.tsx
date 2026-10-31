@@ -1,4 +1,5 @@
 "use client";
+import {useEffect,useState} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -15,11 +16,12 @@ export function DashboardHeader({
   subtitle,
   actions,
 }: DashboardHeaderProps) {
-  const back = dashboardBackLink(usePathname());
+  const pathname=usePathname(),back = dashboardBackLink(pathname),[farmQuery,setFarmQuery]=useState("");
+  useEffect(()=>{const source=new URLSearchParams(window.location.search),q=new URLSearchParams();for(const key of ["from","to","period_id"]){const value=source.get(key);if(value)q.set(key,value);}setFarmQuery(q.toString());},[pathname]);
   return (
     <header className="sticky top-0 z-10 flex min-h-20 flex-wrap gap-3 py-2 items-center justify-between border-b border-gray-200/80 bg-white/85 backdrop-blur-md px-4 lg:px-8 shrink-0">
       <div className="min-w-0 flex-1 basis-48 pl-12 lg:pl-0">
-        {back && <Link href={back.href} className="inline-flex items-center gap-1 text-xs font-medium text-teal-800 min-h-11" aria-label={back.label}><ArrowLeft className="h-3 w-3" aria-hidden="true"/>{back.label}</Link>}
+        {back && <Link href={back.href+(back.href==="/dashboard/farm/control"&&farmQuery?"?"+farmQuery:"")} className="inline-flex items-center gap-1 text-xs font-medium text-teal-800 min-h-11" aria-label={back.label}><ArrowLeft className="h-3 w-3" aria-hidden="true"/>{back.label}</Link>}
         <h1 className="font-heading break-words text-lg font-bold text-gray-900 leading-tight">
           {title}
         </h1>

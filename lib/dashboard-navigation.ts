@@ -1,11 +1,13 @@
 export function dashboardBackLink(pathname: string) {
   if (pathname === "/dashboard" || !pathname.startsWith("/dashboard/")) return null;
+  if(pathname==='/dashboard/farm/control')return {href:'/dashboard',label:'Back to CEO Dashboard'};
+  if(pathname==='/dashboard/farm')return {href:'/dashboard/farm/control',label:'Back to Farm control centre'};
   for (const [prefix, href, label] of [
     ["/dashboard/managers/", "/dashboard/managers", "Back to Manage Accounts"],
     ["/dashboard/dba/products/", "/dashboard/dba/products", "Back to Products"],
     ["/dashboard/blog/", "/dashboard/blog", "Back to Blog"],
     ["/dashboard/leads/", "/dashboard/leads", "Back to Leads"],
-    ["/dashboard/farm/", "/dashboard/farm", "Back to Farm Overview"],
+    ["/dashboard/farm/", "/dashboard/farm/control", "Back to Farm control centre"],
     ["/dashboard/ultratidy/", "/dashboard/ultratidy", "Back to UltraTidy Overview"],
     ["/dashboard/dba/", "/dashboard/dba", "Back to DBA Overview"],
   ]) if (pathname.startsWith(prefix)) return { href, label };

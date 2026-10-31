@@ -10,7 +10,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
-import { AlertTriangle, X } from "lucide-react";
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
+import { AlertTriangle } from "lucide-react";
 
 import {FarmEggPicker} from '@/components/manager/FarmEggPicker';
 import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
@@ -45,15 +46,12 @@ function ConfirmDialog({
   saving: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <Dialog open onOpenChange={open=>{if(!open&&!saving)onCancel();}}>
+      <DialogContent className="max-w-sm">
         <div className="flex items-center justify-between mb-4">
-          <p className="font-bold text-gray-900">Confirm Sale — {config.label}</p>
-          <button onClick={onCancel} className="p-1.5 rounded-full bg-gray-100">
-            <X className="h-4 w-4 text-gray-500" />
-          </button>
+          <DialogTitle className="pr-10">Confirm Sale — {config.label}</DialogTitle>
         </div>
+        <DialogDescription>Check the actual sale details before saving.</DialogDescription>
         <div className="rounded-xl overflow-hidden border border-gray-100 mb-4">
           {summary.map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center px-4 py-2.5 even:bg-gray-50">
@@ -73,8 +71,8 @@ function ConfirmDialog({
             {saving ? "Saving..." : "Confirm Save"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

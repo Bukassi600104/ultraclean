@@ -230,7 +230,7 @@ export default function ExpensesOverviewPage() {
         ) : (
           <div className="space-y-2">
             {allItems.map((item) => {
-              if(item._type==="purchase")return <div key={`purchase-${item.id}`} className="rounded-2xl border border-gray-100 bg-white p-4"><p className="text-sm font-semibold">{item.category} purchase payment</p><p className="text-sm text-slate-600">{item.recipient} · {formatExactCurrency(item.amount_exact,"NGN")}</p><button className="mt-2 min-h-11 text-sm text-emerald-900 underline" onClick={()=>router.push("/purchases")}>View purchase and payment</button></div>;
+              if(item._type==="purchase")return <div key={`purchase-${item.id}`} className="rounded-2xl border border-gray-100 bg-white p-4"><p className="text-sm font-semibold">{item.category} purchase payment</p><p className="text-sm text-slate-600">{item.recipient} Â· {formatExactCurrency(item.amount_exact,"NGN")}</p><button className="mt-2 min-h-11 text-sm text-emerald-900 underline" onClick={()=>router.push("/purchases")}>View purchase and payment</button></div>;
               if (item._type === "feed") {
                 const feed = item as FeedPurchase;
                 return (

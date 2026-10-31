@@ -198,7 +198,7 @@ export const changePasswordSchema = z.object({
 // ── Manager user management ──
 export const managerCreateSchema = z.object({
   starts_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value=>{const date=new Date(value+"T12:00:00Z");return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;},"Choose a real work start date"),
-  role: z.enum(["manager", "property_manager", "content_manager"]).default("manager"),
+  role: z.enum(["manager", "property_manager", "content_manager", "farm_vet", "farm_accountant"]).default("manager"),
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   password: z

@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { managerApps, managerRoles, type ManagerRole } from "@/lib/manager-accounts";
+import { staffApps as managerApps, managedStaffRoles as managerRoles, type ManagedStaffRole as ManagerRole, isSupportRole } from "@/lib/manager-accounts";
 import { Plus, Trash2, KeyRound, UserCircle2, Loader2, Eye, EyeOff, Ban, UserCheck } from "lucide-react";
 
 interface Manager {
@@ -297,7 +297,7 @@ export default function ManagersPage() {
                     Added {formatDate(m.created_at)}
                   </p>
                 </div>
-                {enabled===true&&<Link href={`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">View records</Link>}
+                {enabled===true&&<Link href={isSupportRole(m.role)?'/dashboard/farm/support':`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">{isSupportRole(m.role)?'Assign limited access':'View records'}</Link>}
                 {!m.access_removed && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
@@ -404,11 +404,12 @@ export default function ManagersPage() {
                 onChange={(e) => setAddName(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            {!isSupportRole(addRole)&&<div className="space-y-1.5">
               <Label htmlFor="m-start">Work start date</Label>
               <Input id="m-start" type="date" required value={addStartsOn} onChange={e=>setAddStartsOn(e.target.value)}/>
               <p className="text-xs text-slate-600">Personal activity starts here. Existing business records stay with their original accounts.</p>
-            </div>
+            </div>}
+            {isSupportRole(addRole)&&<p className="text-xs text-slate-600">This support account starts with no access. Assign limited health or financial access separately after creation.</p>}
             <div className="space-y-1.5">
               <Label htmlFor="m-email">Email Address</Label>
               <Input

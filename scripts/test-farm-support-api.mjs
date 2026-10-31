@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const id='00000000-0000-4000-8000-000000000001';let role='farm_vet',suspended=false,calls=[],admin=false;
+const db={rpc:async(name,args)=>{calls.push([name,args]);return {data:{role,records:{},tasks:[],accounts:[]},error:null}}};
+const load=typescriptLoader({'@/lib/auth':{getCurrentUser:async()=>({id,role,suspended}),requireAdmin:async()=>{if(!admin)throw Error('Forbidden');return {id,role:'admin'};}},'@/lib/supabase/server':{createServerClient:()=>db},'@/lib/manager-read-api':{managerReadError:()=>Response.json({error:'Forbidden'},{status:403})}});
+const api=load('app/api/farm/support/route.ts'),access=load('app/api/farm/support-access/route.ts'),post=b=>new Request('http://localhost/api/farm/support',{method:'POST',body:JSON.stringify(b)}),body={task_id:id,body:'Actual advice',request_id:id};
+assert.equal((await api.POST(post(body))).status,200);assert.equal(calls.at(-1)[1].p_actor,id);
+assert.equal((await api.POST(post({...body,actor_id:id}))).status,400);
+assert.equal((await api.GET(new Request('http://localhost/api/farm/support?from=2026-02-30'))).status,400);
+role='farm_accountant';assert.equal((await api.POST(post(body))).status,403);
+suspended=true;assert.equal((await api.GET(new Request('http://localhost/api/farm/support'))).status,403);
+suspended=false;role='manager';assert.equal((await api.GET(new Request('http://localhost/api/farm/support'))).status,403);
+assert.equal((await access.GET()).status,403);admin=true;
+assert.equal((await access.POST(post({operation:'grant',payload:{support_id:id,capability:'finance',reason:'Review'}}))).status,400);
+assert.equal((await access.POST(post({operation:'grant',payload:{support_id:id,capability:'finance',period_id:null,reason:'Explicit whole-farm review'}}))).status,200);
+assert.equal(calls.at(-1)[1].p_actor,id);
+console.log('PASS support API: actual actor, suspended access, read-only accountant and explicit financial scope');

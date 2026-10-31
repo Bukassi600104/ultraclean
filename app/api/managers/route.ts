@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth";
 import { managerCreateSchema } from "@/lib/validations";
-import { managerRoles } from "@/lib/manager-accounts";
+import { managedStaffRoles, isSupportRole } from "@/lib/manager-accounts";
 
 export const runtime = "nodejs";
 
@@ -24,7 +24,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, name, email, role, created_at, suspended")
-    .in("role", [...managerRoles])
+    .in("role", [...managedStaffRoles])
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: authError.message }, { status });
   }
 
-  const { data: profile, error: profileError } = await supabase.rpc("manager_account_provision",{
-    p_actor:actor.id,p_id:authData.user.id,p_role:role,p_name:name,p_starts_on:starts_on,
+  const { data: profile, error: profileError } = await supabase.rpc(isSupportRole(role)?"farm_support_account_provision":"manager_account_provision",{
+    p_actor:actor.id,p_id:authData.user.id,p_role:role,p_name:name,...(isSupportRole(role)?{}:{p_starts_on:starts_on}),
   });
 
   if (profileError) {

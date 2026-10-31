@@ -10,6 +10,7 @@ import {confirmUnsavedNavigation} from "@/lib/confirm-navigation";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
+import {FarmMobileNav} from '@/components/manager/FarmMobileNav';
 import { ArrowLeft, Menu } from "lucide-react";
 
 // Page title map
@@ -17,6 +18,11 @@ import { ArrowLeft, Menu } from "lucide-react";
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/today": "Today",
+  "/purchases": "Spending and deliveries",
+  "/credit": "Customers and payments",
+  "/stores": "Stock counts and eggs",
+  "/health": "Health tasks",
+  "/performance": "Batch performance",
   "/sales": "Record Sales",
   "/sales/catfish": "Catfish Sales",
   "/sales/cattle": "Cattle Sales",
@@ -123,9 +129,10 @@ function ManagerShell({
         </details>}
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto p-4 pb-24 lg:p-6">
           {children}
         </main>
+        <FarmMobileNav onMore={()=>setSidebarOpen(true)}/>
       </div>
     </div>
   );

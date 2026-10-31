@@ -61,7 +61,9 @@ export default function ManagerLoginPage() {
         .eq("id", user.id)
         .single();
 
-      if (profile?.role === "admin") {
+      if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){
+        router.push('/farm-support');
+      } else if (profile?.role === "admin") {
         router.push("/sales");
       } else if (profile?.role === "manager") {
         router.push("/sales");

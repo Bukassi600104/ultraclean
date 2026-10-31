@@ -9,4 +9,4 @@ export const healthSchema=z.discriminatedUnion('operation',[
 ]);
 export type HealthTask={id:string;batch_id:string;period_id:string;batch_name:string;manager_name:string;title:string;instructions:string;due_date:string;status:string;revision:number;completion_id:string|null};
 export type HealthCompletion={id:string;task_id:string;batch_id:string;date:string;state:string;notes:string|null;reason:string|null;actor_name:string|null;created_at:string;supersedes_id:string|null};
-export type HealthData={tasks:HealthTask[];completions:HealthCompletion[];batches:{id:string;name:string}[];managers:{id:string;name:string;batch_ids:string[]}[]};
+export type HealthData={recommendations?:{id:string;task_id:string;body:string;actor_name:string;created_at:string}[];tasks:HealthTask[];completions:HealthCompletion[];batches:{id:string;name:string}[];managers:{id:string;name:string;batch_ids:string[]}[]};
