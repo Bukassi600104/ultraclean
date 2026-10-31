@@ -1,7 +1,7 @@
 import {sumMoney,subtractMoney} from './money';
 type Cost={id:string;date:string;batch_id?:string|null;amount:string};
 type Observation={id:string;batch_id:string;date:string;feed_kg:number|null;eggs:number|null;head_count:string;feed_cost_estimate:string|null;sample_weight_kg:number|null;sample_count:number|null};
-export type PerformanceSource={from:string;to:string;batches:{id:string;name:string;product:string;site_name:string;head_count:string;laying_hens:boolean;created_at?:string;archived_at?:string|null;movement_dates?:string[]}[];records:Observation[];sales:Cost[];expenses:Cost[];feed:Cost[];payments:(Cost&{allocations:{batch_id:string;amount:string}[]})[];credits:Cost[];deaths:{id:string;date:string;batch_id:string|null;quantity:string}[]};
+export type PerformanceSource={from:string;to:string;batches:{id:string;name:string;product:string;site_id:string;site_name:string;head_count:string;laying_hens:boolean;created_at?:string;archived_at?:string|null;movement_dates?:string[]}[];records:Observation[];sales:Cost[];expenses:Cost[];feed:Cost[];payments:(Cost&{allocations:{batch_id:string;amount:string}[]})[];credits:Cost[];deaths:{id:string;date:string;batch_id:string|null;quantity:string}[]};
 export function batchPerformance(data:PerformanceSource){
  const sum=(rows:{amount:string}[])=>sumMoney(rows.map(r=>r.amount)),days=Math.round((Date.parse(data.to+'T12:00:00Z')-Date.parse(data.from+'T12:00:00Z'))/86400000)+1;
  const revenue=subtractMoney(sum(data.sales),sum(data.credits)),expenses=sumMoney([sum(data.expenses),sum(data.feed),sum(data.payments)]);

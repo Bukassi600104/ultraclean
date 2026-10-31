@@ -16,12 +16,12 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 console.log('UI bundle ready');
 const browser=await chromium.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(15000);const errors=[],posts=[];let counts=[];
 page.on('pageerror',e=>errors.push(e.message));
-let tasks=[];
+let tasks=[],performanceBatches=[];
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[]};
  if(url.pathname==='/api/farm/health'){
  if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);tasks=[{id,...p.payload,batch_name:'Actual flock',manager_name:'Assigned manager',status:'scheduled',revision:0}];body={data:{id}};}
  else body={tasks,completions:[],batches:[{id,name:'Actual flock'}],managers:[{id,name:'Assigned manager',batch_ids:[id]}]};
- }else if(url.pathname==='/api/farm/performance')body={from:'2026-10-01',to:'2026-10-30',batches:[],pool:{revenue:'0',expenses:'0',allocated_revenue:'0',allocated_expenses:'0',unallocated_revenue:'0',unallocated_expenses:'0'},cost_basis:'No recorded costs'};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+ }else if(url.pathname==='/api/farm/performance')body={from:'2026-10-01',to:'2026-10-30',batches:performanceBatches,pool:{revenue:'0',expenses:'0',allocated_revenue:'0',allocated_expenses:'0',unallocated_revenue:'0',unallocated_expenses:'0'},cost_basis:'No recorded costs'};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
 });
 try{
  for(const width of [375,390,768,1440]){
@@ -32,5 +32,6 @@ try{
  }
  await page.getByRole('button',{name:'Schedule health task',exact:true}).click();await page.getByLabel('Named batch',{exact:true}).selectOption(id);await page.getByLabel('Responsible manager',{exact:true}).selectOption(id);await page.getByLabel('Task title',{exact:true}).fill('Actual vet schedule');await page.getByLabel('Approved instructions',{exact:true}).fill('Use the actual veterinary instruction');await page.getByLabel('Due date',{exact:true}).fill('2026-11-02');await page.getByRole('button',{name:'Save entry',exact:true}).click();await page.getByRole('heading',{name:'Actual vet schedule'}).waitFor();assert.equal(posts[0].payload.period_id,id);assert.deepEqual(errors,[]);
  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByText('Complete responsibility-period totals').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ performanceBatches=['11111111-0000-4000-8000-000000000001','22222222-0000-4000-8000-000000000002'].map((site_id,i)=>({id:site_id,site_id,site_name:'Same site name',name:'Flock '+i,product:'chicken',head_count:'0',recorded_days:0,expected_days:30,egg_days:0,deaths:'0',eggs:'0',feed_kg:null,sample_average_kg:null,feed_conversion_estimate:null,feed_cost_estimate:null,revenue:'0',paid_expenses:'0',recorded_result:'0',trend:[],completeness:'Measurements unavailable'}));await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByRole('heading',{name:'Flock 1',exact:true}).waitFor();await page.getByLabel('Site',{exact:true}).selectOption(performanceBatches[0].site_id);assert.equal(await page.getByRole('heading',{name:'Flock 0',exact:true}).count(),1);assert.equal(await page.getByRole('heading',{name:'Flock 1',exact:true}).count(),0);assert.equal(await page.getByLabel('Site',{exact:true}).locator('option').count(),3);assert.deepEqual(errors,[]);
  console.log('PASS health UI at four widths: centred schedule, real instructions, assigned manager and saved task');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

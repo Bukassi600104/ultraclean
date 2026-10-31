@@ -16,11 +16,11 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 console.log('UI bundle ready');
 const browser=await chromium.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(15000);const errors=[],posts=[];let counts=[];
 page.on('pageerror',e=>errors.push(e.message));
-let receipts=[];
+let receipts=[],invoices=[];
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[]};
  if(url.pathname==='/api/farm/credit'){
  if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);receipts=[{id,date:p.payload.date,customer_name:'Actual customer',amount:p.payload.amount,voided_at:null,allocations:[]}];body={data:{id}};}
- else body={customers:[{id,name:'Actual customer',phone:'Recorded contact',credit_days:30}],invoices:[],receipts,refunds:[],credit_notes:[],summary:{revenue:'0',collected:receipts.length?'40000':'0',owed:'0',unapplied:'0',refunded:'0'}};
+ else body={customers:[{id,name:'Actual customer',phone:'Recorded contact',credit_days:30}],invoices,receipts,refunds:[],credit_notes:[],summary:{revenue:'0',collected:receipts.length?'40000':'0',owed:'0',unapplied:'0',refunded:'0'}};
  }else if(url.pathname.includes('fund'))body={accounts:[],sources:[],history:[],receipts:[],pending_expenses:[],ceo_receivers:[],manager_receivers:[]};
  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
 });
@@ -33,5 +33,6 @@ try{
  }
  await page.getByRole('button',{name:'Record payment received',exact:true}).click();await page.getByLabel('Amount (NGN)',{exact:true}).fill('40000');await page.getByLabel('Customer',{exact:true}).selectOption(id);await page.getByLabel('Actual receiver',{exact:true}).selectOption('self');await page.getByRole('button',{name:'Save entry',exact:true}).click();
  await page.getByText(/Actual customer.*40,000/).waitFor();assert.equal(posts[0].payload.amount,'40000');assert.deepEqual(posts[0].payload.cash_receiver,{type:'self'});assert.deepEqual(errors,[]);
+ invoices=[{id,number:'PF-PAID',customer_id:id,customer_name:'Actual customer',sale_id:id,date:'2026-10-30',due_date:'2026-11-29',total:'100',owed:'0',voided_at:null,overdue_days:0}];await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');await page.getByRole('button',{name:'Credit invoice',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByLabel('Amount (NGN)',{exact:true}).fill('40');assert.equal(await page.getByRole('heading',{name:'Credit invoice',exact:true}).count(),1);assert.deepEqual(errors,[]);
  console.log('PASS actual customer UI at four widths: centred forms, actual recipient, dated exact receipt and visible saved result');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

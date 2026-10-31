@@ -25,6 +25,7 @@ if(url.pathname.endsWith('/balance')){if(financialFailure){await route.fulfill({
 else if(method==='POST'&&url.pathname.endsWith('/sales'))data={data:[{id,total_amount:216000}]};
 else if(method==='POST'&&url.pathname.endsWith('/corrections'))data={id};
 else if(method==='PUT'&&url.pathname.includes('/corrections/')){resolved=true;data={status:'applied'};}
+else if(url.pathname.endsWith('/batch-records'))data={batches:[],records:[]};
 else if(url.pathname.endsWith('/livestock/groups'))data={data:[]};
 else if(method==='GET'&&url.pathname.endsWith('/sales'))data={data:[{id,product:'catfish',date:'2026-09-10',quantity:1,total_amount:1,unit_price:1,payment_method:'cash'}],total:1};
 else if(url.pathname.endsWith('/expense-history'))data={data:[{_type:'feed',data:{id:'z',date:'2026-10-01',created_at:'2026-10-01',feed_type:'chicken',num_bags:1,cost:2}},{_type:'expense',data:{id:'y',date:'2026-10-01',created_at:'2026-10-01',category:'labor',paid_to:'Order second',amount:1,payment_method:'cash'}}],total:2};
@@ -44,7 +45,7 @@ await page.route('**/api/dba/**',route=>route.fulfill({status:200,contentType:'a
 let checks=0;
 try{
   await page.goto(`http://127.0.0.1:${port}/?screen=sale`,{waitUntil:'domcontentloaded'});await page.getByLabel('No. of Fish *',{exact:true}).waitFor({timeout:5000});
-  for(const label of ['Date','Weight (kg) *','Amount per kg (₦) *','Customer Name (optional)','Notes (optional)'])assert.equal(await page.getByLabel(label,{exact:true}).count(),1,label);
+  for(const label of ['Date','Weight (kg) *','Amount per kg (₦) *','Customer name (optional)','Notes (optional)'])assert.equal(await page.getByLabel(label,{exact:true}).count(),1,label);
   financialFailure=true;await page.goto(`http://127.0.0.1:${port}/?screen=farmOverview`);await page.getByRole('alert').waitFor();assert.equal(await page.getByText('No sales data yet',{exact:true}).count(),0);assert.equal(await page.getByText('No expense data yet',{exact:true}).count(),0);checks++;financialFailure=false;
   await page.goto(`http://127.0.0.1:${port}/?screen=farmExpenseHistory`);await page.getByText('Order second',{exact:true}).waitFor();const historyRows=await page.locator('tbody tr').allTextContents();assert.match(historyRows[0],/chicken feed/);checks++;
   overviewFailure=true;await page.goto(`http://127.0.0.1:${port}/?screen=dbaOverview`);await page.getByRole('alert').waitFor();await page.getByText('Fixture Buyer',{exact:true}).waitFor();await page.getByRole('button',{name:'Log Sale',exact:true}).click();await page.getByRole('dialog').getByRole('combobox').first().click();await page.getByRole('option',{name:/Fixture course/}).waitFor();checks++;overviewFailure=false;
