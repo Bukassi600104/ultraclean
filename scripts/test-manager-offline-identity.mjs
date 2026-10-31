@@ -4,6 +4,10 @@ const map=new Map();globalThis.localStorage={get length(){return map.size},key:i
 globalThis.window={dispatchEvent(){}};
 const load=typescriptLoader(),store=load('lib/offline-storage.ts');let checks=0;
 const a={actorId:'A',business:'farm',periodId:'first'},b={actorId:'B',business:'farm',periodId:'first'},later={...a,periodId:'second'};
+const retry=crypto.randomUUID(),dedup=store.savePending('/api/farm/daily-reports/submit',{request_id:retry,report_date:'2026-10-31'},a);
+assert.equal(store.savePending('/api/farm/daily-reports/submit',{request_id:retry,report_date:'2026-10-31'},a),dedup);checks++;
+assert.throws(()=>store.savePending('/api/farm/daily-reports/submit',{request_id:retry,report_date:'2026-11-01'},a));checks++;
+store.removePending(dedup,a);
 store.savePending('/api/farm/expenses',{amount:25},a);
 assert.equal(store.getPendingItems(b).length,0);checks++;
 assert.equal(store.getPendingItems(later).length,0);checks++;
@@ -12,11 +16,11 @@ map.set('farm_pending_legacy',JSON.stringify({id:'farm_pending_legacy',endpoint:
 assert.equal(store.getPendingItems(a).length,1);checks++;
 assert.equal(store.getQuarantinedCount(),1);checks++;
 const {syncManagerPending}=load('lib/manager-offline-sync.ts');let identity=a,sent=[],release;
-const pending=syncManagerPending(a,{isCurrent:()=>identity===a,send:async(url,options)=>{sent.push([url,options]);await new Promise(r=>release=r);return new Response('{}',{status:201})}});
+const pending=syncManagerPending(a,{isCurrent:()=>identity===a,send:async(url,options)=>{sent.push([url,options]);await new Promise(r=>release=r);return Response.json({},{status:201})}});
 await new Promise(r=>setTimeout(r,0));identity=b;release();await pending;
 assert.equal(sent.length,1);checks++;assert.equal(sent[0][1].headers['X-Manager-Actor'],'A');checks++;
 assert.equal(store.getPendingItems(a).length,1,'Lost/stale response must retain the original request');checks++;
-sent=[];await syncManagerPending(b,{isCurrent:()=>true,send:async()=>{sent.push(1);return new Response('{}',{status:201})}});assert.equal(sent.length,0);checks++;
+sent=[];await syncManagerPending(b,{isCurrent:()=>true,send:async()=>{sent.push(1);return Response.json({},{status:201})}});assert.equal(sent.length,0);checks++;
 assert.ok(map.has('farm_pending_legacy'));checks++;
-await syncManagerPending(a,{isCurrent:()=>true,send:async()=>new Response('{}',{status:201})});assert.equal(store.getPendingItems(a).length,0);checks++;
+await syncManagerPending(a,{isCurrent:()=>true,send:async()=>Response.json({},{status:201})});assert.equal(store.getPendingItems(a).length,0);checks++;
 console.log(`PASS ${checks} offline identity checks: account/period boundaries, in-flight switch, retained unowned entries and safe retry`);

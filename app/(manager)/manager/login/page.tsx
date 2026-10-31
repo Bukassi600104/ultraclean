@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import {loadAuthIdentity} from "@/lib/auth-identity";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 
@@ -32,6 +33,7 @@ export default function ManagerLoginPage() {
     setIsLoading(true);
     setError(null);
 
+    try {
     const supabase = createClient();
     if (!supabase) {
       setError("Authentication is not configured.");
@@ -50,17 +52,11 @@ export default function ManagerLoginPage() {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
+    const identity=await loadAuthIdentity(supabase);
+    if(identity.error||!identity.user||!identity.profile)throw Error('Your sign-in could not be verified. Please retry.');
+    const {profile}=identity;
+    if(profile.suspended)throw Error('This account is unavailable. Contact Bimbo.');
+    {
       if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){
         router.push('/farm-support');
       } else if (profile?.role === "admin") {
@@ -76,6 +72,8 @@ export default function ManagerLoginPage() {
     }
 
     router.refresh();
+    }catch{setError("Sign-in could not be completed. Check your connection and retry. Reference: LOGIN_UNAVAILABLE");}
+    finally{setIsLoading(false);}
   }
 
   return (

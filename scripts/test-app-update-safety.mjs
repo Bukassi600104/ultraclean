@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const {queueUpdateProblem}=typescriptLoader()('lib/app-update-safety.ts');
+const values=new Map(),storage={get length(){return values.size},key:i=>[...values.keys()][i],getItem:key=>values.get(key)};
+assert.equal(queueUpdateProblem(storage,1),null);
+values.set('farm_pending_legacy',JSON.stringify({endpoint:'/api/farm/expenses',data:{amount:50}}));
+values.set('farm_pending_owned',JSON.stringify({endpoint:'/api/farm/daily-reports/submit',data:{report_date:'2026-10-31'},mediaIds:['private-photo'],requestId:'unchanged'}));
+const before=[...values];assert.equal(queueUpdateProblem(storage,1),null);assert.deepEqual([...values],before);
+values.set('farm_pending_new',JSON.stringify({endpoint:'/api/farm/sales',data:{},schemaVersion:2}));assert.match(queueUpdateProblem(storage,1),/compatible/);
+values.set('farm_pending_new','broken json');assert.match(queueUpdateProblem(storage,1),/storage/);
+assert.match(queueUpdateProblem({get length(){throw Error('disabled')}},1),/storage/);
+console.log('PASS update safety: legacy/owned queues retained, future formats and unreadable storage block refresh');

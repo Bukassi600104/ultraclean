@@ -11,6 +11,7 @@ import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
 import {FarmMobileNav} from '@/components/manager/FarmMobileNav';
+import {PrepareFarmOfflineWorkspace} from '@/components/offline/PrepareFarmOfflineWorkspace';
 import { ArrowLeft, Menu } from "lucide-react";
 
 // Page title map
@@ -18,9 +19,9 @@ import { ArrowLeft, Menu } from "lucide-react";
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/today": "Today",
-  "/purchases": "Spending and deliveries",
+  "/purchases": "Purchases & Deliveries",
   "/credit": "Customers and payments",
-  "/stores": "Stock counts and eggs",
+  "/stores": "Physical Counts & Eggs",
   "/health": "Health tasks",
   "/performance": "Batch performance",
   "/sales": "Record Sales",
@@ -45,7 +46,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/daily-report/history": "Daily Report History",
   "/operational-requests": "Operational Requests",
   "/supplies": "Farm Supplies",
-  "/inventory": "Inventory",
+  "/inventory": "Farm Inventory",
   "/daily-feed": "Daily Feed",
   "/feed-stock": "Feed Inventory",
   "/stock": "Add Stock",
@@ -63,7 +64,7 @@ function ManagerShell({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { isOnline, pendingCount, isSyncing, conflicts, quarantinedCount } = useOfflineSync();
+  const { isOnline, pendingCount, isSyncing, conflicts, quarantinedCount, retryEntry } = useOfflineSync();
 
   const normalised = pathname.replace(/^\/manager/, "") || "/";
   const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
@@ -71,6 +72,7 @@ function ManagerShell({
 
   return (
     <div onClickCapture={confirmUnsavedNavigation} className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>
+      <PrepareFarmOfflineWorkspace/>
       {/* Sidebar */}
       <ManagerSidebar
         isOpen={sidebarOpen}
@@ -125,7 +127,7 @@ function ManagerShell({
         {conflicts.length > 0 && <details className="mx-4 my-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
           <summary className="cursor-pointer font-semibold">{conflicts.length} saved {conflicts.length === 1 ? "entry needs" : "entries need"} review</summary>
           <p className="mt-2">These entries remain on this device. Their dates have not been changed. Ask Bimbo to resolve closed-day or record conflicts before resubmitting.</p>
-          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{item.endpoint.replace("/api/farm/", "").replace(/\//g, " ")} · {String(item.data.date ?? item.createdAt)}</p><p className="text-amber-900">{item.conflict}</p><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => !key.endsWith("id") && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline capitalize">{key.replace(/_/g, " ")}: </dt><dd className="inline">{String(value)}</dd></div>)}</dl></div>)}
+          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{item.endpoint.replace("/api/farm/", "").replace(/\//g, " ")} · {String(item.data.date ?? item.createdAt)}</p><p className="text-amber-900">{item.conflict}</p><button disabled={isSyncing} className="mt-1 min-h-11 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-50" onClick={()=>void retryEntry(item.id)}>Retry original entry after resolution</button><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => !key.endsWith("id") && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline capitalize">{key.replace(/_/g, " ")}: </dt><dd className="inline">{String(value)}</dd></div>)}</dl></div>)}
         </details>}
 
         {/* Page content */}
@@ -138,4 +140,4 @@ function ManagerShell({
   );
 }
 
-export default function ManagerLayout({children}:{children:React.ReactNode}){return <ManagerPeriodProvider business="farm"><ManagerHandoverGate><ManagerShell>{children}</ManagerShell></ManagerHandoverGate></ManagerPeriodProvider>;}
+export default function ManagerLayout({children}:{children:React.ReactNode}){const path=usePathname();if(path==="/manager/login"||path==="/login")return <>{children}</>;return <ManagerPeriodProvider business="farm"><ManagerHandoverGate><ManagerShell>{children}</ManagerShell></ManagerHandoverGate></ManagerPeriodProvider>;}

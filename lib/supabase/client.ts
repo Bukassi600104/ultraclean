@@ -11,5 +11,9 @@ export function createClient() {
     return null;
   }
 
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(supabaseUrl, supabaseAnonKey, {global:{fetch:(input,init)=>{
+    const url=input instanceof Request?input.url:String(input);
+    const authRequest=url.includes('/auth/v1/');
+    return fetch(input,authRequest?{...init,signal:AbortSignal.any([AbortSignal.timeout(15000),...(init?.signal?[init.signal]:[])])}:init);
+  }}});
 }

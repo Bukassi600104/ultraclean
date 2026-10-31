@@ -18,4 +18,18 @@ assert.deepEqual(posted[0].payload.evidence_ids,['server-photo']);assert.equal(s
  store.savePending('/api/farm/inventory/transaction',{action:'mortality',date:'2026-10-30'},identity,{mediaIds:['local-photo']});
  await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({})});
  assert.equal(store.getPendingItems(identity).length,1,'A media-backed mortality must receive its persisted record ID before clearing proof');
+ store.savePending('/api/farm/test-failure',{date:'2026-10-30'},identity);
+ store.savePending('/api/farm/test-valid',{date:'2026-10-30'},identity);
+ const visited=[];
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async url=>{visited.push(url);if(url.endsWith('test-failure'))throw Error('network');return url.endsWith('test-valid')?Response.json({data:{id:'ok'}}):Response.json({});}});
+ assert.ok(visited.includes('/api/farm/test-valid'),'One unacknowledged/photo or failed entry must not block unrelated entries');
+ assert.equal(store.getPendingItems(identity).filter(row=>row.endpoint.endsWith('test-valid')).length,0);
+ const reportId=store.savePending('/api/farm/daily-reports/submit',{report_date:'2026-10-31'},identity);
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>new Response('<html>Sign in</html>',{headers:{'Content-Type':'text/html'}})});
+ assert.ok(store.getPendingItems(identity).some(row=>row.id===reportId),'A login HTML response must retain a report without photos');
+ assert.equal(store.getPendingItems(identity).find(row=>row.id===reportId).conflict,undefined,'A recovered session must retry without manual storage edits');
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({})});
+ assert.ok(store.getPendingItems(identity).some(row=>row.id===reportId),'A report without a persisted ID is not acknowledged');
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({data:{id:'restored-session-report'}})});
+ assert.ok(!store.getPendingItems(identity).some(row=>row.id===reportId),'Restored authentication can acknowledge the same saved report');
 console.log('PASS coordinated offline sync: uploaded proof first, unchanged closed-day draft, persisted acknowledgement and owned photo cleanup');

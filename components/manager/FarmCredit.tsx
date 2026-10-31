@@ -1,6 +1,5 @@
 "use client";
 import {useEffect,useState} from 'react';
-import Link from 'next/link';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {useManagerFetch,useQueueIdentity} from '@/contexts/ManagerPeriodContext';
 import {useOfflineSync} from '@/hooks/useOfflineSync';
@@ -36,13 +35,13 @@ export function CreditForm({operation,id,data,onSaved}:{operation:string;id?:str
  </fieldset></form>;
 }
 export function FarmCredit({admin=false}:{admin?:boolean}){
- const Title=admin?'h2':'h1';
+
  const send=useManagerFetch(),identity=useQueueIdentity(),[data,setData]=useState<CreditData|null>(null),[error,setError]=useState(''),[version,setVersion]=useState(0),[action,setAction]=useState<{operation:string;id?:string}|null>(null);
  useEffect(()=>{const refresh=()=>setVersion(v=>v+1);window.addEventListener('farm-records-synced',refresh);window.addEventListener('farm-pending-changed',refresh);return()=>{window.removeEventListener('farm-records-synced',refresh);window.removeEventListener('farm-pending-changed',refresh);};},[]);
  useEffect(()=>{const c=new AbortController();setError('');send('/api/farm/credit',{signal:c.signal}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||'Customer records unavailable');setData(b);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[send,version]);
  const money=(v:string)=>formatExactCurrency(v,'NGN'),pending=identity?getPendingItems(identity).filter(i=>i.endpoint==='/api/farm/credit'):[];
  const labels:Record<string,string>={customer:'Add customer',receipt:'Record payment received',terms:'Approve payment terms',assign:'Assign customer',void_receipt:'Reverse mistaken receipt',credit_note:'Credit invoice',refund:'Record actual refund',void_refund:'Reverse mistaken refund',void_credit:'Reverse mistaken credit',evidence:'Receipt notes & photos'};
- return <div className="mx-auto max-w-5xl space-y-5 text-slate-950">{!admin&&<Link className="inline-flex min-h-11 items-center text-sm text-emerald-900 underline" href="/manager/sales">Back to Sales</Link>}<header><Title className="text-2xl font-bold">Customers & payments</Title><p className="mt-1 text-sm text-slate-600">Invoice revenue, actual collections and customer debt are separate. Original cash sales remain in Sales history.</p></header>
+ return <div className="mx-auto max-w-5xl space-y-5 text-slate-950"><header><p className="mt-1 text-sm text-slate-600">Invoice revenue, actual collections and customer debt are separate. Original cash sales remain in Sales history.</p></header>
  <div className="flex flex-wrap gap-2"><button className={button} onClick={()=>setAction({operation:'customer'})}>Add customer</button><button className={button+' bg-emerald-900 text-white'} onClick={()=>setAction({operation:'receipt'})}>Record payment received</button></div>
  {pending.map(i=><p key={i.id} role="status" className="rounded-xl bg-amber-50 p-3 text-sm">{i.conflict||'Saved on phone, upload pending. Do not enter this receipt again.'}</p>)}
  {error?<p role="alert">{error}<button className={button} onClick={()=>setVersion(v=>v+1)}>Retry</button></p>:!data?<p role="status">Loading customer records…</p>:<>

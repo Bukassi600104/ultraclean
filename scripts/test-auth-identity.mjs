@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {typescriptLoader} from '../tests/helpers/load-typescript.mjs';
+const {loadAuthIdentity}=typescriptLoader()('lib/auth-identity.ts');
+const user={id:'u'},profile={id:'u',role:'admin'};
+const db=(getUser,single)=>({auth:{getUser},from:()=>({select:()=>({eq:()=>({single})})})});
+assert.deepEqual(await loadAuthIdentity(db(async()=>({data:{user},error:null}),async()=>({data:profile,error:null})),50),{user,profile,error:null});
+assert.equal((await loadAuthIdentity(db(async()=>{throw Error('private provider detail');}),50)).error,'AUTH_UNAVAILABLE');
+assert.equal((await loadAuthIdentity(db(()=>new Promise(()=>{})),15)).error,'AUTH_TIMEOUT');
+assert.equal((await loadAuthIdentity(db(async()=>({data:{user}}),()=>new Promise(()=>{})),15)).error,'AUTH_TIMEOUT');
+assert.equal((await loadAuthIdentity(db(async()=>({data:{user}}),async()=>({data:null,error:{message:'RLS denied'}})),50)).error,'PROFILE_UNAVAILABLE');
+assert.deepEqual(await loadAuthIdentity(db(async()=>({data:{user:null},error:null})),50),{user:null,profile:null,error:null});
+console.log('PASS bounded auth identity: valid, signed out, rejected transport, hung user/profile and profile failure');

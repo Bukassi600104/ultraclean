@@ -27,6 +27,7 @@ export async function updateSession(
   }
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    global: {fetch: (input, init) => fetch(input, {...init, signal: AbortSignal.timeout(12000)})},
     cookies: {
       getAll() {
         return request.cookies.getAll();

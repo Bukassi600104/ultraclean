@@ -10,21 +10,16 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import type { UserRole } from "@/lib/auth";
-
-interface Profile {
-  id: string;
-  role: UserRole;
-  suspended?: boolean;
-  name: string | null;
-  email: string | null;
-}
+import {loadAuthIdentity} from "@/lib/auth-identity";
+import type {AuthProfile as Profile} from "@/lib/auth-identity";
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  error: string | null;
+  retry: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,43 +27,35 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   isLoading: true,
   signOut: async () => {},
+  error: null, retry: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error,setError]=useState<string|null>(null);
+  const [attempt,setAttempt]=useState(0);
   const activeUser=useRef<string|null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     if (!supabase) {
-      setIsLoading(false);
+      setError("AUTH_UNAVAILABLE");setIsLoading(false);
       return;
     }
 
     let version=0,disposed=false;
     async function loadUser() {
       const requestVersion=++version;
-      const supabase = createClient()!;
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      setIsLoading(true);setError(null);setProfile(null);
+      const result=await loadAuthIdentity(supabase!);
       if(disposed||requestVersion!==version)return;
-      if (user) {
-        activeUser.current=user.id;
-        setUser(user);
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-        if (!disposed&&requestVersion===version)setProfile(data as Profile|null);
-      }
-      if(!disposed&&requestVersion===version)setIsLoading(false);
+      activeUser.current=result.user?.id??null;
+      setUser(result.user);setProfile(result.profile);setError(result.error);setIsLoading(false);
     }
 
-    loadUser();
+    void loadUser();
 
     const {
       data: { subscription },
@@ -79,10 +66,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setProfile(null);
       if(session?.user)setTimeout(()=>{if(!disposed)void loadUser();},0);
+      else {setError(null);setIsLoading(false);}
     });
 
     return () => {disposed=true;version++;subscription.unsubscribe();};
-  }, []);
+  }, [attempt]);
 
   async function signOut() {
     const supabase = createClient();
@@ -95,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, isLoading, signOut, error, retry:()=>setAttempt(value=>value+1) }}>
       {children}
     </AuthContext.Provider>
   );

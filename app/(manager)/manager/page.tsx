@@ -145,25 +145,25 @@ export default function ManagerHomePage() {
         <div className="space-y-2.5">
 
           <Link
-            href="/sales"
+            href="/expenses"
             className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#11d469", height: "60px" }}
           >
             <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5" style={{ color: "#012d1d" }} />
-              <span className="font-bold text-sm" style={{ color: "#012d1d" }}>Record Today&apos;s Sales</span>
+              <Receipt className="h-5 w-5" style={{ color: "#012d1d" }} />
+              <span className="font-bold text-sm" style={{ color: "#012d1d" }}>Record Today&apos;s Expenses</span>
             </div>
             <ChevronRight className="h-5 w-5" style={{ color: "rgba(1,45,29,0.45)" }} />
           </Link>
 
           <Link
-            href="/expenses"
+            href="/sales"
             className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#fffbeb", border: "1.5px solid #fde68a", height: "60px" }}
           >
             <div className="flex items-center gap-3">
-              <Receipt className="h-5 w-5" style={{ color: "#92400e" }} />
-              <span className="font-bold text-sm" style={{ color: "#1b4332" }}>Record Today&apos;s Expenses</span>
+              <TrendingUp className="h-5 w-5" style={{ color: "#92400e" }} />
+              <span className="font-bold text-sm" style={{ color: "#1b4332" }}>Record Today&apos;s Sales</span>
             </div>
             <ChevronRight className="h-5 w-5" style={{ color: "#F5C842" }} />
           </Link>

@@ -38,6 +38,7 @@ export function CeoDashboard() {
   const controller = useRef<AbortController | null>(null);
   async function load(start = from, end = to) {
     controller.current?.abort(); const active = new AbortController(); controller.current = active;
+    const timeout=setTimeout(()=>active.abort('timeout'),25000);
     setLoading(true); setError("");
     try {
       if (!start || !end || start > end) throw new Error("Choose a valid date range.");
@@ -45,8 +46,8 @@ export function CeoDashboard() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Dashboard data could not be loaded.");
       if (!active.signal.aborted) setData(result);
-    } catch (fault) { if (!active.signal.aborted) { setData(null); setError(fault instanceof Error ? fault.message : "Dashboard data could not be loaded."); } }
-    finally { if (!active.signal.aborted) setLoading(false); }
+    } catch (fault) { if (controller.current===active) { setData(null); setError(active.signal.reason==='timeout'?'The dashboard took too long to respond. Please retry. Reference: CEO_TIMEOUT':fault instanceof Error ? fault.message : "Dashboard data could not be loaded. Reference: CEO_UNAVAILABLE"); } }
+    finally { clearTimeout(timeout);if(controller.current===active)setLoading(false); }
   }
   useEffect(() => { void load(); return () => controller.current?.abort(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const farm = data?.farm.data, content = data?.content.data, property = data?.properties.data, crm = data?.crm.data;

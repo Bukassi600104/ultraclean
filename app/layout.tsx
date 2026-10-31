@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import { Toaster } from "sonner";
+import {AppUpdateNotice} from '@/components/pwa/AppUpdateNotice';
 import "./globals.css";
 
 const inter = Inter({
@@ -91,6 +92,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body className="antialiased" style={{ backgroundColor: "#ffffff" }}>
         {children}
+        <AppUpdateNotice/>
         <Toaster position="top-right" richColors />
       </body>
     </html>

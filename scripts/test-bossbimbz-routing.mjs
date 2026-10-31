@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
-let profile = null, signedOut = 0;
+let profile = null, signedOut = 0, authenticatedWithoutProfile = false;
 const response = { kind: 'next' };
 const db = {
   from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: profile }) }) }) }),
@@ -16,11 +16,12 @@ const source = ts.transpileModule(readFileSync('middleware.ts', 'utf8'), {
 new Function('require', 'module', 'exports', source)((name) => {
   if (name === 'next/server') return { NextResponse: {
     next: () => response,
+    json: (body,options) => ({kind:'json',body,status:options.status}),
     redirect: (url) => ({ kind: 'redirect', url: new URL(String(url)) }),
     rewrite: (url) => ({ kind: 'rewrite', url: new URL(String(url)) }),
   } };
   if (name === '@/lib/supabase/middleware') return { updateSession: async () => ({
-    supabaseResponse: response, user: profile ? { id: profile.id } : null, supabase: db,
+    supabaseResponse: response, user: profile ? { id: profile.id } : authenticatedWithoutProfile ? {id:'missing-profile'} : null, supabase: db,
   }) };
   throw Error(`Unexpected middleware dependency: ${name}`);
 }, module, module.exports);
@@ -87,6 +88,16 @@ await test('suspended farm host signs out', async () => {
 });
 profile=null;for(const host of ['localhost','farm.primefieldagric.com','leads.ultratidycleaning.com'])for(const asset of ['/farm-manifest.json','/property-manifest.json','/content-manifest.json','/property-sw.js','/content-sw.js'])await test('public install asset '+host+asset,async()=>{assert.equal((await module.exports.middleware(request(asset,host))).kind,'next')});
 for(const role of ['manager','admin','property_manager',null]){profile=role?{id:'synthetic-user',role,suspended:false}:null;for(const route of ['/manager','/manager/feed-stock','/manager/onboarding'])await test('farm canonical '+role+route,async()=>{const result=await module.exports.middleware(request(route,'farm.primefieldagric.com'));assert.equal(result.kind,role==='manager'||role==='admin'?'next':'redirect');});}
+for(const host of ['localhost','farm.primefieldagric.com','leads.ultratidycleaning.com']) {
+ profile={id:'synthetic-user',role:'admin',suspended:false};
+ await test('explicit reauthentication '+host,async()=>assert.notEqual((await module.exports.middleware(request('/login?reauth=1',host))).kind,'redirect'));
+ profile=null;authenticatedWithoutProfile=true;
+ await test('unavailable profile cannot loop '+host,async()=>assert.notEqual((await module.exports.middleware(request('/login',host))).kind,'redirect'));
+ authenticatedWithoutProfile=false;
+ profile={id:'synthetic-user',role:'admin',suspended:true};
+ await test('suspended login cannot loop '+host,async()=>assert.notEqual((await module.exports.middleware(request('/login',host))).kind,'redirect'));
+}
+profile=null;await test('expired farm API returns 401, not login HTML',async()=>{const result=await module.exports.middleware(request('/api/farm/daily-reports/submit','farm.primefieldagric.com'));assert.equal(result.kind,'json');assert.equal(result.status,401);});
 if (failures.length) {
   console.error(`FAIL: ${failures.length} route checks; ${checks} passed. Actual middleware with synthetic sessions only.`);
   for (const failure of failures) console.error(failure);

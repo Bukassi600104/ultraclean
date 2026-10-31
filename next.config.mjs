@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env:{NEXT_PUBLIC_APP_RELEASE:process.env.VERCEL_GIT_COMMIT_SHA||'2026-10-31.1'},
   images: {
     formats: ["image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],

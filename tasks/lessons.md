@@ -54,3 +54,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Restore public grants and policies during preservation rehearsal. Compare normalized fingerprints with explicit collation, and distinguish managed-service restore warnings from missing business data or permissions.
 - Keep read failures visible when feature availability fails. A missing availability response must not turn a failed feed-history read into No records yet or discard unsaved form state.
 - Review older ad-hoc tests before executing them. Use the explicit isolated release-suite allowlist; never run a test that contains production credentials or creates/deletes live accounts. Keep credential retirement separate and coordinated, without silent signing-key/session changes.
+
+- 31 Oct: Expenses emphasis means move/promote its actual destination, not rename purchase workflows. WhatsApp is click-to-chat only; no automated reports or sender signup.

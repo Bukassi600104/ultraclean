@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {pathToFileURL} from 'node:url';import path from 'node:path';import os from 'node:os';import http from 'node:http';
+const require=createRequire(import.meta.url),{chromium}=require('@playwright/test'),{build}=await import(pathToFileURL(path.join(os.tmpdir(),'primefield-v2-test-runtime/node_modules/esbuild/lib/main.js')));
+const contents=`import React from 'react';import {createRoot} from 'react-dom/client';import {AppUpdateNotice} from './components/pwa/AppUpdateNotice';import {MessageBimbo} from './components/MessageBimbo';createRoot(document.getElementById('root')).render(<><input aria-label="Draft"/><button onClick={()=>fetch('/api/test-submit',{method:'POST'})}>Submit work</button><MessageBimbo/><AppUpdateNotice/></>);`;
+const bundle=await build({stdin:{contents,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NEXT_PUBLIC_APP_RELEASE':'"running-release"'},plugins:[{name:'next-boundary',setup(b){b.onResolve({filter:/^next\/navigation$/},()=>({path:'nav',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export const usePathname=()=>"/manager";',loader:'js'}));}}]});
+const server=http.createServer((q,r)=>{r.setHeader('Content-Type',q.url==='/bundle.js'?'text/javascript':'text/html');r.end(q.url==='/bundle.js'?bundle.outputFiles[0].text:'<div id="root"></div><script src="/bundle.js"></script>')});await new Promise(r=>server.listen(0,'127.0.0.1',r));const browser=await chromium.launch({headless:true}),context=await browser.newContext(),page=await context.newPage(),url='http://127.0.0.1:'+server.address().port;let promoted=true,releaseWrite,checks=0;
+await context.route('**/api/app-version',route=>route.fulfill({json:{releaseId:'new-release',notes:['New report photos'],queueFormat:1,promoted}}));
+await context.route('**/api/test-submit',async route=>{await new Promise(r=>releaseWrite=r);await route.fulfill({json:{ok:true}})});
+try{
+ await page.goto(url);await page.getByRole('button',{name:'Update now'}).waitFor();checks++;
+ await page.getByRole('button',{name:'What’s new'}).click();await page.getByText('New report photos',{exact:true}).waitFor();checks++;
+ const contact=page.getByRole('link',{name:'Message Bimbo on WhatsApp'});assert.equal(await contact.getAttribute('href'),'https://wa.me/16478238262');assert.equal(await contact.getAttribute('target'),'_blank');checks++;
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw Error('blocked')}}}));await page.getByRole('button',{name:'Copy number'}).click();await page.getByText('Copy this number: +1 647 823 8262',{exact:true}).waitFor();checks++;
+ await page.getByLabel('Draft').fill('Do not discard');await page.getByRole('button',{name:'Update now'}).click();await page.getByRole('alert').filter({hasText:'Save your work'}).waitFor();assert.equal(await page.getByLabel('Draft').inputValue(),'Do not discard');checks++;
+ await page.reload();await page.getByRole('button',{name:'Update now'}).waitFor();const submitted=page.waitForRequest('**/api/test-submit');await page.getByRole('button',{name:'Submit work',exact:true}).click();await submitted;
+ await page.getByRole('button',{name:'Update now'}).click();await page.getByRole('alert').filter({hasText:'Wait for the current submission'}).waitFor();releaseWrite();checks++;
+ await page.evaluate(()=>localStorage.setItem('farm_pending_future',JSON.stringify({endpoint:'/api/farm/sales',data:{},schemaVersion:2})));
+ await page.getByRole('button',{name:'Update now'}).click();await page.getByRole('alert').filter({hasText:'compatible app version'}).waitFor();checks++;
+ await page.evaluate(()=>{localStorage.removeItem('farm_pending_future');localStorage.setItem('farm_pending_saved',JSON.stringify({endpoint:'/api/farm/sales',data:{date:'2026-10-31'},mediaIds:['kept']}));});
+ const other=await context.newPage();await other.goto(url);await other.getByLabel('Draft').fill('Other tab work');
+ await page.getByRole('button',{name:'Update now'}).click();await page.waitForLoadState();assert.ok(await page.evaluate(()=>localStorage.getItem('farm_pending_saved')));assert.equal(await other.getByLabel('Draft').inputValue(),'Other tab work');checks++;
+ await page.getByRole('button',{name:'Later',exact:true}).click();assert.equal(await page.getByRole('button',{name:'Update now'}).count(),0);checks++;
+ promoted=false;await page.reload();await page.waitForTimeout(150);assert.equal(await page.getByRole('button',{name:'Update now'}).count(),0);checks++;
+ console.log('PASS '+checks+' actual update/WhatsApp UI checks: promoted-only, dirty/inflight/queue guards, separate tab work retained, manual contact and copy fallback');
+}finally{releaseWrite?.();await browser.close();await new Promise(r=>server.close(r));}

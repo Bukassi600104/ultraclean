@@ -3,6 +3,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if(['/api/app-version','/offline/farm','/farm-sw.js'].includes(pathname))return NextResponse.next();
 
   // Public installation metadata/scripts must not be rewritten into protected apps.
   if (["/manifest.json", "/farm-manifest.json", "/property-manifest.json", "/content-manifest.json", "/property-sw.js", "/content-sw.js"].includes(pathname)) {
@@ -24,6 +25,22 @@ export async function middleware(request: NextRequest) {
     hostname === "bboconcepts.com" ||
     hostname === "www.bboconcepts.com";
 
+  if(pathname === '/login' && !isPrimefieldDomain && !isRegisterDomain) {
+    const {user,supabase,supabaseResponse}=await updateSession(request);
+    const loginPage=()=>{
+      if(!isFarmDomain)return supabaseResponse;
+      const url=request.nextUrl.clone();url.pathname='/manager/login';return NextResponse.rewrite(url);
+    };
+    if(!user||request.nextUrl.searchParams.get('reauth')==='1')return loginPage();
+    const {data:profile}=await supabase.from('profiles').select('role,suspended').eq('id',user.id).single();
+    if(!profile||profile.suspended)return loginPage();
+    const routes:Record<string,string>={admin:isFarmDomain?'/':'/dashboard',manager:isFarmDomain?'/':'https://farm.primefieldagric.com',property_manager:'/property',content_manager:'/content',farm_vet:'/farm-support',farm_accountant:'/farm-support'};
+    const destination=routes[profile.role];
+    if(!destination)return loginPage();
+    const url=request.nextUrl.clone();url.pathname=destination.startsWith('https:')?'/':destination;url.search='';
+    return NextResponse.redirect(destination.startsWith('https:')?destination:url);
+  }
+
   if(pathname==='/farm-support'||pathname.startsWith('/farm-support/')){
     const {supabaseResponse,user,supabase}=await updateSession(request);
     const {data:profile}=user?await supabase.from('profiles').select('role, suspended').eq('id',user.id).single():{data:null};
@@ -39,21 +56,9 @@ export async function middleware(request: NextRequest) {
     const result = await updateSession(request);
     const { supabaseResponse, user, supabase } = result;
 
-    // Allow the login page through (no auth required)
-    if (pathname === "/login") {
-      if (user) {
-        // Already logged in → redirect to farm home
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/";
-        return NextResponse.redirect(redirectUrl);
-      }
-      const url = request.nextUrl.clone();
-      url.pathname = "/manager/login";
-      return NextResponse.rewrite(url);
-    }
-
     // All other farm routes require auth
     if (!user) {
+      if(pathname.startsWith('/api/'))return NextResponse.json({error:'Sign in again to send saved work.'},{status:401});
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       return NextResponse.redirect(redirectUrl);
@@ -71,6 +76,7 @@ export async function middleware(request: NextRequest) {
       const url=request.nextUrl.clone();url.pathname='/farm-support';url.search='';return NextResponse.redirect(url);
     }
     if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
+      if(pathname.startsWith('/api/'))return NextResponse.json({error:'Farm access could not be verified. Keep this entry for review.'},{status:403});
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
       return NextResponse.redirect(redirectUrl);
@@ -117,25 +123,6 @@ export async function middleware(request: NextRequest) {
     // API routes pass through as-is
     if (pathname.startsWith("/api/")) {
       return supabaseResponse;
-    }
-
-    // Login page
-    if (pathname === "/login") {
-      if (user) {
-        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-        if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){const url=request.nextUrl.clone();url.pathname='/farm-support';url.search='';return NextResponse.redirect(url);}
-        if (profile?.role === "property_manager" || profile?.role === "content_manager") {
-          const redirectUrl = request.nextUrl.clone();
-          redirectUrl.pathname = profile.role === "property_manager" ? "/property" : "/content";
-          return NextResponse.redirect(redirectUrl);
-        }
-        const redirectUrl = request.nextUrl.clone();
-        redirectUrl.pathname = "/";
-        return NextResponse.redirect(redirectUrl);
-      }
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.rewrite(url);
     }
 
     // All other leads routes require admin
@@ -196,26 +183,6 @@ export async function middleware(request: NextRequest) {
   // Refresh session
   const result = await updateSession(request);
   const { supabaseResponse, user, supabase } = result;
-
-  // Login page: redirect if already authenticated
-  if (pathname === "/login") {
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.role === "manager") {
-        return NextResponse.redirect("https://farm.primefieldagric.com");
-      }
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = profile&&['farm_vet','farm_accountant'].includes(profile.role)?'/farm-support':profile?.role === "property_manager" ? "/property"
-        : profile?.role === "content_manager" ? "/content" : "/dashboard";
-      return NextResponse.redirect(redirectUrl);
-    }
-    return supabaseResponse;
-  }
 
   // Manager login page: always accessible
   if (pathname === "/manager/login") {

@@ -14,7 +14,6 @@ export function OfflineBanner({
   pendingCount,
   isSyncing,
 }: OfflineBannerProps) {
-  if (isOnline && pendingCount === 0) return null;
 
   return (
     <div
@@ -28,17 +27,16 @@ export function OfflineBanner({
       {!isOnline ? (
         <span className="flex items-center justify-center gap-2">
           <WifiOff className="h-4 w-4" />
-          Offline — data saved locally
-          {pendingCount > 0 && ` (${pendingCount} pending)`}
+          Offline{pendingCount > 0 ? ` · ${pendingCount} saved on this device` : ' · Prepare records on this device'}
         </span>
       ) : isSyncing ? (
         <span className="flex items-center justify-center gap-2">
           <RefreshCw className="h-4 w-4 animate-spin" />
-          Syncing ({pendingCount} remaining)...
+          Sending ({pendingCount} remaining)...
         </span>
       ) : (
         <span>
-          {pendingCount} pending {pendingCount === 1 ? "entry" : "entries"} to sync
+          {pendingCount ? `${pendingCount} saved on this device · Waiting to send or needs attention` : 'Online · Sent records are confirmed by the server'}
         </span>
       )}
     </div>

@@ -17,7 +17,8 @@ export async function getCeoOverview(scope: OverviewScope) {
  }
  // A failed business query is unavailable, never a fabricated zero. Independent sections still load.
  async function section<T>(read:()=>Promise<T>):Promise<{data:T;error:null}|{data:null;error:string}> {
-  try{return {data:await read(),error:null};}catch{return {data:null,error:"Data could not be loaded. Retry or check database migration/configuration."};}
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  try{return {data:await Promise.race([read(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('SECTION_TIMEOUT')),18000);})]),error:null};}catch{return {data:null,error:"This section could not be loaded. Please retry. Reference: CEO_SECTION_UNAVAILABLE"};}finally{clearTimeout(timer);}
  }
  const [content,properties,farm,operations,crm,ultratidy,dba]=await Promise.all([
   section(async()=>{const [records,performance,leads,sales]=await Promise.all([all("content_records"),all("content_performance"),all("content_leads"),all("content_sales")]);return summarizeContent({records,performance,leads,sales},scope);}),

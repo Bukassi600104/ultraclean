@@ -14,6 +14,13 @@ function items():PendingItem[]{
 export function savePending(endpoint:string,data:Record<string,unknown>,identity:QueueIdentity,options:{mediaIds?:string[]}={}){
  if(typeof window==="undefined")return;
  if(!identity?.actorId||!identity.periodId)throw Error("Wait for your manager period before saving offline");
+ if(typeof data.request_id==='string'){
+  const previous=getPendingItems(identity).find(item=>item.requestId===data.request_id);
+  if(previous){
+   if(previous.endpoint!==endpoint||JSON.stringify(previous.data)!==JSON.stringify(data)||JSON.stringify(previous.mediaIds||[])!==JSON.stringify(options.mediaIds||[]))throw Error('This retry already belongs to a saved entry. Keep it for review.');
+   return previous.id;
+  }
+ }
  const id=`${PREFIX}${queueIdentityKey(identity)}:${crypto.randomUUID()}`;
  const item:PendingItem={id,endpoint,data,identity:{...identity},createdAt:new Date().toISOString(),requestId:typeof data.request_id==="string"?data.request_id:crypto.randomUUID(),...(options.mediaIds?.length?{mediaIds:[...options.mediaIds]}:{})};
  localStorage.setItem(id,JSON.stringify(item));changed();return id;

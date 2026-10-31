@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import {MessageBimbo} from '@/components/MessageBimbo';
 import {
   Home, TrendingUp, Receipt, Clock, Wallet,
   LogOut, X, Layers, Droplets, PlusSquare, Skull, Package, ClipboardList, MessageSquare,
@@ -30,26 +31,26 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "Record",
     items: [
-      { href: "/credit", label: "Customers & payments", icon: Wallet },
-      { href: "/sales", label: "Sales", icon: TrendingUp },
-      { href: "/purchases", label: "Purchases & deliveries", icon: Receipt },
-      { href: "/expenses", label: "Expenses", icon: Receipt },
       { href: "/daily-report", label: "Daily Report", icon: ClipboardList },
       { href: "/operational-requests", label: "Operational Requests", icon: MessageSquare },
+      { href: "/purchases", label: "Purchases & deliveries", icon: Receipt },
+      { href: "/sales", label: "Sales", icon: TrendingUp },
+      { href: "/credit", label: "Customers & payments", icon: Wallet },
+      { href: "/expenses", label: "Expenses", icon: Receipt },
     ],
   },
   {
     title: "Manage",
     items: [
-      { href: "/inventory", label: "Inventory", icon: Layers },
-      { href: "/daily-feed", label: "Daily Feed", icon: Droplets },
-      { href: "/health", label: "Health tasks", icon: ClipboardList },
       { href: "/performance", label: "Batch performance", icon: TrendingUp },
       { href: "/stores", label: "Physical counts & eggs", icon: Package },
+      { href: "/daily-feed", label: "Daily Feed", icon: Droplets },
       { href: "/feed-stock", label: "Feed Inventory", icon: Package },
+      { href: "/inventory", label: "Farm Inventory", icon: Layers },
+      { href: "/health", label: "Health tasks", icon: ClipboardList },
+      { href: "/supplies", label: "Farm Supplies", icon: Package },
       { href: "/stock", label: "Add Stock", icon: PlusSquare },
       { href: "/mortality", label: "Mortality", icon: Skull },
-      { href: "/supplies", label: "Farm Supplies", icon: Package },
     ],
   },
   {
@@ -104,6 +105,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+        <div className="px-2 text-emerald-100"><MessageBimbo/></div>
         {NAV_SECTIONS.map((section) => (
           <div key={section.title}>
             <p className="text-xs font-semibold uppercase tracking-widest px-2 mb-1.5"

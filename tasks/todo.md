@@ -271,7 +271,7 @@ Task 8 verified: lint, production build and sequential generated TypeScript chec
 Implementation is local on codex/primefield-pulse. Production settings, records, accounts, figures and deployment remain unchanged for this request. The reference's spending approval concerns purchases; consuming already-held feed remains separate. Existing special historical exports and clean personal manager periods remain protected.
 
 - [x] Pulse Task4 purchasing implemented locally: separate approvals/payments/deliveries, funding review, immutable reports, safe receipt links and complete financial totals; isolated regression and preservation evidence recorded.
-- [ ] Pulse Tasks5–10: stores/eggs/counts, sales credit/receipts, health/performance, CEO reporting/configuration, full visual adaptation and final release verification.
+- [ ] Pulse Tasks5ï¿½10: stores/eggs/counts, sales credit/receipts, health/performance, CEO reporting/configuration, full visual adaptation and final release verification.
 
 - Pulse Task8: CEO control/reporting and opt-in summaries implemented locally; targeted SQL/API/UI tests pass. No production changes. Remaining: Task9 interface/access, Task10 full release gates.
 
@@ -281,3 +281,12 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Independent whole-branch review and targeted refund/photo fixes
 - [x] Final production build, complete regression and preservation rehearsal
 - [ ] Approved coordinated production release (separate approval required)
+
+
+## 2026-10-31 Combined app reliability update
+- [x] 1. Bounded authentication and dashboard loading; navigation and WhatsApp
+- [x] 2. Daily report evidence and authoritative offline submission status
+- [x] 3. Safe app update notifications and scoped offline workspace
+- [x] 4. Tested disabled login-protection policy/SQL; full activation and recovery integration on hold per user
+- [x] 5. Integrated tests, fresh preservation rehearsal and review
+- [ ] 6. Coordinated release of approved ungated changes and evidence

@@ -2,6 +2,7 @@
 import { FormEvent, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import {loadAuthIdentity} from "@/lib/auth-identity";
 import { createClient } from "@/lib/supabase/client";
 
 export default function PropertyLogin() {
@@ -14,10 +15,10 @@ export default function PropertyLogin() {
       if (!db) throw new Error("Sign-in is unavailable. Please try again later.");
       const {error: loginError} = await db.auth.signInWithPassword({email: String(values.get("email")), password: String(values.get("password"))});
       if (loginError) throw new Error("Check your email and password, then try again.");
-      const {data: {user}} = await db.auth.getUser();
-      if (!user) throw new Error("Your session could not be verified. Please retry.");
-      const {data: profile, error: profileError} = await db.from("profiles").select("role,suspended").eq("id", user.id).single();
-      if (profileError || !profile || profile.suspended || !["admin", "property_manager"].includes(profile.role)) {
+      const identity=await loadAuthIdentity(db);
+      if(identity.error||!identity.profile)throw Error('Your session could not be verified. Please retry.');
+      const profile=identity.profile;
+      if (profile.suspended || !["admin", "property_manager"].includes(profile.role)) {
         await db.auth.signOut();
         throw new Error("An active Property Manager or CEO account is required.");
       }
