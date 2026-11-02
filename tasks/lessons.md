@@ -62,3 +62,4 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 
 - Keep logo work out of account-recovery scope. A masked-password video proves the validation failure, not the precise failed requirement; show the shared requirements and specific errors.
 - Write clarification questions as plain WhatsApp messages addressed to Bimbo for the user to forward; do not ask the user to answer operational details through interactive question cards.
+- Farm supply display names come from item_name, with current_quantity and unit. Internal UUIDs are transport keys, never selection labels; use plain assignment wording and block unidentified supplies.

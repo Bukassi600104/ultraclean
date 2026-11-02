@@ -299,7 +299,14 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Coordinated production release and live verification: d339d95, Vercel READY; live version endpoints match
 
 ## Password reset and safe restoration — 2 November
-- [ ] Align reset validation and show actionable errors.
-- [ ] Add audited same-person restoration to suspended state.
-- [ ] Verify account API/UI, build and deployment.
-- [ ] Await exact account and confirmed test-entry list before live data corrections.
+- [x] Align reset validation and show actionable errors.
+- [x] Add audited same-person restoration to suspended state.
+- [x] Verify account API/UI and production build; GitHub 0277215 pushed; Vercel dpl_GbQY1YHc1C3uczEtUNWDYmCb5gcZ READY, CEO/Farm version verified, unauthenticated restore401.
+- [ ] Emmanuel email and test purchase confirmed. Legacy period requires new-manager start date before access activation; linked delivered purchase needs guarded cancellation (existing workflow only voids payments). No live record correction performed.
+- [x] Emmanuel setup: personal period f60a2322-6bec-4fe9-b49d-4d26765b0da2 starts 2026-11-03, awaiting handover; old legacy period retained closed. Same account restored to Suspended for Bimbo review/Reactivate. Audit55b1643a-7daa-4570-ab42-8225717b9a57. Verified business/credential fingerprints unchanged; zero new personal records, cash accounts, pending expenses and asset assignments. Test purchase cleanup remains pending safe cancellation workflow.
+
+## Plain-language farm assignment
+- [x] Show supply item names, quantities and units in assignment and assigned-item list.
+- [x] Replace assignment jargon with clear labels; prevent selection of unnamed supplies.
+- [ ] Browser regression, lint, TypeScript, production build and verified deployment.
+- No database or inventory mutation is part of this display fix.
