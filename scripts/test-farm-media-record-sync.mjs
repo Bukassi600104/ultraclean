@@ -32,4 +32,9 @@ assert.deepEqual(posted[0].payload.evidence_ids,['server-photo']);assert.equal(s
  assert.ok(store.getPendingItems(identity).some(row=>row.id===reportId),'A report without a persisted ID is not acknowledged');
  await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({data:{id:'restored-session-report'}})});
  assert.ok(!store.getPendingItems(identity).some(row=>row.id===reportId),'Restored authentication can acknowledge the same saved report');
+ const requestId=store.savePending('/api/farm/operational-requests',{request_date:'2026-10-31'},identity);
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({})});
+ assert.ok(store.getPendingItems(identity).some(row=>row.id===requestId),'No-photo request requires persisted acknowledgement');
+ await sync.syncManagerPending(identity,{isCurrent:()=>true,send:async()=>Response.json({data:{id:'request-confirmed'}})});
+ assert.ok(!store.getPendingItems(identity).some(row=>row.id===requestId));
 console.log('PASS coordinated offline sync: uploaded proof first, unchanged closed-day draft, persisted acknowledgement and owned photo cleanup');

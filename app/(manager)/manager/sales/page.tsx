@@ -1,4 +1,8 @@
 "use client";
+import Link from "next/link";
+import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
+import type {CreditData} from "@/lib/farm-credit";
+import {formatExactCurrency} from "@/lib/money";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
 import { formatCurrency } from "@/lib/utils";
@@ -35,7 +39,7 @@ interface DailyRecord {
   status: "open" | "closed";
 }
 
-const PRODUCTS = FARM_PRODUCTS.filter((product) => product.key !== "other");
+const PRODUCTS = FARM_PRODUCTS;
 
 function fmt(n: number) {
   return formatCurrency(n);
@@ -47,33 +51,32 @@ function getTodayStr() {
 
 function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => void; onCancel: () => void; loading: boolean }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
-      <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <Dialog open onOpenChange={open=>{if(!open&&!loading)onCancel();}}>
+      <DialogContent className="max-w-sm">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="h-5 w-5 text-amber-600" />
           </div>
           <div>
-            <p className="font-bold text-gray-900">Close Today&apos;s Records?</p>
+            <DialogTitle className="pr-10 font-bold text-gray-900">Close Today&apos;s Records?</DialogTitle>
             <p className="text-sm text-gray-500">This cannot be undone.</p>
           </div>
         </div>
-        <p className="text-sm text-gray-600 mb-5">
-          Once closed, all records are locked and cannot be edited or deleted.
-        </p>
+        <DialogDescription className="text-sm text-gray-600 mb-5">
+          Once closed, managers cannot add or change records for this date. Bimbo can review correction requests.
+        </DialogDescription>
         <div className="flex gap-2">
-          <button onClick={onCancel} disabled={loading} className="flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-200 text-gray-700">
+          <button onClick={onCancel} disabled={loading} className="min-h-11 flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-200 text-gray-700">
             Cancel
           </button>
           <button onClick={onConfirm} disabled={loading}
-            className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            className="min-h-11 flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             style={{ backgroundColor: "#1b4332" }}>
             {loading ? "Closing..." : "Close Day"}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -86,6 +89,9 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<{revenue:number;sales_by_product:{name:string;value:number}[]} | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [showProducts,setShowProducts]=useState(false);
+  const [creditData,setCreditData]=useState<CreditData|null>(null),[creditError,setCreditError]=useState("");
+  const [creditVersion,setCreditVersion]=useState(0);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
   const [dateLabel, setDateLabel] = useState("");
@@ -109,6 +115,9 @@ export default function SalesPage() {
   }, [today,managerFetch]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(()=>{const controller=new AbortController();setCreditData(null);setCreditError("");managerFetch('/api/farm/credit',{signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok||!body.summary||!Array.isArray(body.invoices))throw Error(body.error||'Customer balances unavailable');if(!controller.signal.aborted)setCreditData(body);}).catch(error=>{if(!controller.signal.aborted)setCreditError(error.message);});return()=>controller.abort();},[managerFetch,creditVersion]);
+  useEffect(()=>{const refresh=()=>{void loadData();setCreditVersion(v=>v+1);};window.addEventListener('farm-records-synced',refresh);return()=>window.removeEventListener('farm-records-synced',refresh);},[loadData]);
 
   const isDayClosed = dayRecord?.status === "closed";
   const totalSales = summary?.revenue ?? 0;
@@ -134,22 +143,22 @@ export default function SalesPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-5xl space-y-6 text-slate-950">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-widest">{dateLabel}</p>
-          <h1 className="text-lg font-bold text-gray-900">Record Sales</h1>
+          <p className="text-sm text-slate-600">{dateLabel}</p>
+          <p className="mt-1 text-base">Record sales and payments separately, with clear customer balances.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
             style={{ backgroundColor: isDayClosed ? "#fef3c7" : "#dcfce7", color: isDayClosed ? "#92400e" : "#166534" }}>
-            {isDayClosed ? <Lock className="h-3 w-3" /> : <div className="h-2 w-2 rounded-full bg-green-500" />}
-            {isDayClosed ? "Closed" : "Open"}
+            {!loading&&!loadError&&(isDayClosed ? <Lock className="h-3 w-3" /> : <div className="h-2 w-2 rounded-full bg-green-500" />)}
+            {loading ? "Loading status…" : loadError ? "Status unavailable" : isDayClosed ? "Closed" : "Open"}
           </span>
           {!isDayClosed && (
-            <button onClick={() => setShowCloseConfirm(true)} disabled={closing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white disabled:opacity-60"
+            <button onClick={() => setShowCloseConfirm(true)} disabled={closing||loading||loadError}
+              className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
               style={{ backgroundColor: "#1b4332" }}>
               <Lock className="h-3.5 w-3.5" />
               Close Day
@@ -160,31 +169,24 @@ export default function SalesPage() {
 
       {loadError && <p role="alert" className="text-red-700">Financial summary unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
       <p className="text-xs text-gray-500">Reporting period: {today} · today only</p>
-      {/* Total card */}
-      {totalSales > 0 && (
-        <div className="rounded-2xl p-4 flex items-center justify-between"
-          style={{ background: "linear-gradient(135deg,#1b4332,#2d6a4f)" }}>
-          <p className="text-sm font-semibold text-white opacity-80">Today&apos;s Total Sales</p>
-          <p className="text-2xl font-bold" style={{ color: "#11d469" }}>{fmt(totalSales)}</p>
-        </div>
-      )}
-
-      {/* Product selection */}
-      {!isDayClosed && (
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">What are you selling?</p>
-          <div className="grid grid-cols-2 gap-3">
-            {PRODUCTS.map((p) => (
-              <button key={p.key} onClick={() => router.push(`/sales/${p.key}`)}
-                className="flex items-center justify-between rounded-2xl px-4 py-4 border-2 transition-all active:scale-[0.97]"
-                style={{ borderColor: p.color + "50", backgroundColor: p.bg }}>
-                <span className="font-bold text-sm" style={{ color: p.color }}>{p.label}</span>
-                <ChevronRight className="h-4 w-4" style={{ color: p.color + "80" }} />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-3">
+        <button className="min-h-12 rounded-xl bg-emerald-900 px-5 py-3 text-base font-bold text-white disabled:opacity-50" disabled={loading||loadError||isDayClosed} onClick={()=>setShowProducts(true)}>Record a sale</button>
+        <Link className="inline-flex min-h-12 items-center rounded-xl border border-emerald-800 bg-white px-5 py-3 text-base font-bold text-emerald-950" href="/credit?action=receipt">Record a payment</Link>
+        <Link className="inline-flex min-h-12 items-center px-3 font-semibold text-emerald-900 underline" href="/credit">Customers &amp; payments</Link>
+      </div>
+      {isDayClosed&&<p className="rounded-xl bg-amber-50 p-4 text-amber-950">Today&apos;s records are closed. Saved sales remain available below. Payment entries are checked against their actual date.</p>}
+      <section aria-label="Sales and customer balances" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-emerald-900 bg-emerald-950 p-5 text-white"><p className="text-base">Today&apos;s sales</p><p className="mt-2 break-words text-3xl font-bold tabular-nums">{loading?'Loading…':loadError?'Unavailable':fmt(totalSales)}</p><p className="mt-2 text-sm text-emerald-100">All recorded sales for {today}</p></div>
+        {([['Invoice sales',creditData?.summary.revenue],['Payments received',creditData?.summary.collected],['Customer debt',creditData?.summary.owed]] as const).map(([label,value])=><div key={label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"><p className="text-base text-slate-700">{label}</p><p className="mt-2 break-words text-3xl font-bold tabular-nums">{value!==undefined?formatExactCurrency(value,'NGN'):creditError?'Unavailable':'Loading…'}</p><p className="mt-2 text-sm text-slate-600">{label==='Customer debt'?'Assigned customers · current balance':'Your responsibility scope · all dates'}</p></div>)}
+      </section>
+      <p className="text-sm text-slate-600">Sales show what was sold. Payments show money actually received. Customer debt is still unpaid. These figures have different scopes and must not be added together.</p>
+      {creditError&&<p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-950">{creditError}. <button className="min-h-11 underline" onClick={()=>setCreditVersion(v=>v+1)}>Retry customer balances</button></p>}
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Recent invoices</h2><Link href="/credit" className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline">View all invoices</Link></div>
+        <p className="mb-4 text-sm text-slate-600">Latest 10 in your permitted scope. Historical sales without invoices remain unchanged below.</p>
+        {creditData?.invoices.length===0?<p>No invoices recorded in this scope.</p>:creditData?<div className="divide-y">{[...creditData.invoices].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(invoice=><article key={invoice.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><h3 className="break-words font-bold">{invoice.number} · {invoice.customer_name}</h3><p className="text-sm text-slate-600">{invoice.date} · Due {invoice.due_date}</p><p className="mt-1 text-sm font-semibold">{invoice.voided_at?'Voided':invoice.overdue_days?`${invoice.overdue_days} days overdue`:Number(invoice.owed)>0?'Awaiting payment':'Settled'}</p></div><dl className="grid gap-1 text-sm"><div><dt className="inline text-slate-600">Sale value: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.total,'NGN')}</dd></div><div><dt className="inline text-slate-600">Still owed: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.owed,'NGN')}</dd></div></dl></article>)}</div>:<p>{creditError?'Invoices unavailable.':'Loading invoices…'}</p>}
+      </section>
+      <Dialog open={showProducts} onOpenChange={setShowProducts}><DialogContent><DialogTitle className="pr-10 text-2xl font-bold">Record a sale</DialogTitle><DialogDescription>Choose what was sold. The next form keeps the correct units, customer and stock details.</DialogDescription><div className="grid grid-cols-2 gap-3">{PRODUCTS.map(product=><button key={product.key} className="flex min-h-14 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left font-semibold text-slate-950" onClick={()=>router.push(`/sales/${product.key}`)}>{product.label}<ChevronRight className="h-4 w-4 shrink-0"/></button>)}</div><Link href="/stores" className="min-h-11 py-2 text-sm font-semibold text-emerald-900 underline">Selling eggs? Choose the recorded egg batch in Physical Counts &amp; Eggs.</Link></DialogContent></Dialog>
 
       {/* Chart */}
       {chartData.length > 0 && (
@@ -206,8 +208,8 @@ export default function SalesPage() {
 
       {/* Records list */}
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
-          Today&apos;s Records ({sales.length})
+        <p className="text-xl font-bold text-slate-950 mb-3">
+          Today&apos;s sales records ({sales.length}{sales.length===100?" shown; more may exist":""})
         </p>
         {loading ? (
           <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-16 rounded-2xl bg-gray-100 animate-pulse" />)}</div>
@@ -222,7 +224,7 @@ export default function SalesPage() {
               const p = PRODUCTS.find((x) => x.key === sale.product);
               return (
                 <div key={sale.id} className="bg-white rounded-2xl p-4 border border-gray-100">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
@@ -236,12 +238,12 @@ export default function SalesPage() {
                       {sale.customer_name && (
                         <p className="text-sm font-semibold text-gray-900 mt-1">{sale.customer_name}</p>
                       )}
-                      <p className="text-xs text-gray-400">
-                        {sale.pricing_basis === "per_kg" ? `${sale.quantity} animals · ${sale.weight_kg} kg × ${fmt(sale.unit_price)}/kg` : sale.pricing_basis ? `${sale.quantity} × ${fmt(sale.unit_price)}` : `${sale.quantity} units · Historical total`} · {sale.payment_method.toUpperCase()}
+                      <p className="mt-2 text-sm text-slate-600">
+                        {sale.pricing_basis === "per_kg" ? `${sale.quantity} ${sale.product === "catfish" ? "fish" : "animals"} removed · ${sale.weight_kg} kg × ${fmt(sale.unit_price)}/kg` : sale.pricing_basis ? `${sale.quantity} × ${fmt(sale.unit_price)}` : `${sale.quantity} units · Historical total`} · {sale.payment_method.toUpperCase()}
                       </p>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-gray-900">{fmt(sale.total_amount)}</p>
+                    <div className="min-w-0 sm:text-right">
+                      <p className="text-sm text-slate-600">Sale value</p><p className="break-words text-xl font-bold text-slate-950">{fmt(sale.total_amount)}</p>
                       <FarmCorrectionRequest recordType="sale" recordId={sale.id} />
                       <div className="mt-2"><FarmRecordDiscussion resource="farm_sales" recordId={sale.id}/></div>
                     </div>

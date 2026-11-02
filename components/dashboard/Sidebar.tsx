@@ -169,12 +169,12 @@ function NavContent({
                   onClick={onClose}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center gap-3 min-h-11 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 group",
+                    "flex items-center gap-3 min-h-11 rounded-xl px-3 py-2.5 text-base font-medium transition-all duration-150 group",
                     collapsed && "justify-center px-2",
                     isActive && pathname === "/dashboard"
-                      ? "bg-teal-400 text-[#1B1464] shadow-sm"
+                      ? "bg-[#d8f47b] text-[#211f30] shadow-sm"
                       : isActive
-                      ? "bg-white/15 text-white"
+                      ? "bg-[#d8f47b] text-[#211f30]"
                       : pathname === "/dashboard" ? "text-white/75 hover:bg-white/10 hover:text-white" : "text-white/75 hover:bg-white/8 hover:text-white/80"
                   )}
                 >
@@ -182,7 +182,7 @@ function NavContent({
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
                       isActive
-                        ? pathname === "/dashboard" ? "text-[#1B1464]" : "text-white"
+                        ? "text-[#211f30]"
                         : "text-white/65 group-hover:text-white/80"
                     )}
                   />
@@ -253,7 +253,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
         side="top"
         align="start"
         sideOffset={8}
-        className="w-48 p-1 bg-[#231D82] border-white/10"
+        className="w-48 p-1 bg-[#211f30] border-white/10"
       >
         <Link
           href="/dashboard/settings"
@@ -287,7 +287,7 @@ export function Sidebar() {
       {/* â”€â”€ Desktop sidebar â”€â”€ */}
       <aside
         className={cn(
-          "hidden lg:flex flex-col border-r border-white/5 bg-[#1B1464] transition-all duration-200 relative shrink-0",
+          "hidden lg:flex flex-col border-r border-white/5 bg-[#211f30] transition-all duration-200 relative shrink-0",
           collapsed ? "w-[68px]" : "w-60"
           ,isCeoHome && "my-3 ml-3 rounded-2xl border-0 shadow-lg"
         )}
@@ -315,7 +315,7 @@ export function Sidebar() {
           <button
             onClick={() => setCollapsed(false)}
             aria-label="Expand navigation"
-            className="absolute -right-5 top-[68px] h-11 w-11 rounded-full border border-white/25 bg-[#1B1464] text-white/75 hover:text-white hover:bg-white/10 flex items-center justify-center z-20 transition-colors shadow-sm"
+            className="absolute -right-5 top-[68px] h-11 w-11 rounded-full border border-white/25 bg-[#211f30] text-white/75 hover:text-white hover:bg-white/10 flex items-center justify-center z-20 transition-colors shadow-sm"
           >
             <ChevronRight className="h-3 w-3" />
           </button>
@@ -341,7 +341,7 @@ export function Sidebar() {
         </SheetTrigger>
         <SheetContent
           side="left"
-          data-hq className="w-60 bg-[#1B1464] p-0 border-r border-white/8 [&>button]:h-11 [&>button]:w-11 [&>button]:flex [&>button]:items-center [&>button]:justify-center text-white"
+          data-hq className="w-60 bg-[#211f30] p-0 border-r border-white/8 [&>button]:h-11 [&>button]:w-11 [&>button]:flex [&>button]:items-center [&>button]:justify-center text-white"
         >
           <SheetTitle className="sr-only">CEO navigation</SheetTitle>
           <div className="flex h-16 items-center border-b border-white/8 px-4">

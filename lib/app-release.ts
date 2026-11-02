@@ -1,7 +1,7 @@
-export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-10-31.1';
+export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-11-02.1';
 export const RELEASE_NOTES=[
- 'Clearer sign-in recovery and dashboard loading.',
- 'Expenses shortcut, organized farm navigation and manual WhatsApp contact.',
- 'Daily Report photos, retained offline submissions and safe update notices.',
+ 'Larger CEO dashboard headings and visible business financial summaries.',
+ 'Operational Request photos and clearer linked approval decisions.',
+ 'Clear sale and payment actions, with existing manager histories preserved.',
 ];
 export const QUEUE_FORMAT=1;

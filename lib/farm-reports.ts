@@ -33,14 +33,25 @@ const structuredSectionsSchema = z.object({
 export const sectionsSchema=z.union([structuredSectionsSchema,legacySectionsSchema]).refine(value=>new TextEncoder().encode(JSON.stringify(value)).length<=28000,"Report is too long. Shorten the section notes.");
 export type StructuredReportSections=z.infer<typeof structuredSectionsSchema>;
 export const reportSchema = z.object({report_date:date,sections:sectionsSchema,decision_required:z.boolean().default(false)}).strict().refine(value=>!value.decision_required || value.sections.problems.issues.length>0,{message:"Describe the issue requiring a decision",path:["sections","problems","issues"]});
-export const requestSchema = z.object({request_date:date,category:z.enum(REQUEST_CATEGORIES),description:z.string().trim().min(1).max(2000)}).strict();
+export const requestSchema = z.object({request_date:date,category:z.enum(REQUEST_CATEGORIES),description:z.string().trim().min(1).max(2000),evidence_ids:z.array(z.string().uuid()).max(6).optional(),request_id:z.string().uuid().optional()}).strict();
 export type ReportSections = z.infer<typeof sectionsSchema>;
 export type DailyReport = z.infer<typeof reportSchema> & {id:string;manager_id:string;manager?:{id:string;name:string|null}|null;status:"draft"|"submitted";revision:number;created_at:string;submitted_at:string|null;reviewed_by:string|null;reviewed_at:string|null;review_note:string|null};
-export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;report_id:string|null;action_taken?:string|null;requested_by:string;requester?:{id:string;name:string|null}|null;status:"pending"|"approved"|"declined"|"resolved";revision:number;created_at:string;ceo_response:string|null;resolution:string|null;decision_by:string|null;decision_at:string|null;resolved_at:string|null};
+export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;report_id:string|null;action_taken?:string|null;requested_by:string;requester?:{id:string;name:string|null}|null;status:"pending"|"approved"|"declined"|"resolved";revision:number;created_at:string;ceo_response:string|null;resolution:string|null;decision_by:string|null;decision_at:string|null;resolved_at:string|null;linked_purchase?:{id:string;total:string; supplier:string|null};feed_count_review?:boolean};
+
+async function requestLinks(response:Response){
+ if(!response.ok)return response;
+ const body=await response.json(),rows=body.data as OperationalRequest[];
+ if(!Array.isArray(rows)||!rows.length)return NextResponse.json(body,{headers:response.headers});
+ const db=createServerClient();if(!db)return farmErrorResponse({code:'503',message:'Database not configured'});
+ const ids=rows.map(row=>row.id);
+ const [purchases,counts]=await Promise.all([db.from('farm_purchases').select('id,request_id,total,supplier').in('request_id',ids),db.from('farm_feed_activities').select('review_request_id').in('review_request_id',ids).eq('kind','problem')]);
+ if(purchases.error||counts.error)return farmErrorResponse(purchases.error||counts.error!);
+ return NextResponse.json({...body,data:rows.map(row=>{const p=purchases.data?.find(p=>p.request_id===row.id);return {...row,...(p?{linked_purchase:{id:p.id,total:String(p.total),supplier:p.supplier}}:{}),feed_count_review:counts.data?.some(c=>c.review_request_id===row.id)||false};})},{headers:response.headers});
+}
 
 export async function listFarmOperations(request:NextRequest,kind:"report"|"request") {
   let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}
-  const scoped=await managerReadResponse(request,"farm",kind==="report"?"farm_daily_reports":"farm_operational_requests");if(scoped)return scoped;
+  const scoped=await managerReadResponse(request,"farm",kind==="report"?"farm_daily_reports":"farm_operational_requests");if(scoped)return kind==='request'?requestLinks(scoped):scoped;
   const db=createServerClient();if(!db)return farmErrorResponse({code:"503",message:"Database not configured"});
   const params=new URL(request.url).searchParams;
   const targetId=params.get("id");
@@ -51,7 +62,7 @@ export async function listFarmOperations(request:NextRequest,kind:"report"|"requ
   if(targetId)query=query.eq("id",targetId);
   const {data,count,error}=await query.order(kind==="report"?"report_date":"request_date",{ascending:false}).order("created_at",{ascending:false}).range((page-1)*50,page*50-1);
   if(error)return farmErrorResponse(error);
-  return NextResponse.json({data,total:count});
+  const response=NextResponse.json({data,total:count});return kind==='request'?requestLinks(response):response;
 }
 
 async function legacyWriteFarmOperation(request:NextRequest,kind:"report"|"request",id?:string){
@@ -74,9 +85,10 @@ async function legacyWriteFarmOperation(request:NextRequest,kind:"report"|"reque
   if(operation==="update"&&fields.decision_required&&!(fields.sections as ReportSections).problems.issues)return NextResponse.json({error:"Describe the issue requiring a decision"},{status:400});
   if(id&&!z.string().uuid().safeParse(id).success)return NextResponse.json({error:"Invalid record ID"},{status:400});
   const requestId=request.headers.get("X-Request-ID");if(!requestId||!z.string().uuid().safeParse(requestId).success)return NextResponse.json({error:"A valid X-Request-ID is required for safe retries"},{status:400});
-  const {operation:ignored,revision,reason:reasonValue,...payload}=fields;void ignored;
+  if(fields.request_id&&fields.request_id!==requestId)return NextResponse.json({error:'Retry identifier mismatch'},{status:400});
+  const {operation:ignored,revision,reason:reasonValue,request_id:ignoredRequest,...payload}=fields;void ignored;void ignoredRequest;
   const db=createServerClient();if(!db)return farmErrorResponse({code:"503",message:"Database not configured"});
-  const {data,error}=await managerRpc(db,"farm_operations_write",{p_actor:profile.id,p_kind:kind,p_operation:operation,p_payload:{...payload,...(id?{expected_revision:revision}:{})},p_id:id??null,p_reason:reasonValue??null,p_request_id:requestId});
+  const {data,error}=await managerRpc(db,kind==='request'?'farm_operational_request_write':"farm_operations_write",{p_actor:profile.id,...(kind==='report'?{p_kind:kind}:{}),p_operation:operation,p_payload:{...payload,...(id?{expected_revision:revision}:{})},p_id:id??null,p_reason:reasonValue??null,p_request_id:requestId});
   if(error)return farmErrorResponse(error);
   return NextResponse.json({data},{status:id?200:201});
 }

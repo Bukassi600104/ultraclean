@@ -267,11 +267,11 @@ export default function SaleProductPage() {
   const sessionTotal = savedItems.reduce((s, i) => s + i.total, 0);
 
   return (
-    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="mx-auto w-full max-w-lg space-y-4">
+    <div data-unsaved-changes={dirty} onChangeCapture={() => setDirty(true)} className="mx-auto w-full max-w-2xl space-y-4">
       {/* Header */}
       <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: config.bg, borderLeft: `4px solid ${config.color}` }}>
         <p className="text-xs uppercase tracking-widest font-semibold" style={{ color: config.color }}>Recording Sale</p>
-        <p className="text-xl font-bold text-gray-900">{config.label}</p>
+        <p className="text-2xl font-bold text-gray-900">{config.label}</p>
       </div>
 
       {/* Session tracker */}
@@ -292,42 +292,42 @@ export default function SaleProductPage() {
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
         {/* 1. Date */}
         <div>
-          <label htmlFor="sale-date" className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
+          <label htmlFor="sale-date" className="text-sm font-semibold text-slate-700">Date</label>
           <input id="sale-date" type="date" max={today}
-            className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+            className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
             value={form.date} onChange={(e) => updateField("date", e.target.value)} />
         </div>
 
         {/* 2. Crops: crop type */}
         {(productKey === "crops" || (productKey === "other"&&!eggBatchId)) && (
           <div>
-            <label htmlFor="sale-crop" className="text-xs font-bold uppercase tracking-wider text-gray-500">Crop Type *</label>
-            <input id="sale-crop" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
-              placeholder="e.g. Maize, Cassava, Yam..." value={form.crop_type} onChange={(e) => updateField("crop_type", e.target.value)} />
+            <label htmlFor="sale-crop" className="text-sm font-semibold text-slate-700">{productKey === "other" ? "Item name *" : "Crop Type *"}</label>
+            <input id="sale-crop" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
+              placeholder={productKey === "other" ? "Name the item sold" : "e.g. Maize, Cassava, Yam..."} value={form.crop_type} onChange={(e) => updateField("crop_type", e.target.value)} />
           </div>
         )}
 
         {/* 3a. Catfish: quantity + kg + price per kg */}
         {productKey === "catfish" && (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="sale-quantity" className="text-xs font-bold uppercase tracking-wider text-gray-500">No. of Fish *</label>
+                <label htmlFor="sale-quantity" className="text-sm font-semibold text-slate-700">No. of Fish *</label>
                 <input id="sale-quantity" type="number" inputMode="numeric"
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                   placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
               </div>
               <div>
-                <label htmlFor="sale-weight" className="text-xs font-bold uppercase tracking-wider text-gray-500">Weight (kg) *</label>
+                <label htmlFor="sale-weight" className="text-sm font-semibold text-slate-700">Weight (kg) *</label>
                 <input id="sale-weight" type="number" inputMode="numeric"
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                   placeholder="0.0" value={form.kg} onChange={(e) => updateField("kg", e.target.value)} />
               </div>
             </div>
             <div>
-              <label htmlFor="sale-price" className="text-xs font-bold uppercase tracking-wider text-gray-500">Amount per kg (₦) *</label>
+              <label htmlFor="sale-price" className="text-sm font-semibold text-slate-700">Amount per kg (₦) *</label>
               <input id="sale-price" type="number" inputMode="numeric"
-                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.amount_per_kg} onChange={(e) => updateField("amount_per_kg", e.target.value)} />
             </div>
           </>
@@ -335,26 +335,27 @@ export default function SaleProductPage() {
 
         {/* 3b. Goat/Chicken/Crops: quantity + unit price */}
         {productKey !== "catfish" && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="sale-quantity" className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              <label htmlFor="sale-quantity" className="text-sm font-semibold text-slate-700">
                 {productKey === "cattle" ? "No. of Cattle *" : productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
               </label>
               <input id="sale-quantity" type="number" inputMode="numeric"
-                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
             </div>
             <div>
-              <label htmlFor="sale-price" className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              <label htmlFor="sale-price" className="text-sm font-semibold text-slate-700">
                 {productKey === "cattle" ? "Price per Head (₦) *" : productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
               </label>
               <input id="sale-price" type="number" inputMode="numeric"
-                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.unit_price} onChange={(e) => updateField("unit_price", e.target.value)} />
             </div>
           </div>
         )}
 
+        {productKey === "catfish" && <p className="text-sm text-slate-600">Fish count is removed from stock. Weight in kilograms determines the sale value.</p>}
         {/* Live total */}
         {computedTotal > 0 && (
           <div className="rounded-xl px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: config.bg }}>
@@ -366,7 +367,7 @@ export default function SaleProductPage() {
         {personal&&!credit&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {/* 4. Payment method */}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Payment Method</label>
+          <label className="text-sm font-semibold text-slate-700">Payment Method</label>
           <div className="mt-1.5 grid grid-cols-3 gap-2">
             {["cash", "transfer", "pos"].map((m) => (
               <button key={m} onClick={() => updateField("payment_method", m)}
@@ -384,10 +385,11 @@ export default function SaleProductPage() {
 
         <>{personal?<FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={setCredit}/>:<label className="block text-sm font-semibold">Customer name (optional)<input className="mt-1 min-h-11 w-full rounded-xl border p-3" value={form.customer_name} onChange={e=>updateField("customer_name",e.target.value)}/></label>}</>
 
+        {personal&&<p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-950">A paid sale records the full payment. For an approved credit or part-paid sale, choose payment later, save the sale, then use Record a payment for the amount actually received.</p>}
         {/* 6. Notes — optional */}
         <div>
-          <label htmlFor="sale-notes" className="text-xs font-bold uppercase tracking-wider text-gray-500">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
-          <input id="sale-notes" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
+          <label htmlFor="sale-notes" className="text-sm font-semibold text-slate-700">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
+          <input id="sale-notes" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
             placeholder="Any extra info..." value={form.notes} onChange={(e) => updateField("notes", e.target.value)} />
         </div>
       </div>

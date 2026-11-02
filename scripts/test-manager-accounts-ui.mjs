@@ -18,14 +18,14 @@ await page.route('**/api/managers**',async route=>{const r=route.request(),body=
 await page.route('**/api/operations/manager-context*',r=>r.fulfill({json:{actorId:'ceo',business:'farm',featureEnabled:true}}));
 let checks=0;
 try{
- await page.goto(`http://127.0.0.1:${server.address().port}`);await page.getByRole('heading',{name:'Manage Accounts',exact:true}).waitFor({timeout:5000});
+ await page.goto(`http://127.0.0.1:${server.address().port}`,{waitUntil:"domcontentloaded"});await page.getByRole('heading',{name:'Manage Accounts',exact:true}).waitFor({timeout:5000});
  for(const role of ['manager','property_manager','content_manager']){
   await page.getByRole('button',{name:'Add Manager',exact:true}).click();await page.getByLabel('App access',{exact:true}).selectOption(role);await page.getByLabel('Full Name',{exact:true}).fill('Test '+role);await page.getByLabel('Email Address',{exact:true}).fill(role+'@example.com');await page.getByLabel('Password',{exact:true}).fill('Secure123!');await page.getByLabel('Confirm Password',{exact:true}).fill('Secure123!');await page.getByRole('button',{name:'Create Account',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});assert.equal(calls.filter(x=>x.method==='POST').at(-1).body.role,role);checks++;
  }
  await page.getByRole('button',{name:'Suspend',exact:true}).first().click();await page.getByRole('button',{name:'Reactivate',exact:true}).waitFor();checks++;
  await page.getByRole('button',{name:'Reactivate',exact:true}).click();await page.getByRole('button',{name:'Suspend',exact:true}).first().waitFor();checks++;
  await page.getByRole('button',{name:'Remove access',exact:true}).first().click();assert.match(await page.getByRole('alertdialog').innerText(),/historical|past entries/i);await page.getByRole('button',{name:'Yes, Remove Access',exact:true}).click();await page.getByText('Access removed',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Reactivate',exact:true}).count(),0);checks+=2;
- for(const width of [390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`accounts-${width}.png`),fullPage:true});checks++}
+ for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`accounts-${width}.png`),fullPage:true});checks++}
  failLoad=true;await page.reload();await page.getByRole('alert').waitFor();assert.match(await page.getByRole('alert').innerText(),/load/i);checks++;assert.deepEqual(faults,[]);checks++;
  console.log(`PASS: ${checks} actual account-page browser checks; three app selections, create, suspend/reactivate, safe removal, load errors and responsive layout. ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator('body').innerText()});throw error;}finally{await browser.close();await new Promise(r=>server.close(r))}

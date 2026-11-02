@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import {managerDatabase,ids,scalar,periodWrite,asRole} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase();
+const call=(actor,operation,payload,id=null,reason=null,retry=crypto.randomUUID())=>scalar(db,'select farm_operational_request_write($1,$2,$3::jsonb,$4,$5,$6)',[actor,operation,JSON.stringify(payload),id,reason,retry]);
+try{
+ await periodWrite(db,ids.admin,'activate');await db.exec('update operations_release_state set purchasing_enabled=true');
+ const payload={request_date:'2026-10-30',category:'repair',description:'Repair pump'},proofRequest=crypto.randomUUID();
+ const proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[ids.farm,JSON.stringify({sha256:'c'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:payload.request_date,target_resource:'farm_operational_requests'}),proofRequest]);
+ await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[ids.farm,JSON.stringify({id:proof.id}),proofRequest]);
+ const retry=crypto.randomUUID(),row=await call(ids.farm,'create',{...payload,evidence_ids:[proof.id]},null,null,retry);
+ assert.equal(await scalar(db,'select record_id from farm_evidence where id=$1',[proof.id]),row.id);
+ assert.deepEqual(await call(ids.farm,'create',{...payload,evidence_ids:[proof.id]},null,null,retry),row);
+ const before=await scalar(db,'select count(*)::int from farm_operation_events');
+ await assert.rejects(()=>call(ids.farm,'create',{...payload,evidence_ids:[crypto.randomUUID()]}));
+ assert.equal(await scalar(db,'select count(*)::int from farm_operational_requests'),1);assert.equal(await scalar(db,'select count(*)::int from farm_operation_events'),before);
+ await assert.rejects(()=>call(ids.farm,'approve',{expected_revision:0,ceo_response:'yes'},row.id,'yes'),e=>e.code==='42501');
+ const approved=await call(ids.admin,'approve',{expected_revision:0,ceo_response:'Checked pump'},row.id,'Checked pump');assert.equal(approved.status,'approved');
+ await assert.rejects(()=>call(ids.admin,'decline',{expected_revision:0,ceo_response:'stale'},row.id,'stale'),e=>e.code==='40001');
+ const order=await scalar(db,"select farm_purchase_write($1,'request',$2::jsonb,null,$3)",[ids.farm,JSON.stringify({date:'2026-10-30',supplier:'Supplier',category:'other',description:'Tools',lines:[{description:'Tool',quantity:'2',unit_price:'2000',unit:'items',destination:'other'}]}),crypto.randomUUID()]);
+ // Reproduce the production path: generic approval fails on structured-purchase guard.
+ await assert.rejects(()=>scalar(db,"select farm_operations_write($1,'request','approve',$2::jsonb,$3,'Verified quote',$4)",[ids.admin,JSON.stringify({expected_revision:0,ceo_response:'Verified quote'}),order.request_id,crypto.randomUUID()]),e=>e.code==='23514'&&e.message.includes('Purchases'));
+ const oldRetry=crypto.randomUUID(),oldPayload={expected_revision:0,ceo_response:'Checking quote'};
+ const oldResponse=await scalar(db,"select farm_operations_write($1,'request','respond',$2::jsonb,$3,'Checking quote',$4)",[ids.admin,JSON.stringify(oldPayload),order.request_id,oldRetry]);
+ assert.deepEqual(await call(ids.admin,'respond',oldPayload,order.request_id,'Checking quote',oldRetry),oldResponse,'Pre-update lost acknowledgement remains retryable');
+ const decision=crypto.randomUUID(),fields={expected_revision:oldResponse.revision,ceo_response:'Verified quote'};
+ const result=await call(ids.admin,'approve',fields,order.request_id,'Verified quote',decision);assert.equal(result.status,'approved');
+ assert.equal(await scalar(db,'select status from farm_purchases where id=$1',[order.id]),'approved');
+ assert.deepEqual(await call(ids.admin,'approve',fields,order.request_id,'Verified quote',decision),result);
+ assert.equal(await scalar(db,'select count(*)::int from farm_purchase_payments'),0);assert.equal(await scalar(db,'select count(*)::int from farm_purchase_deliveries'),0);assert.equal(await scalar(db,'select count(*)::int from farm_inventory_transactions'),0);
+ const response=await call(ids.admin,'respond',{expected_revision:result.revision,ceo_response:'Waiting delivery'},order.request_id,'Waiting delivery');assert.equal(response.status,'approved');
+ await assert.rejects(()=>call(ids.admin,'resolve',{expected_revision:response.revision,ceo_response:'done',resolution:'done'},order.request_id,'done'),e=>e.code==='23514');
+ const feed=(op,payload,id=null,reason=null)=>scalar(db,'select farm_feed_stock_write($1,$2,$3::jsonb,$4,$5,$6)',[ids.farm,op,JSON.stringify(payload),id,reason,crypto.randomUUID()]);
+ const start=await feed('starting',{date:'2026-10-30',feed_type:'fish',feed_source:'local',bags:10});
+ const opened=await feed('opened',{date:'2026-10-30',feed_type:'fish',feed_source:'local',bags:1,request_review:true});
+ await call(ids.admin,'approve',{expected_revision:0,ceo_response:'Reviewed opened bag'},opened.activity.review_request_id,'Reviewed opened bag');
+ assert.equal(await scalar(db,'select current_bags from farm_feed_stock where id=$1',[start.stock.id]),9);
+ assert.equal(await scalar(db,'select review_status from farm_feed_activities where id=$1',[opened.activity.id]),'approved');
+ const count=await feed('problem',{date:'2026-10-30',feed_type:'fish',feed_source:'local',bags:8,notes:'Actual count'});
+ await assert.rejects(()=>call(ids.admin,'approve',{expected_revision:0,ceo_response:'Unsafe generic count approval'},count.activity.review_request_id,'Unsafe generic count approval'),e=>e.code==='23514'&&e.message.includes('Feed Inventory'));
+ assert.equal(await scalar(db,'select current_bags from farm_feed_stock where id=$1',[start.stock.id]),9);
+ assert.equal(await scalar(db,'select review_status from farm_feed_activities where id=$1',[count.activity.id]),'pending');
+ await assert.rejects(()=>asRole(db,'authenticated',ids.farm,()=>call(ids.farm,'create',payload)),e=>e.code==='42501');
+ console.log('PASS operational requests: reproduced purchase approval failure, linked authoritative decision/retry, no cash/stock effects, response/resolve guard, atomic photos/rollback, stale and role boundaries');
+}catch(error){console.error(error);process.exitCode=1;}finally{await db.close();}

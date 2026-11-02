@@ -38,7 +38,7 @@ try{
  assert.equal(await page.getByRole('link',{name:'Open PROPERTIES',exact:true}).getAttribute('href'),'/dashboard/properties?from=2026-10-01&to=2026-10-05');assert.equal(await page.getByRole('link',{name:'Open BOSSBIMZ',exact:true}).getAttribute('href'),'/dashboard/content?from=2026-10-01&to=2026-10-05');checks+=2;
  const headings=await page.locator('section[aria-label]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')));assert.deepEqual(headings.filter(h=>['PRIMEFIELD','ULTRATIDY','DBA','BOSSBIMZ','PROPERTIES'].includes(h)),['PRIMEFIELD','ULTRATIDY','DBA','BOSSBIMZ','PROPERTIES']);checks++;
  await page.getByText('Actual collections',{exact:true}).waitFor();
- await page.getByText('Detailed financial reconciliation and legacy inventory',{exact:true}).click();
+ assert.equal(await page.getByRole('heading',{name:'Financial reconciliation',exact:true}).isVisible(),true);
  await page.getByRole('region',{name:'PRIMEFIELD',exact:true}).getByText('Received from Bimbo',{exact:true}).waitFor();checks++;
 
  for(const title of ['PRIMEFIELD','BOSSBIMZ','ULTRATIDY','PROPERTIES']){assert.equal(await page.getByRole('heading',{name:title,exact:true}).count(),1);checks++;}

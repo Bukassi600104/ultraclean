@@ -56,3 +56,6 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Review older ad-hoc tests before executing them. Use the explicit isolated release-suite allowlist; never run a test that contains production credentials or creates/deletes live accounts. Keep credential retirement separate and coordinated, without silent signing-key/session changes.
 
 - 31 Oct: Expenses emphasis means move/promote its actual destination, not rename purchase workflows. WhatsApp is click-to-chat only; no automated reports or sender signup.
+
+- 2 Nov: A request linked to a structured purchase must use the purchase decision workflow; the generic request endpoint correctly hits the database guard. Preserve exact pre-update retry receipts when adding a dispatcher.
+- Keep the original CEO screenshot as the overview baseline, while using Pulse for Farm requests and Sales. Feature presence alone does not establish reference-layout acceptance.

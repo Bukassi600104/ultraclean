@@ -289,4 +289,11 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] 3. Safe app update notifications and scoped offline workspace
 - [x] 4. Tested disabled login-protection policy/SQL; full activation and recovery integration on hold per user
 - [x] 5. Integrated tests, fresh preservation rehearsal and review
-- [ ] 6. Coordinated release of approved ungated changes and evidence
+- [x] 6. Coordinated release verified: affc6e5, Vercel READY, live domains match; security activation held
+
+## 2026-11-02 Tuesday readiness
+- [x] Requests, linked decisions and atomic photos
+- [x] CEO reference layout and Sales clarity
+- [x] New manager onboarding, isolation and historical exports verified
+- [x] Isolated regression, preservation rehearsal and review (110 suites; build/lint/types; original142 tables unchanged)
+- [ ] Coordinated production release and live verification

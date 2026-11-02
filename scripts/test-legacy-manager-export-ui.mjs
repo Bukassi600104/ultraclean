@@ -11,6 +11,6 @@ try{
  hold=true;await button.click();await page.waitForFunction(()=>document.body.innerText.includes('Preparing Excel'));await page.evaluate(id=>window.renderExport(id,id),other);await page.waitForTimeout(100);held();hold=false;await page.waitForTimeout(250);assert.equal(downloads,1);assert.equal(await button.count(),0);checks+=2;
  fail=true;await page.evaluate(id=>window.renderExport(id),farm);await page.getByRole('alert').waitFor();fail=false;await page.getByRole('button',{name:'Retry export access'}).click();await button.waitFor();checks++;
  fail=true;await button.click();await page.getByRole('alert').waitFor();assert.equal(downloads,1);assert.equal(await button.isEnabled(),true);fail=false;checks+=2;
- for(const width of [390,768,1440]){await page.setViewportSize({width,height:568});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);checks++;}
+ for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:568});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);checks++;}
  assert.equal(calls.filter(c=>c.method!=='GET').length,0);assert.deepEqual(faults,[]);checks+=2;console.log('PASS '+checks+' real export UI checks: eligible CEO/self entry, hidden new accounts, download, no stale-account download, retry, no writes and responsive controls');
 }finally{await browser.close();server.closeAllConnections();await new Promise(r=>server.close(r));}

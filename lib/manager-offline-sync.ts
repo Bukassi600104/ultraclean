@@ -26,7 +26,7 @@ export async function syncManagerPending(identity:QueueIdentity,{send=fetch,isCu
    }
    if(response.status===202){updatePending({...item,conflict:"Saved for Bimbo's funding review; not yet posted"},identity);}
    else if(response.ok){
-    if(['/api/farm/batch-records','/api/farm/daily-reports/submit'].includes(item.endpoint)||item.mediaIds?.length){
+    if(['/api/farm/batch-records','/api/farm/daily-reports/submit','/api/farm/operational-requests'].includes(item.endpoint)||item.mediaIds?.length){
      const result=await response.json().catch(()=>null);if(!isCurrent()||signal?.aborted)break;
      if(typeof (result?.data?.id||result?.id)!=='string')continue;
     }
