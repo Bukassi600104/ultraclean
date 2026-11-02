@@ -6,6 +6,7 @@ import { requirePropertyManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { isPropertySection, parsePropertyWrite, propertyKinds } from "@/lib/property";
 import {financialResponse} from "@/lib/operations-cash";
+import {isTechnicalMessage} from "@/lib/record-display";
 
 export const dynamic = "force-dynamic";
 type Context = {params: {kind: string}};
@@ -34,14 +35,14 @@ async function legacyPOST(request: NextRequest, {params}: Context) {
     const text = await request.text();
     if (text.length > 15000) throw new Error("Record too large");
     body = parsePropertyWrite(params.kind, JSON.parse(text));
-  } catch (error) {return NextResponse.json({error: error instanceof Error && !error.message.startsWith("[") ? error.message : "Check all required fields, dates, amounts and currency."}, {status: 400});}
+  } catch (error) {return NextResponse.json({error: error instanceof Error && !(error instanceof SyntaxError) && !error.message.startsWith("[") && !isTechnicalMessage(error.message) ? error.message : "Check all required fields, dates, amounts and currency."}, {status: 400});}
   const db = createServerClient();
   if (!db) return NextResponse.json({error: "Property service unavailable"}, {status: 503});
   const {data, error} = await managerRpc(db,"property_write", {p_actor: actor.id, p_kind: propertyKinds[params.kind].kind, p_operation: body.operation, p_payload: body.payload, p_id: body.targetId ?? null, p_reason: body.reason ?? null, p_request_id: body.request_id ?? null});
   if (error) {
     const conflict = ["40001", "23505"].includes(error.code);
     const invalid = ["22023", "23514", "23503", "23502", "22P02", "22007", "22008"].includes(error.code);
-    return NextResponse.json({error: conflict ? "This record changed or conflicts with an existing record. Refresh and review before saving." : error.code === "42501" ? "Property access required" : error.code === "P0002" ? "The property record no longer exists. Refresh and review." : invalid ? error.message : "Unable to save. Your entry is retained; please retry."}, {status: conflict ? 409 : error.code === "42501" ? 403 : error.code === "P0002" ? 404 : invalid ? 400 : 500});
+    return NextResponse.json({error: conflict ? "This record changed or conflicts with an existing record. Refresh and review before saving." : error.code === "42501" ? "Property access required" : error.code === "P0002" ? "The property record no longer exists. Refresh and review." : invalid ? (isTechnicalMessage(error.message) ? "Check the required fields and choose the related property or tenant again before saving." : error.message) : "Unable to save. Your entry is retained; please retry."}, {status: conflict ? 409 : error.code === "42501" ? 403 : error.code === "P0002" ? 404 : invalid ? 400 : 500});
   }
   return financialResponse(data,200);
 }

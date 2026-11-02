@@ -3,6 +3,7 @@
 import {ManagerHandoverGate} from "@/components/manager/ManagerHandover";
 import {ManagerPeriodProvider} from "@/contexts/ManagerPeriodContext";
 import { useState } from "react";
+import {isTechnicalMessage,displayRecordValue} from "@/lib/record-display";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {operationalBackLink} from "@/lib/dashboard-navigation";
@@ -13,6 +14,11 @@ import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
 import {FarmMobileNav} from '@/components/manager/FarmMobileNav';
 import {PrepareFarmOfflineWorkspace} from '@/components/offline/PrepareFarmOfflineWorkspace';
 import { ArrowLeft, Menu } from "lucide-react";
+
+const queuedFieldLabels: Record<string,string> = {
+ date:"Activity date",report_date:"Report date",request_date:"Request date",product:"Product",other_product_name:"Product name",quantity:"Quantity",weight_kg:"Weight (kg)",unit_price:"Price",total_amount:"Sale value",amount:"Amount",cost:"Cost",category:"Category",description:"Description",notes:"Notes",reason:"Reason",cause:"Cause",customer_name:"Customer",customer_phone:"Customer contact",feed_type:"Feed for",feed_source:"Feed source",num_bags:"Bags purchased",bags_opened:"Bags opened",bags:"Bags",local_feed:"Local feed used",foreign_feed:"Foreign feed used",feed_kg:"Feed used (kg)",deaths:"Deaths",eggs:"Eggs",sample_weight_kg:"Sample weight (kg)",sample_count:"Animals sampled",expense_source:"Paid from",funding_source:"Paid from",pricing_basis:"Price measured by",gender:"Sex",decision_required:"CEO decision needed"
+};
+const queuedEntryNames:Record<string,string>={"/api/farm/sales":"Sale","/api/farm/expenses":"Expense","/api/farm/feed-purchases":"Feed purchase","/api/farm/daily-feed":"Daily feeding","/api/farm/daily-reports/submit":"Daily report","/api/farm/operational-requests":"Operational request","/api/farm/batch-records":"Batch daily record","/api/farm/inventory/transaction":"Stock or mortality entry"};
 
 // Page title map
 
@@ -127,7 +133,7 @@ function ManagerShell({
         {conflicts.length > 0 && <details className="mx-4 my-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
           <summary className="cursor-pointer font-semibold">{conflicts.length} saved {conflicts.length === 1 ? "entry needs" : "entries need"} review</summary>
           <p className="mt-2">These entries remain on this device. Their dates have not been changed. Ask Bimbo to resolve closed-day or record conflicts before resubmitting.</p>
-          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{item.endpoint.replace("/api/farm/", "").replace(/\//g, " ")} · {String(item.data.date ?? item.createdAt)}</p><p className="text-amber-900">{item.conflict}</p><button disabled={isSyncing} className="mt-1 min-h-11 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-50" onClick={()=>void retryEntry(item.id)}>Retry original entry after resolution</button><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => !key.endsWith("id") && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline capitalize">{key.replace(/_/g, " ")}: </dt><dd className="inline">{String(value)}</dd></div>)}</dl></div>)}
+          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{queuedEntryNames[item.endpoint]||"Saved farm entry"} · {String(item.data.date ?? item.data.report_date ?? item.data.request_date ?? item.createdAt)}</p><p className="text-amber-900">{isTechnicalMessage(item.conflict||"")?"This entry needs review before it can be sent. Ask Bimbo to check the original entry, then retry after the issue is resolved.":item.conflict}</p><button disabled={isSyncing} className="mt-1 min-h-11 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-50" onClick={()=>void retryEntry(item.id)}>Retry original entry after resolution</button><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => key in queuedFieldLabels && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline">{queuedFieldLabels[key]}: </dt><dd className="inline">{displayRecordValue(value)}</dd></div>)}</dl></div>)}
         </details>}
 
         {/* Page content */}

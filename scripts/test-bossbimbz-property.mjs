@@ -43,6 +43,8 @@ assert.equal((await route.POST(request({operation:'update',id:rows[0].id,name:'N
 result=await route.POST(request({operation:'update',id:rows[0].id,name:'New name',expected_revision:0,reason:'Correct typo'}),params);
 assert.equal(result.status,200);assert.equal(rpcCalls.at(-1).args.p_payload.expected_revision,0);assert.equal(rpcCalls.at(-1).args.p_reason,'Correct typo');checks+=3;
 for(const [error,status] of [[{code:'40001',message:'Record changed; refresh'},409],[{code:'23514',message:'Currency must match property'},400],[{code:'42501',message:'Unauthorized'},403],[{code:'XX000',message:'private error'},500]]){rpcError=error;result=await route.POST(request({name:'x',address:'x',status:'active',currency:'CAD'}),params);assert.equal(result.status,status);checks++;}
+rpcError={code:'22P02',message:'invalid input syntax for type uuid: "00000000-0000-4000-8000-000000000097"'};
+result=await route.POST(request({name:'x',address:'x',status:'active',currency:'CAD'}),params);assert.equal(result.status,400);assert.doesNotMatch((await result.json()).error,/uuid|00000000|syntax/i);checks+=2;
 rpcError=null;queryError={message:'private database detail'};result=await route.GET(new Request('http://isolated.invalid'),params);assert.equal(result.status,500);assert.ok(!(await result.json()).error.includes('private database'));checks+=2;
 queryError=null;
 await route.GET(new Request('http://isolated.invalid'),{params:{kind:'history'}});assert.equal(orders.at(-2),'happened_at');checks++;

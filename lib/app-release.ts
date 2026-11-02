@@ -1,6 +1,6 @@
-export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-11-02.3';
+export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-11-03.1';
 export const RELEASE_NOTES=[
- 'Farm supplies now show their names, quantities and units when assigning them.',
- 'Clearer stock assignment instructions, with no changes to existing records.',
+ 'Clearer names and readable change history across Farm, Property and Content.',
+ 'Helpful messages when an entry needs attention, with existing records unchanged.',
 ];
 export const QUEUE_FORMAT=1;

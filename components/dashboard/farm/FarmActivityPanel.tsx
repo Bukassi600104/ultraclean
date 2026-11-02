@@ -1,4 +1,5 @@
 "use client";
+import {displayFieldName, displayRecordValue, isInternalField} from "@/lib/record-display";
 import {FarmRecordDiscussion} from "@/components/manager/FarmRecordThread";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
@@ -25,7 +26,7 @@ const fields: Record<string, Field[]> = {
   feed:[{key:"date",label:"Purchase date",type:"date"},{key:"feed_type",label:"Feed type",choices:["fish","goat","chicken","pig","turkey","cattle","other"]},{key:"feed_source",label:"Feed source",choices:["local","foreign"]},{key:"weight_unit",label:"Weight unit",choices:["tons","kg"]},{key:"weight_amount",label:"Weight",numeric:true},{key:"num_bags",label:"Bags",numeric:true},{key:"cost",label:"Cost (₦)",numeric:true},{key:"notes",label:"Notes"}],
   daily_feed:[{key:"date",label:"Date",type:"date"},{key:"feed_type",label:"Feed type",choices:["fish","goat","chicken","pig","turkey","cattle","other"]},{key:"feed_source",label:"Feed source",choices:["local","foreign"]},{key:"num_bags",label:"Bags",numeric:true},{key:"notes",label:"Notes"}],
 };
-function label(value: string) { return value.replace(/_/g," "); }
+function label(value: string) { return displayFieldName(value); }
 function timestamp(value: string) { return new Date(value).toLocaleString("en-GB",{timeZone:"Africa/Lagos",hour12:false})+" (Lagos)"; }
 
 export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recordType:string;record:object;onSaved?:()=>void;requestId?:string}) {
@@ -101,9 +102,9 @@ export function FarmActivityPanel({onSaved}:{onSaved?:()=>void} = {}){
       <h3 className="font-semibold">Correction requests</h3>{!requests.length&&!loading&&<p className="text-sm text-gray-500">No requests recorded.</p>}
       {requests.map(request=><div key={request.id} className="border rounded-lg p-3 space-y-2"><p className="font-medium capitalize">{label(request.record_type)} · {request.status}</p><p className="text-xs text-gray-500">{request.requester_name||"Recorded user"} · {timestamp(request.requested_at)}</p><p className="text-sm">{String(request.requested_change.description??request.requested_change.action??"Correction requested")}</p><p className="text-sm">Reason: {request.reason}</p>{request.status==='pending'&&request.current_record&&<div className="flex gap-2"><FarmAdminCorrection recordType={request.record_type} record={request.current_record} requestId={request.id} onSaved={()=>{void load();onSaved?.();}}/><Button variant="outline" size="sm" onClick={()=>void decline(request)}>Decline</Button></div>}</div>)}
       <h3 className="font-semibold">Activity history</h3>{!activity.length&&!loading&&<p className="text-sm text-gray-500">No V2 activity recorded.</p>}
-      {activity.map(entry=>{const before=entry.before_value??{};const after=entry.after_value??{};const keys=Object.keys(after).filter(key=>!['id','created_by','actor_id','revision','sale_id','correction_of'].includes(key)&&JSON.stringify(before[key])!==JSON.stringify(after[key]));return <div key={entry.id} className="border rounded-lg p-3 space-y-1"><p className="font-medium capitalize">{label(entry.record_type)} · {entry.operation}</p><p className="text-xs text-gray-500">{entry.actor?.name||"Recorded user"} · {timestamp(entry.happened_at)}{entry.record_date?` · Record date ${entry.record_date}`:""}</p>{entry.reason&&<p className="text-sm">Reason: {entry.reason}</p>}<dl className="text-xs space-y-1">{keys.map(key=><div key={key}><dt className="inline capitalize font-medium">{label(key)}: </dt><dd className="inline break-words">{entry.before_value?`${display(before[key])} → `:""}{display(after[key])}</dd></div>)}</dl></div>;})}
+      {activity.map(entry=>{const before=entry.before_value??{};const after=entry.after_value??{};const keys=Object.keys(after).filter(key=>!isInternalField(key)&&key!=='correction_of'&&JSON.stringify(before[key])!==JSON.stringify(after[key]));return <div key={entry.id} className="border rounded-lg p-3 space-y-1"><p className="font-medium capitalize">{label(entry.record_type)} · {displayFieldName(entry.operation)}</p><p className="text-xs text-gray-500">{entry.actor?.name||"Recorded user"} · {timestamp(entry.happened_at)}{entry.record_date?` · Record date ${entry.record_date}`:""}</p>{entry.reason&&<p className="text-sm">Reason: {entry.reason}</p>}<dl className="text-xs space-y-1">{keys.map(key=><div key={key}><dt className="inline capitalize font-medium">{label(key)}: </dt><dd className="inline break-words">{entry.before_value?`${display(before[key])} → `:""}{display(after[key])}</dd></div>)}</dl></div>;})}
       {loading&&<p className="text-sm">Loading...</p>}{hasMore&&<Button variant="outline" disabled={loading} onClick={()=>void load(page+1)}>Load more</Button>}
     </div>}
   </section>;
 }
-function display(value:unknown){return value===null||value===undefined?"Not recorded":typeof value==='object'?JSON.stringify(value):String(value);}
+function display(value:unknown){return displayRecordValue(value);}

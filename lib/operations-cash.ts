@@ -5,6 +5,7 @@ import {createServerClient} from "@/lib/supabase/server";
 import {managerRpc,withManagerWrite} from "@/lib/manager-write-api";
 import {cashRequestSchema,isPendingFunding,type CashRequest,type CashSummary} from "@/lib/operations-cash-validation";
 import {requestManagerScope} from "@/lib/manager-read-api";
+import {isTechnicalMessage} from "@/lib/record-display";
 export async function cashWrite(actor:Pick<Profile,"id">,operation:CashRequest["operation"],payload:CashRequest["payload"],requestId:string):Promise<WriteOutcome<Record<string,unknown>>>{
  const db=createServerClient();if(!db)throw Error("Database unavailable");
  const {data,error}=await managerRpc(db,"operations_cash_write",{p_actor:actor.id,p_operation:operation,p_payload:payload,p_request_id:requestId});if(error)throw error;return data;
@@ -14,7 +15,8 @@ export async function getCashSummary(scope:ManagerScope,filters:{from?:string;to
 }
 export function cashError(error:unknown){
  const e=error as {code?:string;message?:string};const status=e.code==="42501"?403:e.code==="P0002"?404:["23514","23505","40001"].includes(e.code||"")?409:["22023","22P02","22007","22008"].includes(e.code||"")?400:503;
- return NextResponse.json({error:status===503?"Funds information is unavailable. Please retry.":e.message,code:e.code},{status});
+ const message=status===503?"Funds information is unavailable. Please retry.":!e.message||isTechnicalMessage(e.message)?status===403?"You do not have permission to change this funds entry.":status===404?"This funds entry could not be found. Refresh and try again.":status===409?"This entry could not be saved. Refresh the funds list and check whether it was already recorded.":"Check the amount, date and selected recipient before trying again.":e.message;
+ return NextResponse.json({error:message,code:e.code},{status});
 }
 export async function postCash(request:Request,receiptsOnly=false){
  const parsed=cashRequestSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:parsed.error.issues[0]?.message||"Check the cash entry"},{status:400});

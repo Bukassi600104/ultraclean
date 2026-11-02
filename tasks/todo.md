@@ -310,3 +310,12 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Replace assignment jargon with clear labels; prevent selection of unnamed supplies.
 - [ ] Browser regression, lint, TypeScript, production build and verified deployment.
 - No database or inventory mutation is part of this display fix.
+- [x] Verified 39 browser checks, lint, TypeScript and production build; GitHub92503a9 and Vercel dpl_86Sy6XohjSUYnN7QE2HNeaQnMSjh READY. CEO/Farm live version endpoints match. Names/quantities/units visible at375/390/768/1440; no database changes.
+
+## Plain-language dashboard audit — 3 November
+- [x] Replace visible internal references and raw change-history objects across Farm, CEO manager reports, Property and Content. Keep original request IDs, stored queues and accounting untouched.
+- [x] Targeted browser checks: Farm reports89, feed43, manager report41, Property46, Content60, navigation/offline146; health/performance at four widths.
+- [x] Safe error/value unit tests; Property API52, financial API18, Farm API38.
+- [x] Final CEO regression239 across42 pages, lint, TypeScript and production build passed. Total664 targeted browser checks plus health/performance at four widths.
+- [ ] GitHub publication and exact live deployment verification.
+- No database migration or production record mutation. Signed-in live and physical-phone acceptance remains unverified.
