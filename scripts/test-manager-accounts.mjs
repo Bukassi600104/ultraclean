@@ -3,9 +3,9 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 const require=createRequire(import.meta.url),ts=require('typescript');
-let actor={id:'admin',role:'admin',suspended:false},profiles=[],users={},calls=[],profileError=false,authError=false;
+let actor={id:'admin',role:'admin',suspended:false},profiles=[],users={},calls=[],profileError=false,authError=false,createError=null;
 const cache=new Map();
-const db={async rpc(name,args){calls.push(['rpc',name,args]);if(name==='manager_release_status')return {data:true,error:null};if(['manager_account_provision','farm_support_account_provision'].includes(name)){if(profileError)return {data:null,error:{message:'setup failed'}};const row=profiles.find(p=>p.id===args.p_id);Object.assign(row,{role:args.p_role,name:args.p_name,suspended:false});return {data:row,error:null}}throw Error(name)},from(){let match=null,roles=null,update=null,single=false;const q={select(){return q},eq(k,v){match=[k,v];return q},in(k,v){roles=v;return q},order(){return q},range(){return q},update(v){update=v;return q},single(){single=true;return q},then(resolve){let rows=profiles.filter(p=>(!match||p[match[0]]===match[1])&&(!roles||roles.includes(p.role)));if(update){calls.push(['profile',update]);if(!profileError)rows.forEach(p=>Object.assign(p,update))}resolve({data:single?rows[0]??null:rows,error:profileError?{message:'private error'}:null})}};return q},auth:{admin:{async createUser(v){calls.push(['create',v]);const id='new-user';users[id]={id,app_metadata:v.app_metadata??{}};profiles.push({id,role:'manager',name:null,suspended:false});return {data:{user:users[id]},error:null}},async getUserById(id){return {data:{user:users[id]??null},error:null}},async updateUserById(id,v){calls.push(['auth',v]);if(authError)return {data:{user:null},error:{message:'private auth error'}};users[id]={...users[id],...v};return {data:{user:users[id]},error:null}},async deleteUser(id){calls.push(['delete',id]);return {error:null}}}}};
+const db={async rpc(name,args){calls.push(['rpc',name,args]);if(name==='manager_release_status')return {data:true,error:null};if(['manager_account_provision','farm_support_account_provision'].includes(name)){if(profileError)return {data:null,error:{message:'setup failed'}};const row=profiles.find(p=>p.id===args.p_id);Object.assign(row,{role:args.p_role,name:args.p_name,suspended:false});return {data:row,error:null}}throw Error(name)},from(){let match=null,roles=null,update=null,single=false;const q={select(){return q},eq(k,v){match=[k,v];return q},in(k,v){roles=v;return q},order(){return q},range(){return q},update(v){update=v;return q},single(){single=true;return q},then(resolve){let rows=profiles.filter(p=>(!match||p[match[0]]===match[1])&&(!roles||roles.includes(p.role)));if(update){calls.push(['profile',update]);if(!profileError)rows.forEach(p=>Object.assign(p,update))}resolve({data:single?rows[0]??null:rows,error:profileError?{message:'private error'}:null})}};return q},auth:{admin:{async createUser(v){calls.push(['create',v]);if(createError)return {data:{user:null},error:createError};const id='new-user';users[id]={id,app_metadata:v.app_metadata??{}};profiles.push({id,role:'manager',name:null,suspended:false});return {data:{user:users[id]},error:null}},async getUserById(id){return {data:{user:users[id]??null},error:null}},async updateUserById(id,v){calls.push(['auth',v]);if(authError)return {data:{user:null},error:{message:'private auth error'}};users[id]={...users[id],...v};return {data:{user:users[id]},error:null}},async deleteUser(id){calls.push(['delete',id]);return {error:null}}}}};
 function load(filename){const file=path.resolve(filename);if(cache.has(file))return cache.get(file).exports;const module={exports:{}};cache.set(file,module);const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020,esModuleInterop:true}}).outputText;function resolve(name){if(name==='@/lib/auth')return {requireAdmin:async()=>{if(actor.role!=='admin'||actor.suspended)throw Error('denied');return actor}};if(name==='@/lib/supabase/server')return {createServerClient:()=>db};if(name.startsWith('@/'))return load(name.slice(2)+'.ts');return require(name)}new Function('require','module','exports',source)(resolve,module,module.exports);return module.exports}
 const collection=load('app/api/managers/route.ts'),item=load('app/api/managers/[id]/route.ts');
 const req=(method,body)=>new Request('http://localhost/api/managers',{method,body:body===undefined?undefined:JSON.stringify(body)}),ctx=id=>({params:{id}});
@@ -31,4 +31,23 @@ actor.role='property_manager';check((await collection.GET()).status,401);check((
 profileError=true;calls=[];check((await collection.POST(req('POST',{name:'Staff Name',email:'staff@example.com',password:'Secure123!',starts_on:'2026-10-28',role:'content_manager'}))).status,500);check(calls.some(c=>c[0]==='delete'),true);profileError=false;
 profiles=[{id:'failure',role:'manager',suspended:false}];users.failure={id:'failure',app_metadata:{}};authError=true;
 check((await item.PUT(req('PUT',{suspended:true}),ctx('failure'))).status,503);check(profiles[0].suspended,true);
+authError=false;
+for(const [password,message] of [['short','8 characters'],['lowercase123','uppercase'],['UppercaseOnly','number']]){
+ calls=[];const response=await item.PUT(req('PUT',{password}),ctx('failure'));
+ check(response.status,400);assert.match((await response.json()).error,new RegExp(message));checks++;
+ check(calls.length,0);
+}
+calls=[];check((await item.PUT(req('PUT',{password:'ValidPassword123'}),ctx('failure'))).status,200);
+check(profiles[0].suspended,true);check(calls.find(c=>c[0]==='auth')[1].ban_duration,undefined);
+check(calls.find(c=>c[0]==='auth')[1].app_metadata,undefined);
+authError=true;check((await item.PUT(req('PUT',{password:'ValidPassword123'}),ctx('failure'))).status,503);
+authError=false;
+for(const error of [{code:'email_exists',message:'Email exists'},{message:'User already registered'},{message:'private provider failure'}]){
+ createError=error;calls=[];
+ const response=await collection.POST(req('POST',{name:'Staff Name',email:'staff@example.com',password:'Secure123!',starts_on:'2026-10-28',role:'manager'}));
+ check(response.status,error.message.includes('private')?500:409);
+ const payload=await response.json();check(payload.error.includes('private'),false);
+ if(response.status===409){check(payload.error.includes('Restore access'),true);check(payload.error.includes('different manager'),true)}
+ check(calls.some(c=>c[0]==='profile'||c[0]==='auth'),false);
+}
 console.log(`PASS: ${checks} manager-account API checks (isolated Auth/database doubles; no live accounts changed).`);

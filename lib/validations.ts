@@ -208,17 +208,6 @@ export const managerCreateSchema = z.object({
     .regex(/[0-9]/, "Must contain at least one number"),
 });
 
-export const managerUpdateSchema = z.object({
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, "Must contain an uppercase letter")
-    .regex(/[0-9]/, "Must contain a number")
-    .optional(),
-  name: z.string().min(2).optional(),
-  suspended: z.boolean().optional(),
-}).strict().refine((value) => Object.values(value).some((entry) => entry !== undefined), "Provide an account change");
-
 export const managerResetPasswordSchema = z.object({
   password: z
     .string()
@@ -226,6 +215,12 @@ export const managerResetPasswordSchema = z.object({
     .regex(/[A-Z]/, "Must contain an uppercase letter")
     .regex(/[0-9]/, "Must contain a number"),
 });
+
+export const managerUpdateSchema = z.object({
+  password: managerResetPasswordSchema.shape.password.optional(),
+  name: z.string().min(2).optional(),
+  suspended: z.boolean().optional(),
+}).strict().refine((value) => Object.values(value).some((entry) => entry !== undefined), "Provide an account change");
 
 // ── Appointment update (admin) ──
 export const appointmentUpdateSchema = z.object({

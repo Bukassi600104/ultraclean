@@ -296,4 +296,10 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] CEO reference layout and Sales clarity
 - [x] New manager onboarding, isolation and historical exports verified
 - [x] Isolated regression, preservation rehearsal and review (110 suites; build/lint/types; original142 tables unchanged)
-- [ ] Coordinated production release and live verification
+- [x] Coordinated production release and live verification: d339d95, Vercel READY; live version endpoints match
+
+## Password reset and safe restoration — 2 November
+- [ ] Align reset validation and show actionable errors.
+- [ ] Add audited same-person restoration to suspended state.
+- [ ] Verify account API/UI, build and deployment.
+- [ ] Await exact account and confirmed test-entry list before live data corrections.

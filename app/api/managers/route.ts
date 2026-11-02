@@ -83,8 +83,8 @@ export async function POST(request: NextRequest) {
     });
 
   if (authError) {
-    const status = authError.message.includes("already") ? 409 : 500;
-    return NextResponse.json({ error: authError.message }, { status });
+    const duplicate = authError.code === "email_exists" || authError.code === "user_already_exists" || authError.message.toLowerCase().includes("already");
+    return NextResponse.json({ error: duplicate ? "This email already belongs to an account. Find it in Manage Accounts. For the same person, use Reactivate or Restore access; a different manager needs a separate account and email." : "Account creation failed. Please retry." }, { status: duplicate ? 409 : 500 });
   }
 
   const { data: profile, error: profileError } = await supabase.rpc(isSupportRole(role)?"farm_support_account_provision":"manager_account_provision",{

@@ -1,7 +1,7 @@
-export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-11-02.1';
+export const APP_RELEASE=process.env.NEXT_PUBLIC_APP_RELEASE||'2026-11-02.2';
 export const RELEASE_NOTES=[
- 'Larger CEO dashboard headings and visible business financial summaries.',
- 'Operational Request photos and clearer linked approval decisions.',
- 'Clear sale and payment actions, with existing manager histories preserved.',
+ 'Clear password requirements and specific reset errors in Manage Accounts.',
+ 'Restore removed staff accounts safely without losing their history.',
+ 'Clear guidance when an email already belongs to an existing account.',
 ];
 export const QUEUE_FORMAT=1;

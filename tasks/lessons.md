@@ -59,3 +59,6 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 
 - 2 Nov: A request linked to a structured purchase must use the purchase decision workflow; the generic request endpoint correctly hits the database guard. Preserve exact pre-update retry receipts when adding a dispatcher.
 - Keep the original CEO screenshot as the overview baseline, while using Pulse for Farm requests and Sales. Feature presence alone does not establish reference-layout acceptance.
+
+- Keep logo work out of account-recovery scope. A masked-password video proves the validation failure, not the precise failed requirement; show the shared requirements and specific errors.
+- Write clarification questions as plain WhatsApp messages addressed to Bimbo for the user to forward; do not ask the user to answer operational details through interactive question cards.

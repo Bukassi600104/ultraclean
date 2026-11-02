@@ -46,8 +46,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (context.response) return context.response;
   const { supabase, user,target } = context;
   const parsed = managerUpdateSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return fail("Validation failed", 400);
-  if (user.app_metadata?.manager_access_removed === true) return fail("Access has been removed. Create a separate account for new access.", 409);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message || "Provide a valid account change", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+  if (user.app_metadata?.manager_access_removed === true) return fail("Access has been removed. Use Restore access only if this is the same person. A different manager needs a separate account.", 409);
   const changes = parsed.data;
   if (changes.suspended === true) {
     const { error } = await supabase.from("profiles").update({ suspended: true }).eq("id", params.id);

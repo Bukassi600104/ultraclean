@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {useOperationsFeature} from "@/contexts/ManagerPeriodContext";
 import {businessForRole} from "@/lib/manager-period-types";
+import { managerResetPasswordSchema } from "@/lib/validations";
 import { useState, useEffect, useCallback } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,13 @@ export default function ManagersPage() {
   const [resetTarget, setResetTarget] = useState<Manager | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<Manager | null>(null);
+  const [restoreReason, setRestoreReason] = useState("");
+  const [restoreConfirmed, setRestoreConfirmed] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
 
   // Suspend
   const [suspendLoading, setSuspendLoading] = useState(false);
@@ -165,7 +173,13 @@ export default function ManagersPage() {
   }
 
   async function handleResetPassword() {
-    if (!resetTarget || newPassword.length < 8) return;
+    if (!resetTarget || resetLoading) return;
+    setResetError("");
+    const parsed = managerResetPasswordSchema.safeParse({ password: newPassword });
+    if (!parsed.success) {
+      setResetError(parsed.error.issues.map(issue => issue.message).join(". "));
+      return;
+    }
     setResetLoading(true);
     try {
       const res = await fetch(`/api/managers/${resetTarget.id}`, {
@@ -179,12 +193,37 @@ export default function ManagersPage() {
         setNewPassword("");
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to update password.");
+        setResetError(data.error || "Failed to update password. Please retry.");
       }
     } catch {
-      toast.error("Network error. Please refresh and retry.");
+      setResetError("Unable to confirm the password update. Your entry is still here; retry to set the same password.");
     } finally {
       setResetLoading(false);
+    }
+  }
+
+  async function handleRestore() {
+    if (!restoreTarget || restoreLoading || !restoreConfirmed || !restoreReason.trim()) return;
+    setRestoreLoading(true);
+    setRestoreError("");
+    try {
+      const res = await fetch(`/api/managers/${restoreTarget.id}/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: restoreReason.trim(), confirm_same_person: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setRestoreError(data.error || "Unable to restore access. Please retry.");
+        return;
+      }
+      toast.success("Account restored. Review its details, then select Reactivate to enable sign-in.");
+      setRestoreTarget(null);
+      fetchManagers();
+    } catch {
+      setRestoreError("Unable to confirm restoration. Retry this action to check and finish restoring access.");
+    } finally {
+      setRestoreLoading(false);
     }
   }
 
@@ -298,6 +337,9 @@ export default function ManagersPage() {
                   </p>
                 </div>
                 {enabled===true&&<Link href={isSupportRole(m.role)?'/dashboard/farm/support':`/dashboard/managers/${m.id}?business=${businessForRole(m.role)}`} className="inline-flex min-h-11 items-center rounded-lg border px-3 text-xs font-semibold">{isSupportRole(m.role)?'Assign limited access':'View records'}</Link>}
+                {m.access_removed && <Button variant="outline" className="min-h-11" onClick={() => {
+                  setRestoreTarget(m); setRestoreReason(""); setRestoreConfirmed(false); setRestoreError("");
+                }}><UserCheck className="mr-1.5 h-4 w-4" />Restore access</Button>}
                 {!m.access_removed && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Button
                     size="sm"
@@ -305,6 +347,8 @@ export default function ManagersPage() {
                     onClick={() => {
                       setResetTarget(m);
                       setNewPassword("");
+                      setResetError("");
+                      setShowResetPassword(false);
                     }}
                     className="min-h-11 px-3 text-xs gap-1.5"
                   >
@@ -508,10 +552,10 @@ export default function ManagersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Remove account access?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove access for{" "}
+              This will remove access for{" "}
               <strong>{deleteTarget?.name || deleteTarget?.email}</strong>&apos;s
               account. They will no longer be able to use their assigned app.
-              Their historical entries and attribution will be preserved. The email remains reserved. Removed access cannot be reactivated here; use Suspend for a temporary restriction.
+              Their historical entries and attribution will be preserved. The email remains reserved for this person. Restore access is only for the same person; use a separate account for a new manager.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -537,13 +581,15 @@ export default function ManagersPage() {
       <Dialog
         open={!!resetTarget}
         onOpenChange={(o) => {
-          if (!o) {
+          if (!o && !resetLoading) {
             setResetTarget(null);
             setNewPassword("");
+            setResetError("");
+            setShowResetPassword(false);
           }
         }}
       >
-        <DialogContent data-hq className="max-w-sm">
+        <DialogContent data-hq className="max-w-sm max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reset Password</DialogTitle>
           </DialogHeader>
@@ -554,26 +600,34 @@ export default function ManagersPage() {
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="new-pwd">New Password</Label>
-              <Input
+              <div className="relative"><Input
                 id="new-pwd"
-                type="password"
-                placeholder="Min. 8 characters"
+                type={showResetPassword ? "text" : "password"}
+                autoComplete="new-password"
+                disabled={resetLoading}
+                aria-describedby="reset-requirements reset-error"
+                aria-invalid={!!resetError}
+                className="pr-12"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+                onChange={(e) => { setNewPassword(e.target.value); setResetError(""); }}
+              /><button type="button" aria-label={showResetPassword ? "Hide password" : "Show password"} aria-pressed={showResetPassword} onClick={() => setShowResetPassword(value => !value)} className="absolute right-0 top-0 flex min-h-11 min-w-11 items-center justify-center rounded-md focus-visible:ring-2">
+                {showResetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button></div>
+              <p id="reset-requirements" className="text-sm text-muted-foreground">At least 8 characters, one uppercase letter and one number. This does not change account access.</p>
+              <p id="reset-error" role={resetError ? "alert" : undefined} className="text-sm text-red-700">{resetError}</p>
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setResetTarget(null)}
+              onClick={() => { setResetTarget(null); setNewPassword(""); setResetError(""); setShowResetPassword(false); }}
               disabled={resetLoading}
             >
               Cancel
             </Button>
             <Button
               onClick={handleResetPassword}
-              disabled={resetLoading || newPassword.length < 8}
+              disabled={resetLoading}
             >
               {resetLoading ? (
                 <>
@@ -585,6 +639,18 @@ export default function ManagersPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!restoreTarget} onOpenChange={open => { if (!open && !restoreLoading) setRestoreTarget(null); }}>
+        <DialogContent data-hq className="max-w-md max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Restore account access</DialogTitle></DialogHeader>
+          <p className="text-sm">Restore <strong>{restoreTarget?.name}</strong> ({restoreTarget?.email}) to account management. Their password, role, responsibility period and historical records stay unchanged.</p>
+          <p className="text-sm font-medium">The account stays Suspended. Review its details, then select Reactivate separately to enable sign-in.</p>
+          <p className="text-sm">This is for the same person returning. A new manager needs a separate account and must not inherit this history.</p>
+          <label className="flex min-h-11 items-start gap-3 text-sm"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={restoreConfirmed} disabled={restoreLoading} onChange={event => setRestoreConfirmed(event.target.checked)} />I confirm this is the same person, not a replacement manager.</label>
+          <div className="space-y-1.5"><Label htmlFor="restore-reason">Reason for restoring access</Label><Input id="restore-reason" value={restoreReason} disabled={restoreLoading} maxLength={500} onChange={event => setRestoreReason(event.target.value)} /></div>
+          {restoreError && <p role="alert" className="text-sm text-red-700">{restoreError}</p>}
+          <DialogFooter><Button variant="outline" disabled={restoreLoading} onClick={() => setRestoreTarget(null)}>Cancel</Button><Button disabled={restoreLoading || !restoreConfirmed || !restoreReason.trim()} onClick={handleRestore}>{restoreLoading ? "Restoring..." : "Confirm restoration"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
