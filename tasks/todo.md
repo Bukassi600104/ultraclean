@@ -317,5 +317,21 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Targeted browser checks: Farm reports89, feed43, manager report41, Property46, Content60, navigation/offline146; health/performance at four widths.
 - [x] Safe error/value unit tests; Property API52, financial API18, Farm API38.
 - [x] Final CEO regression239 across42 pages, lint, TypeScript and production build passed. Total664 targeted browser checks plus health/performance at four widths.
-- [ ] GitHub publication and exact live deployment verification.
+- [x] GitHub main1c52f48; Vercel dpl_GCim854psAJ3CLt2Kbu9fXPTbvZE READY. CEO/Farm live version endpoints match exact SHA with promoted=true/no-store. CEO, Property and Content login pages and three app manifests200; unauthenticated account/Property/Content APIs401/403. No production writes.
 - No database migration or production record mutation. Signed-in live and physical-phone acceptance remains unverified.
+
+## Approved workflow recovery and simplified dashboard — 9 November
+- [x] Fresh production baseline, private backup and isolated restoration.
+- [x] Sample-aligned navigation and layouts; preserve all existing history.
+- [x] Feed rejection recovery and resolved funding-review synchronization.
+- [x] Sales/payment status, partial receipts and expense history/reconciliation.
+- [ ] Apply rehearsed audited cancellation of the three confirmed test requests and linked test purchase in production.
+- [x] Guided genuine setup, clear assignments, safe retry and audited reassignment.
+- [x] Daily logs, Health and species-relevant performance.
+- [x] Persistent report filters, readable analytics, bounded loading and reporting dates.
+- [x] Offline/update compatibility and recovery diagnostics.
+- [x] Isolated journey tests, preservation comparison, lint/types/build.
+- [ ] Coordinated GitHub/database/Vercel release and exact live verification. Walkthrough prepared in docs/releases/2026-11-10-workflow-recovery.md.
+- Bimbo confirmed all three old requests were tests; payments show date/invoice/customer/paid/balance; use supplied sample. Unidentified historical credit corrections remain excluded. Paid login-protection activation remains on hold.
+
+- [x] November 9 additional feedback: route Farm Add Transfer through named recipient/manager-period funds workflow; show real recipient or attribution gap in history, preserve earlier balances.

@@ -15,3 +15,8 @@ const sales=load('app/api/farm/sales/route.ts');
 const response=await sales.POST(new Request('http://localhost/api/farm/sales',{method:'POST',headers:{'X-Request-ID':id},body:JSON.stringify([{date:'2026-10-30',product:'goat',quantity:3,unit_price:80000,customer_id:id,credit:true}])}));
 assert.equal(response.status,201);assert.equal(calls.at(-1)[0],'farm_credit_write');assert.equal(calls.at(-1)[1].p_operation,'invoice_batch');assert.equal(calls.at(-1)[1].p_payload.rows[0].pricing_basis,'per_head');
 console.log('PASS existing sale API routes identified credit sales atomically with server pricing basis');
+
+const partial={date:'2026-10-30',product:'goat',quantity:3,unit_price:80000,customer_id:id,credit:true,amount_received:'40000.50',payment_date:'2026-10-30',cash_receiver:{type:'self'}};
+const saleRequest=row=>new Request('http://localhost/api/farm/sales',{method:'POST',headers:{'X-Request-ID':id},body:JSON.stringify([row])});
+assert.equal((await sales.POST(saleRequest(partial))).status,201);assert.equal(calls.at(-1)[1].p_payload.rows[0].amount_received,'40000.50');assert.equal(calls.at(-1)[1].p_payload.rows[0].payment_date,'2026-10-30');
+for(const row of [{...partial,amount_received:'1.001'},{...partial,amount_received:'-1'},{...partial,payment_date:'2026-02-30'},{...partial,customer_id:undefined}])assert.equal((await sales.POST(saleRequest(row))).status,400);

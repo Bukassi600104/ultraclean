@@ -16,13 +16,14 @@ export function DashboardHeader({
   subtitle,
   actions,
 }: DashboardHeaderProps) {
-  const pathname=usePathname(),back = dashboardBackLink(pathname),[farmQuery,setFarmQuery]=useState("");
-  useEffect(()=>{const source=new URLSearchParams(window.location.search),q=new URLSearchParams();for(const key of ["from","to","period_id"]){const value=source.get(key);if(value)q.set(key,value);}setFarmQuery(q.toString());},[pathname]);
+  const pathname=usePathname(),back = dashboardBackLink(pathname),[farmQuery,setFarmQuery]=useState(""),[fundsBusiness,setFundsBusiness]=useState("");
+  useEffect(()=>{const sync=()=>{const source=new URLSearchParams(window.location.search),q=new URLSearchParams();for(const key of ["from","to","period_id"]){const value=source.get(key);if(value)q.set(key,value);}setFarmQuery(q.toString());setFundsBusiness(source.get("business")||"");};sync();window.addEventListener("dashboard-report-filters",sync);return()=>window.removeEventListener("dashboard-report-filters",sync);},[pathname]);
+  const parent=pathname==="/dashboard/funds"&&["farm","property","content"].includes(fundsBusiness)?{href:fundsBusiness==="farm"?"/dashboard/farm/control":fundsBusiness==="property"?"/dashboard/properties":"/dashboard/content",label:fundsBusiness==="farm"?"Back to Farm control centre":fundsBusiness==="property"?"Back to Properties Overview":"Back to Content Overview"}:back;
   return (
     <header className="sticky top-0 z-10 flex min-h-20 flex-wrap gap-3 py-2 items-center justify-between border-b border-gray-200/80 bg-white/85 backdrop-blur-md px-4 lg:px-8 shrink-0">
       <div className="min-w-0 flex-1 basis-48 pl-12 lg:pl-0">
-        {back && <Link href={back.href+(back.href==="/dashboard/farm/control"&&farmQuery?"?"+farmQuery:"")} className="inline-flex items-center gap-1 text-xs font-medium text-teal-800 min-h-11" aria-label={back.label}><ArrowLeft className="h-3 w-3" aria-hidden="true"/>{back.label}</Link>}
-        <h1 className="font-heading break-words text-lg font-bold text-gray-900 leading-tight">
+        {parent && <Link href={parent.href+((parent.href==="/dashboard/farm/control"||pathname==="/dashboard/funds")&&farmQuery?"?"+farmQuery:"")} className="inline-flex items-center gap-1 text-xs font-medium text-teal-800 min-h-11" aria-label={parent.label}><ArrowLeft className="h-3 w-3" aria-hidden="true"/>{parent.label}</Link>}
+        <h1 className="font-heading break-words text-2xl lg:text-3xl font-bold text-gray-900 leading-tight">
           {title}
         </h1>
         {subtitle && (

@@ -34,6 +34,16 @@ export async function getFarmMedia(identity:QueueIdentity):Promise<FarmMedia[]>{
   request.onsuccess=()=>resolve(request.result.sort((a:FarmMedia,b:FarmMedia)=>a.createdAt.localeCompare(b.createdAt)));request.onerror=()=>reject(request.error);
  });}finally{db.close();}
 }
+export async function farmMediaUpdateProblem(supportedVersion:number):Promise<string|null>{
+ if(typeof indexedDB==='undefined')return null;
+ try{
+  const db=await open();
+  try{
+   const rows=await new Promise<(FarmMedia&{schemaVersion?:number})[]>((resolve,reject)=>{const request=db.transaction('photos','readonly').objectStore('photos').getAll();request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+   return rows.some(row=>!row?.identity?.actorId||!row.identity.periodId||row.owner!==queueIdentityKey(row.identity)||!(row.blob instanceof Blob)||!row.requestId||!row.details?.target_resource||(row.schemaVersion??1)>supportedVersion)?'A saved photo needs review before this update. Keep the app open; your original photo remains on this device.':null;
+  }finally{db.close();}
+ }catch{return 'Saved photos could not be checked safely. Restore device storage before updating.';}
+}
 export async function removeFarmMedia(id:string,identity:QueueIdentity){
  const key=owner(identity),db=await open();
  try{await new Promise<void>((resolve,reject)=>{

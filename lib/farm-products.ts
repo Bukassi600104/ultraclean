@@ -19,3 +19,7 @@ export function farmProductLabel(product: string) {
 export function farmDateToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
+export function farmTimestamp(value: string | null | undefined) {
+  if (!value || !Number.isFinite(new Date(value).getTime())) return "Not recorded";
+  return new Intl.DateTimeFormat("en-GB", {timeZone:"Africa/Lagos", dateStyle:"medium", timeStyle:"short"}).format(new Date(value)) + " (Nigeria time)";
+}

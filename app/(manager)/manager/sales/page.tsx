@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
-import type {CreditData} from "@/lib/farm-credit";
+import {invoiceStatus,type CreditData} from "@/lib/farm-credit";
 import {formatExactCurrency} from "@/lib/money";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
@@ -28,6 +28,7 @@ interface Sale {
   unit_price: number;
   total_amount: number;
   payment_method: string;
+  invoice_id?:string|null;
   notes?: string;
   is_edited?: boolean;
   weight_kg?: number | null;
@@ -184,7 +185,7 @@ export default function SalesPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Recent invoices</h2><Link href="/credit" className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline">View all invoices</Link></div>
         <p className="mb-4 text-sm text-slate-600">Latest 10 in your permitted scope. Historical sales without invoices remain unchanged below.</p>
-        {creditData?.invoices.length===0?<p>No invoices recorded in this scope.</p>:creditData?<div className="divide-y">{[...creditData.invoices].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(invoice=><article key={invoice.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><h3 className="break-words font-bold">{invoice.number} · {invoice.customer_name}</h3><p className="text-sm text-slate-600">{invoice.date} · Due {invoice.due_date}</p><p className="mt-1 text-sm font-semibold">{invoice.voided_at?'Voided':invoice.overdue_days?`${invoice.overdue_days} days overdue`:Number(invoice.owed)>0?'Awaiting payment':'Settled'}</p></div><dl className="grid gap-1 text-sm"><div><dt className="inline text-slate-600">Sale value: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.total,'NGN')}</dd></div><div><dt className="inline text-slate-600">Still owed: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.owed,'NGN')}</dd></div></dl></article>)}</div>:<p>{creditError?'Invoices unavailable.':'Loading invoices…'}</p>}
+        {creditData?.invoices.length===0?<p>No invoices recorded in this scope.</p>:creditData?<div className="divide-y">{[...creditData.invoices].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(invoice=><article key={invoice.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0"><h3 className="break-words font-bold">{invoice.number} · {invoice.customer_name}</h3><p className="text-sm text-slate-600">{invoice.date} · Due {invoice.due_date}</p><p className="mt-1 text-sm font-semibold">{invoiceStatus(invoice)}</p></div><dl className="grid gap-1 text-sm"><div><dt className="inline text-slate-600">Sale value: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.total,'NGN')}</dd></div><div><dt className="inline text-slate-600">Paid: </dt><dd className="inline font-bold">{invoice.collected!==undefined?formatExactCurrency(invoice.collected,'NGN'):'Unavailable'}</dd></div><div><dt className="inline text-slate-600">Still owed: </dt><dd className="inline font-bold">{formatExactCurrency(invoice.owed,'NGN')}</dd></div></dl></article>)}</div>:<p>{creditError?'Invoices unavailable.':'Loading invoices…'}</p>}
       </section>
       <Dialog open={showProducts} onOpenChange={setShowProducts}><DialogContent><DialogTitle className="pr-10 text-2xl font-bold">Record a sale</DialogTitle><DialogDescription>Choose what was sold. The next form keeps the correct units, customer and stock details.</DialogDescription><div className="grid grid-cols-2 gap-3">{PRODUCTS.map(product=><button key={product.key} className="flex min-h-14 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left font-semibold text-slate-950" onClick={()=>router.push(`/sales/${product.key}`)}>{product.label}<ChevronRight className="h-4 w-4 shrink-0"/></button>)}</div><Link href="/stores" className="min-h-11 py-2 text-sm font-semibold text-emerald-900 underline">Selling eggs? Choose the recorded egg batch in Physical Counts &amp; Eggs.</Link></DialogContent></Dialog>
 
@@ -239,7 +240,7 @@ export default function SalesPage() {
                         <p className="text-sm font-semibold text-gray-900 mt-1">{sale.customer_name}</p>
                       )}
                       <p className="mt-2 text-sm text-slate-600">
-                        {sale.pricing_basis === "per_kg" ? `${sale.quantity} ${sale.product === "catfish" ? "fish" : "animals"} removed · ${sale.weight_kg} kg × ${fmt(sale.unit_price)}/kg` : sale.pricing_basis ? `${sale.quantity} × ${fmt(sale.unit_price)}` : `${sale.quantity} units · Historical total`} · {sale.payment_method.toUpperCase()}
+                        {sale.pricing_basis === "per_kg" ? `${sale.quantity} ${sale.product === "catfish" ? "fish" : "animals"} removed · ${sale.weight_kg} kg × ${fmt(sale.unit_price)}/kg` : sale.pricing_basis ? `${sale.quantity} × ${fmt(sale.unit_price)}` : `${sale.quantity} units · Historical total`} · {sale.invoice_id?creditData?.invoices.find(i=>i.id===sale.invoice_id)?invoiceStatus(creditData.invoices.find(i=>i.id===sale.invoice_id)!):'Payment status unavailable':`Historical sale · ${sale.payment_method.toUpperCase()}`}
                       </p>
                     </div>
                     <div className="min-w-0 sm:text-right">

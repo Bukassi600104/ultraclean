@@ -13,9 +13,6 @@ import { SummaryCard } from "@/components/dashboard/SummaryCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Table,
@@ -25,13 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { DollarSign, TrendingDown, TrendingUp, Package, Skull, SendHorizontal, Loader2 } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, Package, Skull, SendHorizontal } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -57,6 +48,7 @@ const EXPENSE_COLORS = [
 
 interface Transfer {
   revision?: number;
+  recipient_name?: string | null;
   id: string;
   date: string;
   amount: number;
@@ -87,13 +79,6 @@ export default function FarmOverviewPage() {
   // Fund transfer state
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [transfersLoading, setTransfersLoading] = useState(true);
-  const [showAddTransfer, setShowAddTransfer] = useState(false);
-  const [transferForm, setTransferForm] = useState({
-    date: farmDateToday(),
-    amount: "",
-    notes: "",
-  });
-  const [isAddingTransfer, setIsAddingTransfer] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -158,46 +143,6 @@ export default function FarmOverviewPage() {
     }
   }
 
-  async function handleAddTransfer() {
-    const amount = parseFloat(transferForm.amount);
-    if (!amount || amount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-    if (!transferForm.date) {
-      toast.error("Please enter a date");
-      return;
-    }
-
-    setIsAddingTransfer(true);
-    try {
-      const res = await fetch("/api/farm/fund-transfers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: transferForm.date,
-          amount,
-          notes: transferForm.notes.trim() || null,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to add transfer");
-      }
-
-      toast.success("Transfer recorded");
-      setTransferForm({ date: farmDateToday(), amount: "", notes: "" });
-      setShowAddTransfer(false);
-      fetchTransfers();
-      refreshFinance();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add transfer");
-    } finally {
-      setIsAddingTransfer(false);
-    }
-  }
-
   const totalTransferred = fundTotal;
   const currentBalance = ownerBalance;
 
@@ -245,18 +190,13 @@ export default function FarmOverviewPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Farm Funds</CardTitle>
-            <Button
-              size="sm"
-              onClick={() => setShowAddTransfer(true)}
-              className="gap-2"
-            >
-              <SendHorizontal className="h-4 w-4" />
-              Add Transfer
+            <Button size="sm" asChild className="gap-2">
+              <Link href="/dashboard/funds?business=farm"><SendHorizontal className="h-4 w-4" />Send money to a person</Link>
             </Button>
           </CardHeader>
           <CardContent>
             {/* Balance summary */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div className="rounded-xl p-4 bg-muted/50 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Owner Funds Available</p>
                 <p
@@ -277,7 +217,7 @@ export default function FarmOverviewPage() {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground mb-2">Recent transfers. Balances include all active records.</p>
+            <p className="text-xs text-muted-foreground mb-2">Farm-wide totals include previous and current managers. Choose a person in Funds to see their own balance and receipt confirmations.</p>
             {/* Transfer history */}
             {transfersLoading ? (
               <div className="space-y-2">
@@ -288,6 +228,7 @@ export default function FarmOverviewPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Recipient</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead>Actions</TableHead>
@@ -303,6 +244,7 @@ export default function FarmOverviewPage() {
                           year: "numeric",
                         })}
                       </TableCell>
+                      <TableCell className="text-sm">{t.recipient_name || "Recipient not recorded"}</TableCell>
                       <TableCell className="font-semibold text-green-700">
                         {fmt(t.amount)}
                       </TableCell>
@@ -419,64 +361,7 @@ export default function FarmOverviewPage() {
       </div>
 
       <div id="corrections"><FarmActivityPanel onSaved={() => { void refreshFinance(); void fetchTransfers(); }} /></div>
-      {/* Add Transfer Dialog */}
-      <Dialog open={showAddTransfer} onOpenChange={setShowAddTransfer}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Fund Transfer</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="t-date">Date</Label>
-              <Input
-                id="t-date"
-                type="date"
-                value={transferForm.date}
-                onChange={(e) => setTransferForm((f) => ({ ...f, date: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="t-amount">Amount (₦)</Label>
-              <Input
-                id="t-amount"
-                type="number"
-                inputMode="numeric"
-                placeholder="0"
-                value={transferForm.amount}
-                onChange={(e) => setTransferForm((f) => ({ ...f, amount: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="t-notes">Notes (optional)</Label>
-              <Textarea
-                id="t-notes"
-                rows={2}
-                placeholder="e.g. Monthly operating funds"
-                value={transferForm.notes}
-                onChange={(e) => setTransferForm((f) => ({ ...f, notes: e.target.value }))}
-              />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowAddTransfer(false)}
-                disabled={isAddingTransfer}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 gap-2"
-                onClick={handleAddTransfer}
-                disabled={isAddingTransfer}
-              >
-                {isAddingTransfer && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isAddingTransfer ? "Saving..." : "Save Transfer"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </>
   );
 }

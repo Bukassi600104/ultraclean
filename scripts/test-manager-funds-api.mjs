@@ -27,5 +27,12 @@ eq((await existing.POST(req({date:'2026-10-28',amount:123.45,recipient:{type:'ma
 role='manager';error={code:'23514',message:'Not enough confirmed funds on this date'};eq((await api.POST(req(input))).status,409);error={code:'40001',message:'Entry already changed'};eq((await api.POST(req(input))).status,409);error=null;
 outcome={accounts:[],sources:[],receipts:[],history:[],total:0};const read=await api.GET(req(null,'/api/operations/funds?business=farm&from=2026-10-26&to=2026-10-28'));eq(read.status,200);eq(read.headers.get('Cache-Control'),'private, no-store');eq((await read.json()).accounts,[]);eq(calls.at(-1)[0],'operations_cash_summary');
 eq((await api.GET(req(null,'/api/operations/funds?business=other'))).status,400);eq((await api.GET(req(null,'/api/operations/funds?business=farm&from=2026-02-30'))).status,400);
+// Recipient enrichment must use recorded linkage and never assign legacy transfers by guesswork.
+role='admin';selectedAdmin=false;let recipientFailure=false;
+db.from=table=>{
+ const query={select(){return this;},is(){return this;},order(){return this;},eq(){return this;},in(){return this;},range(){return this;},then(resolve){return Promise.resolve(table==='farm_fund_transfers'?{data:[{id:actorId,amount:100},{id:periodId,amount:200}],count:2,error:null}:{data:[{fund_transfer_id:actorId,target:{name:'Emmanuel Adeolu'}}],error:recipientFailure?{message:'lookup failed'}:null}).then(resolve);}};return query;
+};
+let transferRead=await existing.GET(req(null,'/api/farm/fund-transfers'));eq(transferRead.status,200);let transferRows=(await transferRead.json()).data;eq(transferRows[0].recipient_name,'Emmanuel Adeolu');eq(transferRows[1].recipient_name,null);
+recipientFailure=true;eq((await existing.GET(req(null,'/api/farm/fund-transfers'))).status,503);
 role=null;eq((await api.POST(req(input))).status,401);eq((await api.GET(req(null,'/api/operations/funds?business=farm'))).status,401);
 console.log('PASS '+checks+' actual funds API checks: trusted identity/period, exact amounts, role boundaries, receipts, retained awaiting status, conflict and query failure handling');

@@ -12,3 +12,7 @@ assert.equal((await api.GET(new Request('http://localhost/api/farm/purchases?lin
 assert.equal((await api.GET(new Request('http://localhost/api/farm/purchases?line_id='+id))).status,200);assert.equal(calls.at(-1)[0],'farm_purchase_delivery_choices');
 pending=true;assert.equal((await api.POST(request({operation:'payment',id,payload:{date:'2026-10-30',amount:'100000',recipient:'Actual supplier'},request_id:id}))).status,202);
 console.log('PASS purchase API: strict payloads, authenticated actor, scoped receipt choices and pending funding HTTP contract');
+
+pending=false;assert.equal((await api.POST(request({operation:'cancel',id,payload:{expected_revision:0,reason:'Confirmed test entry'},request_id:id}))).status,201);
+const post={operation:'resolve_exception',id,payload:{decision:'post',category:'utilities',cash_payer_account_id:id,expense_source:'bimbo_transfer',reason:'Verified actual work'},request_id:id};
+pending=true;assert.equal((await api.POST(request(post))).status,202);assert.equal((await api.POST(request({...post,payload:{...post.payload,cash_payer_account_id:undefined}}))).status,400);

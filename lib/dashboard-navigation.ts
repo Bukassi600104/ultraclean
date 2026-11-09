@@ -16,7 +16,8 @@ export function dashboardBackLink(pathname: string) {
 
 export function isDashboardDestinationActive(pathname: string, href: string, destinations: string[]) {
   const matches = destinations.filter(path => pathname === path || (path !== "/dashboard" && pathname.startsWith(path + "/")));
-  return matches.sort((a, b) => b.length - a.length)[0] === href;
+  const closest=matches.sort((a, b) => b.length - a.length)[0];
+  return (closest || (pathname==='/dashboard/farm'||pathname.startsWith('/dashboard/farm/')?'/dashboard/farm/control':undefined)) === href;
 }
 
 export function operationalBackLink(pathname: string, app: "manager" | "property" | "content") {

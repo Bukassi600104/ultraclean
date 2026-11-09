@@ -23,3 +23,6 @@ assert.equal(dashboardBackLink('/dashboard/leads/abc').href,'/dashboard/leads');
 const destinations=['/dashboard','/dashboard/farm','/dashboard/farm/supplies','/dashboard/farm/feed-stock','/dashboard/farm/daily-reports','/dashboard/farm/operational-requests'];
 for(const route of destinations)assert.deepEqual(destinations.filter(href=>isDashboardDestinationActive(route,href,destinations)),[route]);
 console.log('PASS 27 dashboard parent routes, home and single active destination');
+
+const farmDestinations=["/dashboard","/dashboard/farm/control","/dashboard/farm/supplies"];
+for(const route of ["sales","expenses","inventory","today","configuration","support"])assert.deepEqual(farmDestinations.filter(href=>isDashboardDestinationActive("/dashboard/farm/"+route,href,farmDestinations)),["/dashboard/farm/control"]);

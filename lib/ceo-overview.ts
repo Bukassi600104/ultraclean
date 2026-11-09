@@ -1,7 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getFarmFinance } from "@/lib/farm-finance";
 import { mortalityByProduct } from "@/lib/farm-inventory";
-import { summarizeContent, summarizeProperties, summarizeUltraTidy, summarizeDba, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
+import { reportingDate, summarizeContent, summarizeProperties, summarizeUltraTidy, summarizeDba, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
 import type { FarmInventoryTransaction } from "@/types";
 
 export async function getCeoOverview(scope: OverviewScope) {
@@ -34,7 +34,7 @@ export async function getCeoOverview(scope: OverviewScope) {
   }),
   section(async()=>{
    const [leads,posts,appointments,dbaSales]=await Promise.all([all("leads"),all("blog_posts"),all("appointments"),all("dba_sales")]);
-   const within=(date:unknown)=>typeof date==="string"&&date.slice(0,10)>=scope.from&&date.slice(0,10)<=scope.to;
+   const within=(value:unknown)=>{const date=reportingDate(value);return date>=scope.from&&date<=scope.to;};
    const periodLeads=leads.filter(r=>within(r.created_at));
    const distribution=(field:string)=>Object.entries(periodLeads.reduce<Record<string,number>>((acc,row)=>{const key=String(row[field]);acc[key]=(acc[key]??0)+1;return acc;},{}));
    return {leads:periodLeads.length,publishedPosts:posts.filter(r=>r.status==="published").length,pendingAppointments:appointments.filter(r=>r.status==="pending").length,dbaSalesCount:dbaSales.filter(r=>within(r.created_at)).length,recentLeads:[...leads].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5),leadsByStatus:distribution("status").map(([name,count])=>({name,count})),leadsByBusiness:distribution("business").map(([name,count])=>({name,count}))};

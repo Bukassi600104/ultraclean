@@ -59,7 +59,18 @@ async function legacyGET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch records" }, { status: 500 });
   }
 
-  return NextResponse.json({ data, total: count });
+  const recipients = new Map<string, string>();
+  if (data?.length) {
+    const {data: links, error: linkError} = await supabase.from("operations_cash_events")
+      .select("fund_transfer_id,target:operations_cash_accounts!operations_cash_events_target_account_id_fkey(name)")
+      .eq("operation", "fund").in("fund_transfer_id", data.map(row => row.id));
+    if (linkError) return NextResponse.json({error:"Transfer recipients could not be loaded. Please retry."},{status:503});
+    for (const link of links || []) {
+      const target = link.target as unknown as {name:string}|null;
+      if (link.fund_transfer_id && target?.name) recipients.set(link.fund_transfer_id,target.name);
+    }
+  }
+  return NextResponse.json({ data: data?.map(row=>({...row,recipient_name:recipients.get(row.id)||null})), total: count },{headers:{"Cache-Control":"private, no-store"}});
 }
 
 async function legacyPOST(request: NextRequest) {

@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {usePathname} from 'next/navigation';
 import {APP_RELEASE,QUEUE_FORMAT} from '@/lib/app-release';
 import {queueUpdateProblem} from '@/lib/app-update-safety';
+import {farmMediaUpdateProblem} from '@/lib/farm-offline-media';
 type Release={releaseId:string;notes:string[];queueFormat:number;promoted:boolean};
 export function AppUpdateNotice(){
  const path=usePathname(),[release,setRelease]=useState<Release|null>(null),[later,setLater]=useState(''),[details,setDetails]=useState(false),[error,setError]=useState('');
@@ -33,6 +34,7 @@ export function AppUpdateNotice(){
   if(dirty.current||document.querySelector('[data-unsaved-changes="true"]')){setError('Save your work, then open your overview to update safely. This page will not refresh while you are editing.');return;}
   try{
    const problem=queueUpdateProblem(localStorage,release?.queueFormat??0);if(problem){setError(problem);return;}
+   const photoProblem=await farmMediaUpdateProblem(release?.queueFormat??0);if(photoProblem){setError(photoProblem);return;}
    const checkKey='bossbimbz-update-storage-check';localStorage.setItem(checkKey,'1');localStorage.removeItem(checkKey);
    channel.current?.postMessage({releaseId:release?.releaseId});
    if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.getRegistration(location.href);await registration?.update();}

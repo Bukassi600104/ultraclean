@@ -8,7 +8,9 @@ import {useAuth} from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Droplets, Check } from "lucide-react";
 import {sumMoney} from "@/lib/money";
-import type {FeedActivity} from "@/lib/farm-feed-types";
+import type {FeedActivity,FeedInventoryRow} from "@/lib/farm-feed-types";
+import {feedSubmissionRejected} from "@/lib/feed-submission";
+import {FeedRecordDialog} from "./FeedRecordDialog";
 
 const FEED_TYPES = [
   { value: "fish", label: "Fish Feed" },
@@ -43,16 +45,18 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [saveError,setSaveError]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [dirty,setDirty]=useState(false);
+  const [countOpen,setCountOpen]=useState(false);
+  const countButton=useRef<HTMLButtonElement|null>(null);
   const lock=useRef(false);
   const pending=useRef<{id:string;payload:Record<string,unknown>}[]>([]);
   const storageKey=useManagerStorageKey(profile?`primefield-daily-feed-retry:${profile.id}`:null);
-  useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||"[]");setUncertain(!!pending.current.length);if(pending.current.length){const first=pending.current[0].payload;setDate(String(first.date));setFeedType(String(first.feed_type));setNotes(String(first.notes??""));const local=pending.current.find(row=>row.payload.feed_source==="local")?.payload;const foreign=pending.current.find(row=>row.payload.feed_source==="foreign")?.payload;setLocalBags(local?String(local.num_bags):"");setForeignBags(foreign?String(foreign.num_bags):"");setLocalOpened(local?String(local.bags_opened):"0");setForeignOpened(foreign?String(foreign.bags_opened):"0");setLocalOpening(String(local?.opening_activity_id||""));setForeignOpening(String(foreign?.opening_activity_id||""));}}catch{toast.error("Cannot read saved feed submission; check history before retrying.");setUncertain(true);}},[storageKey]);
+  useEffect(()=>{if(!storageKey)return;try{pending.current=JSON.parse(localStorage.getItem(storageKey)||"[]");setUncertain(!!pending.current.length);if(pending.current.length){const first=pending.current[0].payload;setDate(String(first.date));setFeedType(String(first.feed_type));setNotes(String(first.notes??""));const local=pending.current.find(row=>row.payload.feed_source==="local")?.payload;const foreign=pending.current.find(row=>row.payload.feed_source==="foreign")?.payload;setLocalBags(local?String(local.num_bags):"");setForeignBags(foreign?String(foreign.num_bags):"");setLocalOpened(local?String(local.bags_opened):"0");setForeignOpened(foreign?String(foreign.bags_opened):"0");setLocalOpening(String(local?.opening_activity_id||""));setForeignOpening(String(foreign?.opening_activity_id||""));}else{const draft=JSON.parse(localStorage.getItem(storageKey+":draft")||"null");if(draft){setDate(draft.date);setFeedType(draft.feedType);setNotes(draft.notes);setLocalBags(draft.localBags);setForeignBags(draft.foreignBags);setLocalOpened(draft.localOpened);setForeignOpened(draft.foreignOpened);setLocalOpening(draft.localOpening);setForeignOpening(draft.foreignOpening);}}}catch{toast.error("Cannot read saved feed submission; check history before retrying.");setUncertain(true);}},[storageKey]);
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
     const t = new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
     setToday(t);
-    setDate(pending.current.length?String(pending.current[0].payload.date):t);
+    setDate(previous=>pending.current.length?String(pending.current[0].payload.date):previous||t);
   }, []);
   const [feedType, setFeedType] = useState("fish");
   const [localBags, setLocalBags] = useState("");
@@ -60,7 +64,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [stockRows,setStockRows]=useState<{feed_type:string;feed_source:string;current_bags:number|null;initialized_at:string|null}[]>([]);
+  const [stockRows,setStockRows]=useState<FeedInventoryRow[]>([]);
   const [stockError,setStockError]=useState("");
   const [records, setRecords] = useState<FeedRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
@@ -77,6 +81,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   },[managerFetch,enabled]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
+  useEffect(()=>{if(!storageKey||!date||uncertain)return;try{localStorage.setItem(storageKey+":draft",JSON.stringify({date,feedType,notes,localBags,foreignBags,localOpened,foreignOpened,localOpening,foreignOpening}));}catch{setSaveError("Draft could not be saved. Keep this page open and restore device storage.");}},[storageKey,date,uncertain,feedType,notes,localBags,foreignBags,localOpened,foreignOpened,localOpening,foreignOpening]);
 
   async function handleSave() {
     if(lock.current)return;
@@ -99,7 +104,16 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
         const saved=pending.current[0];
         const response=await managerFetch("/api/farm/daily-feed",{method:"POST",headers:{"Content-Type":"application/json","X-Request-ID":saved.id},body:JSON.stringify(saved.payload)});
         const result=await response.json();
-        if(!response.ok)throw Error(result.error||"Unable to confirm feed submission");
+        if(!response.ok){
+          if(feedSubmissionRejected(response.status,result)){
+            localStorage.setItem(storageKey+':rejected:'+saved.id,JSON.stringify({entries:pending.current,outcome:result}));
+            const local=pending.current.find(row=>row.payload.feed_source==='local')?.payload,foreign=pending.current.find(row=>row.payload.feed_source==='foreign')?.payload;
+            localStorage.setItem(storageKey,'[]');pending.current=[];setUncertain(false);
+            setLocalBags(local?String(local.num_bags):'');setForeignBags(foreign?String(foreign.num_bags):'');
+            setLocalOpened(local?String(local.bags_opened??0):'0');setForeignOpened(foreign?String(foreign.bags_opened??0):'0');
+          }
+          throw Error(result.error||"Unable to confirm feed submission");
+        }
         pending.current.shift();persist();
       }
       setUncertain(false);setDirty(false);setLocalBags("");setForeignBags("");setLocalOpened("0");setForeignOpened("0");setLocalOpening("");setForeignOpening("");setNotes("");setShowSuccess(true);setTimeout(()=>setShowSuccess(false),2000);toast.success("Feed activity saved");await loadRecords();
@@ -132,6 +146,8 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
       {stockError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}<button type="button" className="ml-2 min-h-11 underline" onClick={()=>void loadRecords()}>Retry feed history</button></p>}
       {saveError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
       {uncertain&&<p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A saved entry is awaiting confirmation. Retry it without changing its values. Confirmed entries are not sent again.</p>}
+      {enabled===true&&!admin&&!uncertain&&(!stockRows.some(s=>s.feed_type===feedType&&s.initialized_at)||stockRows.some(s=>s.feed_type===feedType&&!s.initialized_at))&&<button ref={countButton} type="button" className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>setCountOpen(true)}>Record starting count</button>}
+      <FeedRecordDialog open={countOpen} onOpenChange={setCountOpen} stocks={stockRows} onSaved={()=>void loadRecords()} returnFocus={()=>countButton.current?.focus()}/>
       <fieldset disabled={saving||uncertain} className="min-w-0 space-y-4">
       {/* Form */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">

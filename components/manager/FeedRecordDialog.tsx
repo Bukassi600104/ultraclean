@@ -4,6 +4,7 @@ import {useManagerFetch,useManagerPeriod,useManagerStorageKey} from "@/contexts/
 import {useAuth} from "@/contexts/AuthContext";
 import {farmDateToday} from "@/lib/farm-products";
 import {FEED_TYPES,type FeedInventoryRow} from "@/lib/farm-feed-types";
+import {feedSubmissionRejected} from "@/lib/feed-submission";
 import {Dialog,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle} from "@/components/ui/dialog";
 const input="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white p-3 text-sm";
 const actions={starting:"Starting bag count",received:"Feed received",opened:"Bags opened for feeding",problem:"Report a count problem"};
@@ -12,10 +13,10 @@ type Form={operation:Action;type:string;source:string;date:string;bags:string;no
 type Saved={id:string;body:Record<string,unknown>};
 export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:{open:boolean;onOpenChange:(value:boolean)=>void;stocks:FeedInventoryRow[];onSaved:()=>void;returnFocus:()=>void}){
  const send=useManagerFetch(),scope=useManagerPeriod(),{profile}=useAuth(),key=useManagerStorageKey(profile?"primefield-feed-record:"+profile.id:null),setup=scope?.status==="awaiting_handover";
- const [form,setForm]=useState<Form>({operation:setup?"starting":"opened",type:"fish",source:"local",date:farmDateToday(),bags:"",notes:"",review:false,included:"",inclusions:{}}),[pending,setPending]=useState<Saved|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[countRows,setCountRows]=useState(stocks),[countError,setCountError]=useState(""),[countLoading,setCountLoading]=useState(false);
- const lock=useRef(false),restored=useRef(false);
- useEffect(()=>{if(!key)return;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(saved?.form)setForm(saved.form);if(saved?.pending)setPending(saved.pending);restored.current=true;}catch{setError("Your saved feed entry could not be read. It remains on this device for review.");}},[key]);
- useEffect(()=>{if(!key||!restored.current)return;try{localStorage.setItem(key,JSON.stringify({form,pending}));}catch{setError("Device storage is unavailable. Your entry has not been sent.");}},[key,form,pending]);
+ const [form,setForm]=useState<Form>({operation:setup||!stocks.find(s=>s.feed_type==='fish'&&s.feed_source==='local')?.initialized_at?"starting":"opened",type:"fish",source:"local",date:farmDateToday(),bags:"",notes:"",review:false,included:"",inclusions:{}}),[pending,setPending]=useState<Saved|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[countRows,setCountRows]=useState(stocks),[countError,setCountError]=useState(""),[countLoading,setCountLoading]=useState(false);
+ const lock=useRef(false);const [restoredKey,setRestoredKey]=useState<string|null>(null);
+ useEffect(()=>{if(!key)return;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(saved?.form)setForm(saved.form);if(saved?.pending)setPending(saved.pending);setRestoredKey(key);}catch{setError("Your saved feed entry could not be read. It remains on this device for review.");}},[key]);
+ useEffect(()=>{if(!key||restoredKey!==key)return;try{localStorage.setItem(key,JSON.stringify({form,pending}));}catch{setError("Device storage is unavailable. Your entry has not been sent.");}},[key,form,pending,restoredKey]);
  useEffect(()=>{if(!open)return;let current=true;setCountLoading(true);setCountError("");send("/api/farm/feed-stock?date="+encodeURIComponent(form.date)).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||"Unable to check dated deliveries");if(current)setCountRows(b.data||[]);}).catch(e=>{if(current)setCountError(e.message);}).finally(()=>{if(current)setCountLoading(false);});return()=>{current=false;};},[open,form.date,send]);
  const selected=countRows.find(s=>s.feed_type===form.type&&s.feed_source===form.source),sameDay=(selected?.uncounted_receipts||[]).filter(r=>r.date===form.date);
  const update=<K extends keyof Form>(name:K,value:Form[K])=>setForm(old=>({...old,[name]:value}));
@@ -24,6 +25,7 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
   let saved=pending;
   if(!saved){
    if(form.operation==="starting"&&(countLoading||countError))return setError("Wait for the dated delivery check before saving this count.");
+   if(form.operation==="opened"&&!selected?.initialized_at)return setError("Record the actual starting bag count first.");
    if(!form.date||!/^\d+$/.test(form.bags)||Number(form.bags)>99999999||(["received","opened"].includes(form.operation)&&Number(form.bags)<1))return setError("Choose the actual date and enter a whole bag count.");
    if(form.operation==="problem"&&!form.notes.trim())return setError("Describe the count problem for Bimbo.");
    if(form.operation==="starting"&&sameDay.some(r=>!form.inclusions[r.id]))return setError("Confirm whether each delivery on the count date is included.");
@@ -34,14 +36,23 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
   try{
    localStorage.setItem(key,JSON.stringify({form,pending:saved}));setPending(saved);
    const response=await send("/api/farm/feed-stock",{method:"POST",headers:{"Content-Type":"application/json","X-Request-ID":saved.id},body:JSON.stringify(saved.body)}),body=await response.json();
-   if(!response.ok)throw Error(body.error||"Unable to confirm this feed entry. Retry the saved entry.");
-   localStorage.removeItem(key);setPending(null);setForm(old=>({...old,bags:"",notes:"",review:false,included:"",inclusions:{}}));onOpenChange(false);onSaved();
+   if(!response.ok){
+    if(feedSubmissionRejected(response.status,body)){
+     localStorage.setItem(key+':rejected:'+saved.id,JSON.stringify({form,pending:saved,outcome:body}));
+     localStorage.setItem(key,JSON.stringify({form,pending:null}));setPending(null);
+    }
+    throw Error(body.error||"Unable to confirm this feed entry. Retry the saved entry.");
+   }
+   const held=form.operation==='starting'?JSON.parse(localStorage.getItem(key+':before-starting-count')||'null'):null;
+   const nextForm:Form=held?.form||{...form,bags:"",notes:"",review:false,included:"",inclusions:{}};
+   localStorage.setItem(key,JSON.stringify({form:nextForm,pending:null}));localStorage.removeItem(key+':before-starting-count');setPending(null);setForm(nextForm);onOpenChange(false);onSaved();
   }catch(e){setError((e as Error).message);}finally{setBusy(false);lock.current=false;}
  }
  return <Dialog open={open} onOpenChange={value=>{if(!busy)onOpenChange(value);}}><DialogContent onCloseAutoFocus={e=>{e.preventDefault();returnFocus();}} className="flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg flex-col rounded-xl [&>button:last-child]:min-h-11 [&>button:last-child]:min-w-11">
   <DialogHeader className="shrink-0 pr-12"><DialogTitle>Add feed record</DialogTitle><DialogDescription>Enter what actually happened. Bimbo sees the record automatically.</DialogDescription></DialogHeader>
   <div className="min-h-0 space-y-4 overflow-y-auto pr-1 text-slate-900">
    {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}</p>}{pending&&<p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">This entry is awaiting confirmation. Its date and values are kept for a safe retry. A closed date needs Bimbo&apos;s review.</p>}
+   {!pending&&!selected?.initialized_at&&form.operation!=="starting"&&<button type="button" disabled={busy||countLoading} className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>{try{if(key)localStorage.setItem(key+':before-starting-count',JSON.stringify({form,pending:null}));setForm(old=>({...old,operation:'starting',bags:'',inclusions:{}}));setError('');}catch{setError('Your saved entry could not be preserved. Restore device storage before recording the count.');}}}>Record starting count</button>}
    <fieldset disabled={busy||!!pending} className="min-w-0 space-y-4 text-sm">
     <label className="block font-medium">Activity<select aria-label="Activity" className={input} value={form.operation} onChange={e=>update("operation",e.target.value as Action)}>{Object.entries(actions).filter(([action])=>!setup||action==="starting").map(([action,label])=><option key={action} value={action}>{label}</option>)}</select></label>
     <div className="grid grid-cols-2 gap-3"><label className="min-w-0 font-medium">Feed type<select aria-label="Feed type" className={input} value={form.type} onChange={e=>update("type",e.target.value)}>{FEED_TYPES.map(type=><option key={type} value={type}>{type[0].toUpperCase()+type.slice(1)}</option>)}</select></label><label className="min-w-0 font-medium">Source<select aria-label="Source" className={input} value={form.source} onChange={e=>update("source",e.target.value)}><option value="local">Local</option><option value="foreign">Foreign</option></select></label></div>

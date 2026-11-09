@@ -36,7 +36,7 @@ export const reportSchema = z.object({report_date:date,sections:sectionsSchema,d
 export const requestSchema = z.object({request_date:date,category:z.enum(REQUEST_CATEGORIES),description:z.string().trim().min(1).max(2000),evidence_ids:z.array(z.string().uuid()).max(6).optional(),request_id:z.string().uuid().optional()}).strict();
 export type ReportSections = z.infer<typeof sectionsSchema>;
 export type DailyReport = z.infer<typeof reportSchema> & {id:string;manager_id:string;manager?:{id:string;name:string|null}|null;status:"draft"|"submitted";revision:number;created_at:string;submitted_at:string|null;reviewed_by:string|null;reviewed_at:string|null;review_note:string|null};
-export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;report_id:string|null;action_taken?:string|null;requested_by:string;requester?:{id:string;name:string|null}|null;status:"pending"|"approved"|"declined"|"resolved";revision:number;created_at:string;ceo_response:string|null;resolution:string|null;decision_by:string|null;decision_at:string|null;resolved_at:string|null;linked_purchase?:{id:string;total:string; supplier:string|null};feed_count_review?:boolean};
+export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;report_id:string|null;action_taken?:string|null;requested_by:string;requester?:{id:string;name:string|null}|null;status:"pending"|"approved"|"declined"|"resolved"|"cancelled";cancel_reason?:string|null;revision:number;created_at:string;ceo_response:string|null;resolution:string|null;decision_by:string|null;decision_at:string|null;resolved_at:string|null;linked_purchase?:{id:string;total:string; supplier:string|null};feed_count_review?:boolean};
 
 async function requestLinks(response:Response){
  if(!response.ok)return response;
@@ -69,9 +69,9 @@ async function legacyWriteFarmOperation(request:NextRequest,kind:"report"|"reque
   let profile;try{profile=await requireManager();}catch{return NextResponse.json({error:"Unauthorized"},{status:401});}
   let body:Record<string,unknown>;try{body=await request.json();if(!body||Array.isArray(body)||typeof body!=="object")throw Error();}catch{return NextResponse.json({error:"Invalid request body"},{status:400});}
   const operation=id?body.operation:"create";
-  const allowed=kind==="report"?["create","update","submit","review"]:["create","respond","approve","decline","resolve"];
+  const allowed=kind==="report"?["create","update","submit","review"]:["create","respond","approve","decline","resolve","cancel"];
   if(typeof operation!=="string"||!allowed.includes(operation)||(id&&operation==="create"))return NextResponse.json({error:"Invalid operation"},{status:400});
-  if(["review","respond","approve","decline","resolve"].includes(operation)){
+  if(["review","respond","approve","decline","resolve","cancel"].includes(operation)){
     try{profile=await requireAdmin();}catch{return farmErrorResponse({code:"42501",message:"Admin access required"});}
   }
   const reason=z.string().trim().min(1).max(2000);

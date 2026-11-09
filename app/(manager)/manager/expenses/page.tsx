@@ -147,7 +147,7 @@ export default function ExpensesOverviewPage() {
       </div>
 
       {loadError && <p role="alert" className="text-red-700">Financial summary unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
-      <p className="text-xs text-gray-500">Reporting period: {today} · today only</p>
+      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-gray-600">Today · {today}</p><button className="min-h-11 rounded-xl border px-4 font-semibold text-emerald-900" onClick={()=>router.push("/records?tab=expenses")}>View past expenses</button></div>
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         {[

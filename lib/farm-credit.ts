@@ -14,4 +14,11 @@ export const creditSchema=z.discriminatedUnion('operation',[
  z.object({...request,...id,operation:z.literal('void_credit'),payload:z.object({reason}).strict()}),
  z.object({...request,...id,operation:z.literal('void_refund'),payload:z.object({reason}).strict()}),
 ]);
-export type CreditData={customers:{id:string;name:string;phone:string|null;credit_days:number|null}[];invoices:{id:string;number:string;customer_id:string;customer_name:string;sale_id:string;date:string;due_date:string;total:string;owed:string;voided_at:string|null;overdue_days:number}[];receipts:{id:string;date:string;customer_name:string;amount:string;voided_at:string|null;allocations:{invoice_id:string;amount:string}[]}[];refunds:{id:string;receipt_id:string;date:string;amount:string;voided_at:string|null;reason:string}[];credit_notes:{voided_at:string|null;id:string;invoice_id:string;date:string;amount:string;reason:string}[];summary:{revenue:string;collected:string;owed:string;unapplied:string;refunded:string}};
+export type CreditData={customers:{id:string;name:string;phone:string|null;credit_days:number|null}[];invoices:{id:string;number:string;customer_id:string;customer_name:string;sale_id:string;date:string;due_date:string;total:string;owed:string;collected?:string;credited?:string;voided_at:string|null;overdue_days:number}[];receipts:{id:string;date:string;customer_name:string;amount:string;voided_at:string|null;allocations:{invoice_id:string;amount:string}[]}[];refunds:{id:string;receipt_id:string;date:string;amount:string;voided_at:string|null;reason:string}[];credit_notes:{voided_at:string|null;id:string;invoice_id:string;date:string;amount:string;reason:string}[];summary:{revenue:string;collected:string;owed:string;unapplied:string;refunded:string}};
+
+export function invoiceStatus(invoice:{voided_at:string|null;owed:string;collected?:string;overdue_days:number}) {
+ if(invoice.voided_at)return 'Voided';
+ if(Number(invoice.owed)<=0)return 'Settled';
+ const state=Number(invoice.collected)>0?'Part paid':'Unpaid';
+ return invoice.overdue_days>0?`${state} · ${invoice.overdue_days} days overdue`:state;
+}

@@ -31,10 +31,10 @@ try{
   }});
   const uploaded=(await media.getFarmMedia(a))[0];
   await media.removeFarmMedia(draft.id,b);
-  const preserved=(await media.getFarmMedia(a)).length;
+  const preserved=(await media.getFarmMedia(a)).length;const compatible=await media.farmMediaUpdateProblem(1),future=await media.farmMediaUpdateProblem(0);
   await media.removeFarmMedia(draft.id,a);
-  return {quotaRejected,own,foreign,failed:failed.status,switched:switched.evidenceId,uploaded:uploaded.evidenceId,blob:await uploaded.blob.text(),preserved,remaining:(await media.getFarmMedia(a)).length};
+  return {compatible,futureBlocked:!!future,quotaRejected,own,foreign,failed:failed.status,switched:switched.evidenceId,uploaded:uploaded.evidenceId,blob:await uploaded.blob.text(),preserved,remaining:(await media.getFarmMedia(a)).length};
  },{compiled,storage});
- assert.deepEqual(result,{quotaRejected:true,own:1,foreign:0,failed:'pending',switched:undefined,uploaded:'server-photo',blob:'photo',preserved:1,remaining:0});
+ assert.deepEqual(result,{compatible:null,futureBlocked:true,quotaRejected:true,own:1,foreign:0,failed:'pending',switched:undefined,uploaded:'server-photo',blob:'photo',preserved:1,remaining:0});
  console.log('PASS real IndexedDB: durable photo bytes, account isolation, failed upload retention, mid-flight account switch and safe removal');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

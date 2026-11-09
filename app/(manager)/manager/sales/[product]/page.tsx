@@ -78,7 +78,7 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type SaleDraft={customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
+type SaleDraft={amountReceived?:string;paymentDate?:string;customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
 
 export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
@@ -90,6 +90,7 @@ export default function SaleProductPage() {
   const [today, setToday] = useState("");
 
   const [customerId,setCustomerId]=useState(''),[credit,setCredit]=useState(false);
+  const [amountReceived,setAmountReceived]=useState(''),[paymentDate,setPaymentDate]=useState('');
   const [batchId,setBatchId]=useState('');
   const [eggBatchId,setEggBatchId]=useState('');
   useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey]);
@@ -113,7 +114,7 @@ export default function SaleProductPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
   const [receiver,setReceiver]=useState("");
-  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setRequestId(submission.pending.id);},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setAmountReceived(submission.pending.draft.amountReceived??'');setPaymentDate(submission.pending.draft.paymentDate||'');setRequestId(submission.pending.id);},[submission.pending]);
 
 
   useEffect(() => {
@@ -148,8 +149,10 @@ export default function SaleProductPage() {
 
   function validate(): string | null {
     if (!form.date) return "Select a date";
-    if(personal&&!customerId&&!submission.pending)return "Choose a customer for this invoice";
-    if(!credit&&customerId&&!receiver)return "Choose who actually received the payment";
+    if(!customerId&&!submission.pending)return "Choose a customer for this invoice";
+    if((!credit||Number(amountReceived)>0)&&customerId&&!receiver)return "Choose who actually received the payment";
+    if(credit&&(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amountReceived)||Number(amountReceived)>=computedTotal))return "Enter the payment received, from zero to less than the sale total";
+    if(Number(amountReceived)>0&&paymentDate&&paymentDate<form.date)return "Payment date cannot be before this sale";
     if ((productKey === "crops" || (productKey === "other"&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
     if(eggBatchId&&!Number.isInteger(Number(form.quantity)))return "Enter a whole egg count";
     if (productKey === "catfish") {
@@ -185,7 +188,9 @@ export default function SaleProductPage() {
       rows.push({ label: "Price per unit", value: fmt(Number(form.unit_price)) });
     }
     rows.push({ label: "Total", value: fmt(computedTotal) });
-    rows.push({ label: "Payment", value: form.payment_method.toUpperCase() });
+    rows.push({label:"Payment",value:credit?Number(amountReceived)>0?"Part paid":"Unpaid":"Paid in full"});
+    rows.push({label:"Received now",value:fmt(credit?Number(amountReceived):computedTotal)});
+    rows.push({label:"Balance to collect",value:fmt(credit?computedTotal-Number(amountReceived):0)});
     if (form.customer_name) rows.push({ label: "Customer", value: form.customer_name });
     return rows;
   })();
@@ -203,8 +208,8 @@ export default function SaleProductPage() {
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: form.customer_name.trim() || undefined,
-        ...(customerId?{customer_id:customerId,credit}:{}),
-        ...(!credit&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
+        ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),payment_date:paymentDate||form.date}:{}),
+        ...((!credit||Number(amountReceived)>0)&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
 
       if (productKey === "catfish") {
@@ -217,7 +222,7 @@ export default function SaleProductPage() {
         if (productKey === "crops" || (productKey === "other"&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId,customerId,credit},requestId);
+      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate},requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -236,7 +241,7 @@ export default function SaleProductPage() {
         crop_type: "", payment_method: prev.payment_method,
         customer_name: "", notes: "",
       }));
-      setShowConfirm(false);setReceiver("");
+      setShowConfirm(false);setReceiver("");setCustomerId("");setCredit(false);setAmountReceived("");setPaymentDate("");
       toast.success("Sale recorded!");
     } catch (e) {
       if((e as Error).name==="AbortError")return;
@@ -364,7 +369,7 @@ export default function SaleProductPage() {
           </div>
         )}
 
-        {personal&&!credit&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
+        {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {/* 4. Payment method */}
         <div>
           <label className="text-sm font-semibold text-slate-700">Payment Method</label>
@@ -383,9 +388,9 @@ export default function SaleProductPage() {
           </div>
         </div>
 
-        <>{personal?<FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={setCredit}/>:<label className="block text-sm font-semibold">Customer name (optional)<input className="mt-1 min-h-11 w-full rounded-xl border p-3" value={form.customer_name} onChange={e=>updateField("customer_name",e.target.value)}/></label>}</>
-
-        {personal&&<p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-950">A paid sale records the full payment. For an approved credit or part-paid sale, choose payment later, save the sale, then use Record a payment for the amount actually received.</p>}
+        <FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
+        {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
+        {(!credit||Number(amountReceived)>0)&&<label className="block text-sm font-semibold">Payment date<input aria-label="Payment date" type="date" min={form.date} max={today} className="mt-1 min-h-11 w-full rounded-xl border p-3" value={paymentDate||form.date} onChange={e=>setPaymentDate(e.target.value)}/></label>}
         {/* 6. Notes — optional */}
         <div>
           <label htmlFor="sale-notes" className="text-sm font-semibold text-slate-700">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>

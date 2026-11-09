@@ -8,12 +8,14 @@ import { z } from "zod";
 import { classificationFields } from "@/lib/farm-livestock-validation";
 import { FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
-import {cashReceiver} from "@/lib/operations-cash-validation";
+import {cashReceiver,cashDate} from "@/lib/operations-cash-validation";
 
 export const runtime = "nodejs";
 
 const saleItemSchema = z.object({
   customer_id:z.string().uuid().optional(),credit:z.boolean().optional(),
+  amount_received:z.string().regex(/^(?:0|[1-9]\d{0,14})(?:\.\d{1,2})?$/, "Enter the amount received, with up to two decimal places").optional(),
+  payment_date:cashDate.optional(),
   batch_id: z.string().uuid().nullable().optional(),
     egg_batch_id: z.string().uuid().nullable().optional(),
   cash_receiver:cashReceiver.optional(),
@@ -112,6 +114,7 @@ async function legacyPOST(request: NextRequest) {
   }
 
   const rows = parsed.data.map((item) => ({ ...item, pricing_basis: item.pricing_basis ?? (FARM_PRODUCTS.find(product => product.key === item.product)!.pricingBasis) }));
+  if(rows.some(row=>(row.amount_received!==undefined||row.credit===true)&&!row.customer_id))return NextResponse.json({error:'Choose the customer before recording payment or credit'},{status:400});
   if(rows.some(row=>row.customer_id)){
     if(rows.some(row=>!row.customer_id))return NextResponse.json({error:'Choose a customer for each invoice'},{status:400});
     const requestId=request.headers.get('X-Request-ID')||(Array.isArray(body)?body[0]?.request_id:null);

@@ -9,4 +9,7 @@ const before=[...values];assert.equal(queueUpdateProblem(storage,1),null);assert
 values.set('farm_pending_new',JSON.stringify({endpoint:'/api/farm/sales',data:{},schemaVersion:2}));assert.match(queueUpdateProblem(storage,1),/compatible/);
 values.set('farm_pending_new','broken json');assert.match(queueUpdateProblem(storage,1),/storage/);
 assert.match(queueUpdateProblem({get length(){throw Error('disabled')}},1),/storage/);
+values.clear();values.set('bossbimbz-property-pending:actor:expenses','broken');assert.match(queueUpdateProblem(storage,1),/storage/);
+values.set('bossbimbz-property-pending:actor:expenses',JSON.stringify({retry:{id:'kept',fingerprint:'{}'},values:{amount:'4500'},schemaVersion:2}));assert.match(queueUpdateProblem(storage,1),/compatible/);
+values.clear();values.set('primefield-feed-record:actor',JSON.stringify({form:{bags:'10'},pending:{id:'same',body:{}}}));values.set('primefield-daily-feed-retry:actor','[]');values.set('bossbimbz-content-pending:actor',JSON.stringify({body:{request_id:'same'},values:{}}));assert.equal(queueUpdateProblem(storage,1),null);
 console.log('PASS update safety: legacy/owned queues retained, future formats and unreadable storage block refresh');

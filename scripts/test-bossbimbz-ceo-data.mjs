@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {load} from './load-pure-typescript.mjs';
-const {summarizeContent,summarizeProperties}=load('lib/ceo-calculations.ts');
+const {summarizeContent,summarizeProperties,reportingDate}=load('lib/ceo-calculations.ts');
 const scope={from:'2026-10-01',to:'2026-10-05'};
 const content=summarizeContent({records:[{status:'published',published_at:'2026-10-02T12:00:00Z'},{status:'draft'}],performance:[{platform:'instagram',account_id:'a',metric_date:'2026-10-01',followers:100,reach:70},{platform:'instagram',account_id:'a',metric_date:'2026-10-05',followers:120,reach:90,source:'manual'},{platform:'instagram',account_id:'a',content_id:'post',metric_date:'2026-10-05',followers:9999,reach:20},{platform:'facebook',account_id:'b',metric_date:'2026-10-03',followers:null,reach:5}],leads:[{lead_date:'2026-10-03'},{lead_date:'2026-09-30'}],sales:[{sale_type:'mentorship',amount:'10.50',currency:'NGN',sale_date:'2026-10-02'},{sale_type:'affiliate',amount:'7',currency:'USD',sale_date:'2026-10-03'},{sale_type:'affiliate',amount:'8',currency:'NGN',sale_date:'2026-09-01'}]},scope);
 assert.equal(content.published,1);assert.equal(content.leads,1);
@@ -12,3 +12,7 @@ const property=summarizeProperties({properties:[{status:'active'}],units:[{statu
 assert.equal(property.vacancies,1);assert.equal(property.units,3);assert.equal(property.openRepairs,1);assert.equal(property.openMaintenance,0);
 assert.deepEqual(property.finances,[{currency:'NGN',rent:1002,expenses:0,net:1002},{currency:'USD',rent:0,expenses:3,net:-3}]);
 console.log('PASS: CEO calculations preserve latest account snapshots, explicit currencies, periods, negative balances and >500 records; maintenance estimates never double counted.');
+
+assert.equal(reportingDate('2026-11-08T23:30:00Z'),'2026-11-09');
+assert.equal(reportingDate('2026-11-08'),'2026-11-08');
+assert.equal(reportingDate('invalid'),'');

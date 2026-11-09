@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {managerDatabase,ids,scalar,periodWrite,asRole} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase({through:'20261109000000'});let checks=0;
+const eq=(a,b)=>{assert.deepEqual(a,b);checks++;};
+const deny=async(fn,code='42501')=>{await assert.rejects(fn,e=>e.code===code);checks++;};
+try{
+ await db.exec("insert into farm_inventory(product,current_stock) values('catfish',40),('goat',3)");
+ await periodWrite(db,ids.admin,'activate');
+ const manager='00000000-0000-4000-8000-000000000081';
+ await db.query('insert into auth.users(id) values($1)',[manager]);await db.query("insert into profiles(id,role,name) values($1,'manager','Assignment test manager')",[manager]);
+ const period=await periodWrite(db,ids.admin,'provision',{manager_id:manager,business:'farm',starts_on:'2026-11-01'});
+ await db.query("update manager_periods set status='active' where id=$1",[period.id]);
+ const assets=(await db.query('select id,product from farm_inventory order by product')).rows;
+ const selected=assets.map(row=>({resource:'farm_inventory',record_id:row.id}));
+ const owned=assets[0].id,legacy=assets[1].id;
+ await db.query("insert into manager_record_links(resource,record_id,period_id,recorded_by) values('farm_inventory',$1,$2,$3)",[owned,period.id,manager]);
+ const oldPayload={period_id:period.id,assets:selected,request_id:crypto.randomUUID()};
+ const rawWrite=(operation,payload)=>scalar(db,'select manager_period_write($1,$2,$3::jsonb)',[ids.admin,operation,JSON.stringify(payload)]);
+ const oldResult=await rawWrite('assign',oldPayload);
+ const original=await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'movements',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory_transactions t),'profiles',(select jsonb_agg(to_jsonb(t) order by id) from profiles t),'links',(select jsonb_agg(to_jsonb(t) order by record_id) from manager_record_links t))");
+ await db.exec(await readFile('supabase/migrations/20261109215929_manager_assignment_recovery.sql','utf8'));
+ eq(await rawWrite('assign',oldPayload),oldResult);
+ await deny(()=>rawWrite('assign',{...oldPayload,request_id:crypto.randomUUID()}),'22023');
+ await deny(()=>rawWrite('assign',{period_id:period.id,assets:selected,reason:'Missing retry must fail'}),'22023');
+ const visible=(id,personal=false)=>scalar(db,"select operations_private.record_visible($1,'farm_inventory',(select to_jsonb(t) from farm_inventory t where id=$2),$3,$4)",[manager,id,period.id,personal]);
+ eq(await visible(owned),true);eq(await visible(legacy),true);
+ const payload={period_id:period.id,manager_id:manager,business:'farm',assets:selected,reason:'Correct mistaken assignment',request_id:crypto.randomUUID()};
+ await deny(()=>periodWrite(db,manager,'unassign',payload));
+ await deny(()=>periodWrite(db,ids.suspended,'unassign',payload));
+ await deny(()=>asRole(db,'authenticated',ids.admin,()=>periodWrite(db,ids.admin,'unassign',payload)));
+ await deny(()=>asRole(db,'service_role',null,()=>scalar(db,"select manager_period_write_before_recovery($1,'unassign',$2)",[ids.admin,JSON.stringify(payload)])));
+ await deny(()=>periodWrite(db,ids.admin,'unassign',{...payload,manager_id:ids.farm}));
+ await deny(()=>periodWrite(db,ids.admin,'unassign',{...payload,business:'property'}));
+ await deny(()=>periodWrite(db,ids.admin,'unassign',{...payload,reason:''}),'22023');
+ const result=await asRole(db,'service_role',null,()=>periodWrite(db,ids.admin,'unassign',payload));
+ eq(await visible(owned),false);eq(await visible(legacy),false);
+ eq(await visible(owned,true),true);eq(await visible(legacy,true),false);
+ eq(await asRole(db,'authenticated',manager,()=>scalar(db,'select count(*)::int from farm_inventory')),0);
+ const audit=await scalar(db,"select count(*)::int from manager_period_events where period_id=$1 and action='unassign'",[period.id]);eq(audit,2);
+ eq(await periodWrite(db,ids.admin,'unassign',payload),result);
+ eq(await scalar(db,"select count(*)::int from manager_period_events where period_id=$1 and action='unassign'",[period.id]),audit);
+ await deny(()=>periodWrite(db,ids.admin,'unassign',{...payload,reason:'Changed retry'}),'23514');
+ // A second decision on already withdrawn items preserves original withdrawal metadata.
+ const withdrawn=await scalar(db,'select jsonb_agg(to_jsonb(t) order by record_id) from manager_asset_assignments t where period_id=$1',[period.id]);
+ await periodWrite(db,ids.admin,'unassign',{...payload,request_id:crypto.randomUUID()});
+ eq(await scalar(db,'select jsonb_agg(to_jsonb(t) order by record_id) from manager_asset_assignments t where period_id=$1',[period.id]),withdrawn);
+ await periodWrite(db,ids.admin,'assign',{...payload,request_id:crypto.randomUUID(),reason:'Return the verified responsibility'});
+ eq(await visible(owned),true);eq(await visible(legacy),true);
+ // A mixed valid/missing selection rolls back every assignment and audit together.
+ const beforeFailure=await scalar(db,'select jsonb_agg(to_jsonb(t) order by record_id) from manager_asset_assignments t where period_id=$1',[period.id]);
+ await deny(()=>periodWrite(db,ids.admin,'unassign',{...payload,request_id:crypto.randomUUID(),assets:[selected[0],{resource:'farm_inventory',record_id:crypto.randomUUID()}]}),'P0002');
+ eq(await scalar(db,'select jsonb_agg(to_jsonb(t) order by record_id) from manager_asset_assignments t where period_id=$1',[period.id]),beforeFailure);
+ await deny(()=>periodWrite(db,ids.admin,'assign',{...payload,request_id:crypto.randomUUID(),assets:[{resource:'farm_sales',record_id:owned}]}),'22023');
+ eq(await scalar(db,"select jsonb_build_object('inventory',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t),'movements',(select jsonb_agg(to_jsonb(t) order by id) from farm_inventory_transactions t),'profiles',(select jsonb_agg(to_jsonb(t) order by id) from profiles t),'links',(select jsonb_agg(to_jsonb(t) order by record_id) from manager_record_links t))"),original);
+ console.log(`PASS ${checks} assignment recovery checks: old receipt replay, own/legacy asset revocation, historical visibility, direct-role denial, atomic failure, audit and original quantities preserved`);
+}finally{await db.close();}

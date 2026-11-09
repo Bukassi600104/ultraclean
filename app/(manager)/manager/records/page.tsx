@@ -537,6 +537,7 @@ function FeedTab({ from, to }: { from: string; to: string }) {
 export default function RecordsPage() {
   const {profile}=useAuth();
   const [mainTab, setMainTab] = useState<MainTab>("sales");
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get("tab")==="expenses")setMainTab("expenses");},[]);
   const [expenseSub, setExpenseSub] = useState<ExpenseSub>("general");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");

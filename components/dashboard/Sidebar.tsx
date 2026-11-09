@@ -160,7 +160,7 @@ function NavContent({
             <div className="my-2 mx-3 border-t border-white/8" />
           )}
           <div className="px-3 space-y-0.5">
-            {section.items.filter(item=>item.href!=="/dashboard/funds"||enabled===true).map((item) => {
+            {section.items.filter(item=>(item.href!=="/dashboard/funds"||enabled===true)&&(!item.href.startsWith("/dashboard/farm/")||item.href==="/dashboard/farm/control"||pathname.startsWith("/dashboard/farm"))).map((item) => {
               const isActive = isDashboardDestinationActive(pathname, item.href, NAV_SECTIONS.flatMap(section => section.items.map(link => link.href)));
               return (
                 <Link

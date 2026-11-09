@@ -1,4 +1,5 @@
 "use client";
+import {farmTimestamp} from "@/lib/farm-products";
 import {useEffect,useState} from 'react';
 import {useManagerFetch} from '@/contexts/ManagerPeriodContext';
 import type {FarmRecordMessage} from '@/lib/farm-record-messages';
@@ -13,7 +14,7 @@ export function FarmRecordThread({resource,recordId}:{resource:string;recordId:s
  useEffect(()=>{const controller=new AbortController();setRows([]);setError('');send(`/api/farm/record-messages?resource=${encodeURIComponent(resource)}&record_id=${recordId}`,{signal:controller.signal}).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Messages unavailable');setRows(data.data);}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();},[send,resource,recordId,version]);
  return <section className="space-y-3 border-t pt-4"><FarmRecordEvidence resource={resource} recordId={recordId}/><h3 className="font-semibold">Questions and replies</h3><p className="text-xs text-slate-600">Messages clarify this record without changing its figures.</p>
   {!rows.length&&!error&&<p className="text-sm text-slate-600">No messages yet.</p>}
-  {rows.map(row=><article key={row.id} className="rounded-xl border p-3 text-sm"><p className="whitespace-pre-wrap break-words">{row.body}</p><p className="mt-1 text-xs text-slate-600">{row.kind} · {new Date(row.created_at).toLocaleString()}</p><button type="button" disabled={!!pending} className="min-h-11 text-sm underline" onClick={()=>setReply(row.id)}>Reply to this message</button></article>)}
+  {rows.map(row=><article key={row.id} className="rounded-xl border p-3 text-sm"><p className="whitespace-pre-wrap break-words">{row.body}</p><p className="mt-1 text-xs text-slate-600">{row.kind} · {farmTimestamp(row.created_at)}</p><button type="button" disabled={!!pending} className="min-h-11 text-sm underline" onClick={()=>setReply(row.id)}>Reply to this message</button></article>)}
   {reply&&<div className="text-xs text-slate-600">Replying to: {rows.find(r=>r.id===reply)?.body}<button type="button" disabled={!!pending} className="ml-2 min-h-11 underline" onClick={()=>setReply('')}>Cancel reply</button></div>}
   <label className="block text-sm font-medium">Message<textarea maxLength={2000} disabled={!!pending} className="mt-1 w-full rounded-xl border p-3" value={body} onChange={e=>setBody(e.target.value)}/></label>
   {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}

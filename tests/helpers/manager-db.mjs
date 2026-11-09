@@ -19,4 +19,4 @@ export async function managerDatabase({through,legacyManagers=[]}={}){
 }
 export const scalar=async(db,sql,args=[])=>Object.values((await db.query(sql,args)).rows[0])[0];
 export async function asRole(db,role,id,fn){await db.exec(`set role ${role}`);try{await db.query("select set_config('request.jwt.claim.sub',$1,false)",[id||'']);return await fn();}finally{await db.exec('reset role');}}
-export const periodWrite=(db,actor,operation,payload={})=>scalar(db,'select manager_period_write($1::uuid,$2,$3::jsonb)',[actor,operation,JSON.stringify(payload)]);
+export const periodWrite=(db,actor,operation,payload={})=>scalar(db,'select manager_period_write($1::uuid,$2,$3::jsonb)',[actor,operation,JSON.stringify(['assign','unassign'].includes(operation)?{request_id:crypto.randomUUID(),reason:'Isolated assignment fixture',...payload}:payload)]);

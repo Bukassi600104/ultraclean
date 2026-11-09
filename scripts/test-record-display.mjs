@@ -35,3 +35,8 @@ for(const code of ['22P02','23505','42501']){
  assert.equal(isTechnicalMessage((await response.json()).error),false);
 }
 console.log('PASS readable record values and safe database errors; amounts and actionable business messages preserved.');
+
+const {farmTimestamp}=load("lib/farm-products.ts");
+assert.equal(farmTimestamp(null),"Not recorded");
+assert.equal(farmTimestamp("invalid"),"Not recorded");
+assert.equal(farmTimestamp("2026-11-08T23:30:00Z"),"9 Nov 2026, 00:30 (Nigeria time)");

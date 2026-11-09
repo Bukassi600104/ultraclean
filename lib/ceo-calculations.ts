@@ -1,7 +1,15 @@
 import {moneyNumber, subtractMoney, sumMoney, type MoneyInput} from "./money";
 export interface OverviewRow { [key: string]: string | number | boolean | null | undefined }
 export interface OverviewScope { from: string; to: string }
-const inPeriod = (date: unknown, scope: OverviewScope) => typeof date === "string" && date.slice(0,10) >= scope.from && date.slice(0,10) <= scope.to;
+export function reportingDate(value:unknown,timeZone="Africa/Lagos"):string {
+ if(typeof value!=="string")return "";
+ if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
+ const date=new Date(value);if(!Number.isFinite(date.getTime()))return "";
+ const parts=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(date);
+ const part=(name:string)=>parts.find(p=>p.type===name)?.value;
+ return `${part("year")}-${part("month")}-${part("day")}`;
+}
+const inPeriod = (date: unknown, scope: OverviewScope) => {const day=reportingDate(date);return !!day&&day>=scope.from&&day<=scope.to;};
 function amount(row: OverviewRow) { return sumMoney([(row.amount_exact ?? row.amount) as MoneyInput]); }
 /** Account observations are snapshots, never sums across posts or dates. */
 export function summarizeContent(rows: { records: OverviewRow[]; performance: OverviewRow[]; leads: OverviewRow[]; sales: OverviewRow[] }, scope: OverviewScope) {
@@ -28,7 +36,7 @@ export function summarizeContent(rows: { records: OverviewRow[]; performance: Ov
  }
  const sales_by_content=Array.from(attribution.values(),group=>{
   const record=rows.records.find(row=>row.id===group.contentId),duplicate=record&&rows.records.some(row=>row.id!==record.id&&row.title===record.title);
-  const title=record?String(record.title)+(duplicate?` (${record.platform??"Unknown platform"} · ${record.id})`:""):group.contentId?`Unknown content (${group.contentId})`:"Unattributed";
+  const title=record?String(record.title)+(duplicate?` (${record.platform??"Platform not recorded"} · ${reportingDate(record.published_at)||"Date not recorded"})`:""):group.contentId?"Content name unavailable":"Unattributed";
   return {name:group.currency+" · "+title,value:moneyNumber(group.value)};
  });
  return {analytics,audience_growth,leads_by_status,sales_by_content,published:rows.records.filter(r=>r.status==="published"&&inPeriod(r.published_at,scope)).length,leads:rows.leads.filter(r=>inPeriod(r.lead_date,scope)).length,accounts:Array.from(latest.values()).sort((a,b)=>String(a.platform).localeCompare(String(b.platform))),sales:Array.from(sales.values()).map(group=>({...group,mentorship:moneyNumber(group.mentorship),affiliate:moneyNumber(group.affiliate)})).sort((a,b)=>a.currency.localeCompare(b.currency))};
@@ -66,6 +74,6 @@ export function summarizeUltraTidy(rows:{inflow:OverviewRow[];expenses:OverviewR
  return ledgerAnalytics([...rows.inflow.map(r=>({date:String(r.date),amount:amount(r),category:String(r.service),kind:"income" as const})),...rows.expenses.map(r=>({date:String(r.date),amount:amount(r),category:String(r.category),kind:"expense" as const}))],scope,"CAD");
 }
 export function summarizeDba(rows:{sales:OverviewRow[];products:OverviewRow[]},scope:OverviewScope) {
- const analytics=ledgerAnalytics(rows.sales.map(r=>({date:String(r.created_at).slice(0,10),amount:amount(r),category:String(rows.products.find(p=>p.id===r.product_id)?.name??"Unknown product"),kind:"income" as const})),scope,null);
+ const analytics=ledgerAnalytics(rows.sales.map(r=>({date:reportingDate(r.created_at),amount:amount(r),category:String(rows.products.find(p=>p.id===r.product_id)?.name??"Unknown product"),kind:"income" as const})),scope,null);
  return {...analytics,profit:null,by_product:analytics.income_breakdown};
 }
