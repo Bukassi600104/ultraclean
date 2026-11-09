@@ -14,6 +14,13 @@ assert.equal((await post({operation:'allocate',payload:{batch_id:id,quantity:-1,
 assert.equal((await post({operation:'allocate',payload:{batch_id:id,quantity:1,date:'2026-02-30',reason:'Count'},request_id:id})).status,400);
 assert.equal((await api.GET(new Request('http://localhost/api/farm/batches?resource=farm_sites'))).status,200);
 assert.equal((await api.GET(new Request('http://localhost/api/farm/batches?resource=profiles'))).status,400);
+// Availability uses every movement page and the exact classification, without writes.
+const originalRpc=db.rpc;let pages=[];
+db.rpc=async name=>name==='farm_livestock_balances'?{data:[{id:null,product:'chicken',quantity:'1000'},{id:'other',product:'chicken',quantity:'9999'}]}:originalRpc(name,{});
+db.from=table=>{const q={select:()=>q,eq:(key,value)=>{if(table==='farm_batch_movements')assert.equal(key,'batch.product');return q},is:(key,value)=>{assert.equal(key,'batch.stock_group_id');assert.equal(value,null);return q},order:()=>q,maybeSingle:async()=>({data:{id,product:'chicken',stock_group_id:null}}),range:async(start)=>{pages.push(start);return {data:start===0?Array.from({length:500},()=>({quantity:'1'})):[{quantity:'-5'}]}}};return q};
+let availability=await api.GET(new Request('http://localhost/api/farm/batches?resource=availability&batch_id='+id));assert.equal(availability.status,200);assert.equal((await availability.json()).available,'505');assert.deepEqual(pages,[0,500]);
+assert.equal((await api.GET(new Request('http://localhost/api/farm/batches?resource=availability&batch_id=bad'))).status,400);
 actor={...actor,role:'manager'};
 assert.equal((await post({operation:'site',payload:{name:'Forbidden'},request_id:id})).status,403);
+assert.equal((await api.GET(new Request('http://localhost/api/farm/batches?resource=availability&batch_id='+id))).status,403);
 console.log('PASS batch API: authenticated actor, guarded writes, resource allowlist and strict validation');

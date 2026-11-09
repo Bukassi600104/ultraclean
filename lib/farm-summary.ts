@@ -15,7 +15,7 @@ export function farmAlerts(s:FarmControlSource):FarmAlert[]{
  for(const b of s.currentPerformance.batches){
   const deaths=s.currentPerformance.deaths.filter(d=>d.batch_id===b.id),quantity=sumMoney(deaths.map(d=>d.quantity));
   if(Number(quantity)>0)add('loss:'+b.id,1,s.config?.mortality_alert_count&&Number(quantity)>=s.config.mortality_alert_count?'Mortality alert threshold reached':'Recent mortality recorded',`${b.name}: ${quantity} losses since ${s.currentPerformance.from}`,'performance');
-  if(!b.archived_at&&b.created_at&&b.created_at.slice(0,10)<s.currentPerformance.from&&Number(b.head_count)>0&&!s.currentPerformance.records.some(r=>r.batch_id===b.id&&r.date===s.currentPerformance.from))add('log:'+b.id,3,'Daily observation not recorded',`${b.name}: no daily observation for ${s.currentPerformance.from}. Check whether this batch was active that day.`,'today?date='+s.currentPerformance.from+'&batch_id='+b.id);
+  if(!b.archived_at&&(b.expected_dates?b.expected_dates.includes(s.currentPerformance.from):b.created_at&&b.created_at.slice(0,10)<s.currentPerformance.from&&Number(b.head_count)>0)&&!s.currentPerformance.records.some(r=>r.batch_id===b.id&&r.date===s.currentPerformance.from))add('log:'+b.id,3,'Daily observation not recorded',`${b.name}: no daily observation for ${s.currentPerformance.from}. Check whether this batch was active that day.`,'today?date='+s.currentPerformance.from+'&batch_id='+b.id);
  }
  return alerts.sort((a,b)=>a.priority-b.priority||a.id.localeCompare(b.id));
 }

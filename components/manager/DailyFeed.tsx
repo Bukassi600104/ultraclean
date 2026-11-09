@@ -83,6 +83,17 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   useEffect(() => { loadRecords(); }, [loadRecords]);
   useEffect(()=>{if(!storageKey||!date||uncertain)return;try{localStorage.setItem(storageKey+":draft",JSON.stringify({date,feedType,notes,localBags,foreignBags,localOpened,foreignOpened,localOpening,foreignOpening}));}catch{setSaveError("Draft could not be saved. Keep this page open and restore device storage.");}},[storageKey,date,uncertain,feedType,notes,localBags,foreignBags,localOpened,foreignOpened,localOpening,foreignOpening]);
 
+  function changeFeedType(value:string){
+    if(pending.current.length)return;
+    setFeedType(value);setLocalOpening("");setForeignOpening("");setDirty(true);
+  }
+  function changeDate(value:string){
+    if(pending.current.length)return;
+    setDate(value);
+    const allowed=(id:string)=>openings.some(row=>row.id===id&&row.feed_type===feedType&&row.activity_date<=value);
+    if(localOpening&&!allowed(localOpening))setLocalOpening("");
+    if(foreignOpening&&!allowed(foreignOpening))setForeignOpening("");
+  }
   async function handleSave() {
     if(lock.current)return;
     setSaveError("");
@@ -90,6 +101,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
     const hadPending=pending.current.length>0;
     if(!pending.current.length){
       if(!date)return toast.error("Select a date");
+      if(enabled===true&&[{id:localOpening,source:"local"},{id:foreignOpening,source:"foreign"}].some(({id,source})=>id&&!openings.some(row=>row.id===id&&row.feed_type===feedType&&row.feed_source===source&&row.activity_date<=date)))return toast.error("Choose a recorded opening for this feed type and date, or select No opening selected.");
       const values=[{feed_source:"local",num_bags:Number(localBags),bags_opened:Number(localOpened),...(localOpening?{opening_activity_id:localOpening}:{})},{feed_source:"foreign",num_bags:Number(foreignBags),bags_opened:Number(foreignOpened),...(foreignOpening?{opening_activity_id:foreignOpening}:{})}];
       if(values.every(row=>row.num_bags<=0))return toast.error("Enter at least one feeding quantity");
       if(values.some(row=>!Number.isFinite(row.num_bags)||row.num_bags<0||!Number.isInteger(row.bags_opened)||row.bags_opened<0||(row.bags_opened>0&&(row.num_bags<=0||row.opening_activity_id))))return toast.error("New bags opened must be a whole nonnegative count. An opening already recorded uses zero new bags.");
@@ -156,7 +168,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
           <input type="date" max={today}
             className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm focus:outline-none focus:border-gray-400"
-            value={date} onChange={(e) => setDate(e.target.value)} />
+            value={date} onChange={(e) => changeDate(e.target.value)} />
         </div>
 
         {/* Feed type */}
@@ -164,7 +176,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Type of Feed</label>
           <div className="mt-1.5 grid grid-cols-2 gap-2">
             {FEED_TYPES.map((f) => (
-              <button key={f.value} onClick={() => setFeedType(f.value)}
+              <button key={f.value} onClick={() => changeFeedType(f.value)}
                 className="rounded-xl py-2.5 text-xs font-semibold border transition-all"
                 style={{
                   backgroundColor: feedType === f.value ? "#0284c7" : "transparent",

@@ -20,13 +20,18 @@ let enabled=true;await page.route('**/api/operations/manager-context*',r=>r.fulf
 const faults=[],calls=[];page.on('pageerror',error=>faults.push(error.message));
 
 const id='00000000-0000-4000-8000-000000000001';
-let stock={id,feed_type:'fish',feed_source:'local',current_bags:null,initialized_at:null,opening_date:null,revision:0,uncounted_receipts:[]},movements=[],daily=[],failDaily=false,failPhysical=false,failRead=false,rejectDaily=false;const receipts=new Map();
+let stock={id,feed_type:'fish',feed_source:'local',current_bags:null,initialized_at:null,opening_date:null,revision:0,uncounted_receipts:[]},movements=[],daily=[],failDaily=false,failPhysical=false,failRead=false,rejectDaily=false;const receipts=new Map();let reviewProblems=[],rejectReview=false,failReview=false;
 await page.route('**/api/farm/**',async route=>{
  const req=route.request(),url=new URL(req.url()),method=req.method(),body=req.postDataJSON()??{},retryId=req.headers()['x-request-id'];calls.push({method,body,requestId:retryId,path:url.pathname});let result;
  if(method==='GET'){
   if(failRead)return route.fulfill({status:503,json:{error:'Feed inventory unavailable'}});
-  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:movements,total:movements.length}:{data:[stock],total:1,problems:[]}:{data:daily,total:daily.length};
+  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:movements,total:movements.length}:{data:[stock],total:1,problems:reviewProblems}:{data:daily,total:daily.length};
  }else if(receipts.has(retryId)){result=receipts.get(retryId);}
+ else if(body.operation==='review_problem'){
+  if(rejectReview){rejectReview=false;return route.fulfill({status:409,json:{code:'40001',error:'Feed changed since this check. Ask the manager to confirm the current count'}});}
+  result={data:{activity:{id:body.id,review_status:body.payload.decision==='approve'?'approved':'declined'}}};receipts.set(retryId,result);reviewProblems=reviewProblems.filter(row=>row.id!==body.id);
+  if(failReview){failReview=false;await route.abort('failed');return;}
+ }
  else if(url.pathname.includes('feed-stock')){
   const {operation,payload:p}=body;if(operation==='opened'&&!stock.initialized_at)return route.fulfill({status:409,json:{code:'23514',error:'Record the actual starting bag count first'}});const delta=operation==='opened'?-p.bags:operation==='problem'?0:p.bags;
   stock={...stock,current_bags:operation==='starting'?p.bags:stock.current_bags===null?null:stock.current_bags+delta,initialized_at:operation==='starting'?'2026-10-28T12:00:00Z':stock.initialized_at,opening_date:operation==='starting'?p.date:stock.opening_date,revision:stock.revision+1};
@@ -53,5 +58,51 @@ try{
  await page.keyboard.press('Escape');failRead=true;await page.reload({waitUntil:"domcontentloaded"});await page.getByRole('alert').waitFor();assert.equal(await page.locator('tbody tr').count(),0);checks++;failRead=false;
  assert.deepEqual(faults,[]);checks++;enabled=false;failRead=true;await page.goto(origin+'/?screen=daily',{waitUntil:'domcontentloaded'});await page.getByRole('alert').waitFor();assert.equal(await page.getByText('No records yet',{exact:true}).count(),0,'Unavailable history cannot become a false empty state during cutover');assert.equal(await page.getByLabel('Local new bags opened',{exact:true}).count(),0);checks+=2;
  failRead=false;enabled=true;await page.goto(origin,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:/View history/}).click();await page.getByText('Linked to daily feeding',{exact:true}).waitFor();assert.doesNotMatch(await page.locator('body').innerText(),/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);assert.equal(daily.length,2);checks+=2;
+
+ // Selecting a different species/date must not submit an invisible, incompatible opening.
+ await page.goto(origin+'/?screen=daily',{waitUntil:'domcontentloaded'});await page.getByText('Feed Usage',{exact:true}).waitFor();
+ await page.getByLabel('local recorded opening (optional)',{exact:false}).selectOption(movements[1].id);
+ await page.getByRole('button',{name:'Goat Feed',exact:true}).click();
+ assert.equal(await page.getByLabel('local recorded opening (optional)',{exact:false}).inputValue(),'');checks++;
+ await page.locator('input[type=number]').nth(0).fill('0.25');await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.waitForFunction(()=>document.querySelector('input[type=number]').value==='');
+ assert.equal(daily.at(-1).feed_type,'goat');assert.equal(daily.at(-1).opening_activity_id,undefined);checks+=2;
+ await page.getByRole('button',{name:'Fish Feed',exact:true}).click();await page.getByLabel('local recorded opening (optional)',{exact:false}).selectOption(movements[1].id);
+ await page.locator('input[type=date]').fill('2026-10-01');assert.equal(await page.getByLabel('local recorded opening (optional)',{exact:false}).inputValue(),'');checks++;
+ // An incompatible restored draft also gets checked immediately before sending.
+ await page.evaluate(opening=>{const key='primefield-daily-feed-retry:00000000-0000-4000-8000-000000000001:period:admin';localStorage.setItem(key,'[]');localStorage.setItem(key+':draft',JSON.stringify({date:new Date().toISOString().slice(0,10),feedType:'goat',localBags:'0.25',foreignBags:'',localOpened:'0',foreignOpened:'0',localOpening:opening,foreignOpening:'',notes:''}));},movements[1].id);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();const incompatiblePosts=calls.filter(c=>c.method==='POST').length;await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.waitForTimeout(150);assert.equal(calls.filter(c=>c.method==='POST').length,incompatiblePosts);checks++;
+ // Corrupt and malformed saved retries are retained byte-for-byte and cannot be replaced.
+ await page.goto(origin,{waitUntil:'domcontentloaded'});
+ const savedForm={operation:'opened',type:'fish',source:'local',date:new Date().toISOString().slice(0,10),bags:'1',notes:'',review:false,included:'',inclusions:{}};
+ const savedPayload={date:savedForm.date,feed_type:'fish',bags:1};
+ const malformedPayloads=[[],{}, {...savedPayload,bags:'1'}, {...savedPayload,date:'2026-02-31'}, {...savedPayload,receipt_inclusions:[null]}];
+ for(const raw of ['{unreadable saved retry',JSON.stringify({form:{bags:'1'},pending:{id:'original'}}),...malformedPayloads.map(payload=>JSON.stringify({form:savedForm,pending:{id:crypto.randomUUID(),body:{operation:'opened',payload}}}))]){
+  await page.evaluate(raw=>localStorage.setItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin',raw),raw);
+  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();await page.getByRole('alert').filter({hasText:'saved feed entry could not be read'}).waitFor();
+  assert.equal(await page.getByLabel('Activity',{exact:true}).isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Save feed record',exact:true}).isDisabled(),true);
+  const beforePosts=calls.filter(c=>c.method==='POST').length;await page.getByRole('button',{name:'Close',exact:true}).first().click();await page.getByRole('button',{name:'Add feed record',exact:true}).click();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin')),raw);assert.equal(calls.filter(c=>c.method==='POST').length,beforePosts);checks+=4;
+ }
+ await page.evaluate(()=>localStorage.removeItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin'));
+ // A definitive stale count rejection unlocks the decision, retaining its audit draft.
+ const problem={id:crypto.randomUUID(),feed_type:'fish',feed_source:'local',bags:9,activity_date:new Date().toISOString().slice(0,10),recorded_at:new Date().toISOString(),actor_name:'Manager',stock_revision:1,current_bags:8};reviewProblems=[problem];rejectReview=true;
+ await page.goto(origin+'/?admin=yes',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Review count',exact:true}).click();await page.getByLabel('Reason',{exact:true}).fill('Check the physical count');await page.getByRole('button',{name:'Save decision',exact:true}).click();
+ await page.getByRole('dialog').getByRole('alert').filter({hasText:'Feed changed since this check'}).waitFor();assert.equal(await page.getByRole('dialog').getByRole('combobox').isEnabled(),true);checks++;
+ const rejectedReview=calls.filter(c=>c.body.operation==='review_problem').at(-1);assert.ok(await page.evaluate(id=>localStorage.getItem('primefield-feed-count-review:00000000-0000-4000-8000-000000000001:period:admin:rejected:'+id),rejectedReview.requestId));checks++;
+ await page.getByRole('dialog').getByRole('combobox').selectOption('decline');await page.getByRole('button',{name:'Save decision',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ const declineReview=calls.filter(c=>c.body.operation==='review_problem').at(-1);assert.equal(declineReview.body.payload.decision,'decline');assert.notEqual(declineReview.requestId,rejectedReview.requestId);checks+=2;
+ // An uncertain response must still replay the exact original review, including after reload.
+ reviewProblems=[{...problem,id:crypto.randomUUID()}];failReview=true;await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Review count',exact:true}).click();await page.getByRole('dialog').getByRole('combobox').selectOption('approve');await page.getByLabel('Reason',{exact:true}).fill('Verified current count');await page.getByRole('button',{name:'Save decision',exact:true}).click();await page.getByRole('button',{name:'Retry saved decision',exact:true}).waitFor();assert.equal(await page.getByRole('dialog').getByRole('combobox').isDisabled(),true);const uncertainReview=calls.filter(c=>c.body.operation==='review_problem').at(-1);checks++;
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved count decision',exact:true}).click();await page.getByRole('button',{name:'Retry saved count decision',exact:true}).waitFor({state:'hidden'});const confirmedReview=calls.filter(c=>c.body.operation==='review_problem').at(-1);assert.equal(confirmedReview.requestId,uncertainReview.requestId);assert.deepEqual(confirmedReview.body,uncertainReview.body);assert.equal(await page.evaluate(()=>localStorage.getItem('primefield-feed-count-review:00000000-0000-4000-8000-000000000001:period:admin')),null);checks+=3;
+ // Nested invalid CEO decisions must remain untouched too. Optional legacy revision stays optional.
+ reviewProblems=[{...problem,id:crypto.randomUUID()}];
+ const decisionKey='primefield-feed-count-review:00000000-0000-4000-8000-000000000001:period:admin';
+ const validDecision={id:crypto.randomUUID(),body:{operation:'review_problem',id:reviewProblems[0].id,reason:'Legacy saved decline',payload:{decision:'decline'}}};
+ for(const decision of [{...validDecision,body:{...validDecision.body,reason:null}},{...validDecision,body:{...validDecision.body,payload:{decision:'decline',expected_revision:'1'}}},{...validDecision,body:{...validDecision.body,payload:[]}}]){
+  const raw=JSON.stringify(decision);await page.evaluate(({key,raw})=>localStorage.setItem(key,raw),{key:decisionKey,raw});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Review count',exact:true}).click();
+  assert.equal(await page.getByRole('dialog').getByRole('combobox').isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Save decision',exact:true}).isDisabled(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key),decisionKey),raw);checks+=3;
+ }
+ await page.evaluate(({key,decision})=>localStorage.setItem(key,JSON.stringify(decision)),{key:decisionKey,decision:validDecision});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved count decision',exact:true}).click();await page.getByRole('button',{name:'Retry saved count decision',exact:true}).waitFor({state:'hidden'});const legacyDecision=calls.filter(c=>c.body.operation==='review_problem').at(-1);assert.equal(legacyDecision.requestId,validDecision.id);assert.deepEqual(legacyDecision.body,validDecision.body);checks+=2;
+ assert.deepEqual(faults,[]);checks++;
  console.log(`PASS ${checks} actual feed UI checks: manager-led starting count, optional review, CEO observation, partial feeding, earlier opening linkage, retry identity, history, storage failure, error isolation, centred dialog/focus and responsive layouts. Screenshots: ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator('body').innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

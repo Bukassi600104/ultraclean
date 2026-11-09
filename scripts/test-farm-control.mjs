@@ -24,6 +24,10 @@ try{
  const {load}=await import('./load-pure-typescript.mjs'),{displayConversion,farmAlerts}=load('lib/farm-summary.ts');
  assert.match(displayConversion('100000',config,'2026-10-30'),/CAD 100.00/);assert.match(displayConversion('100000',config,'2026-11-06'),/expired/);
  const alertSource={...data,currentCredit:{...data.currentCredit,invoices:[{id:'late',number:'PF-test',customer_name:'Actual customer',owed:'25000',overdue_days:1}]}};assert.equal(farmAlerts(alertSource)[0].id,'late');
+ const activeGroup={id:'new-group',name:'New pond',created_at:'2026-01-01T00:00:00Z',head_count:'10',expected_dates:[]};
+ const noFalseAlert={...data,currentPerformance:{...data.currentPerformance,batches:[activeGroup],records:[],deaths:[]}};
+ assert.ok(!farmAlerts(noFalseAlert).some(a=>a.id==='log:new-group'),'No missing-log alert before actual stocking or responsibility');
+ activeGroup.expected_dates=[data.currentPerformance.from];assert.ok(farmAlerts(noFalseAlert).some(a=>a.id==='log:new-group'),'A genuinely missing stocked-day log remains visible');
  const {writeFile}=await import('node:fs/promises'),os=await import('node:os'),path=await import('node:path');await writeFile(path.join(os.tmpdir(),'primefield-control-fixture.json'),JSON.stringify(data));
  console.log('PASS CEO consistent control snapshot, scoped source children, empty configuration and genuine preferences');
  console.log('PASS daily delivery ownership, retained retry snapshot, once-per-day across timezone changes and stale currency separation');

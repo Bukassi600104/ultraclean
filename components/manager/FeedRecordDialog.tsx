@@ -11,17 +11,31 @@ const actions={starting:"Starting bag count",received:"Feed received",opened:"Ba
 type Action=keyof typeof actions;
 type Form={operation:Action;type:string;source:string;date:string;bags:string;notes:string;review:boolean;included:string;inclusions:Record<string,string>};
 type Saved={id:string;body:Record<string,unknown>};
+const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value);
+const isId=(value:unknown)=>typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+function isDate(value:unknown){if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+"T12:00:00Z");return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;}
+function validSavedRetry(value:unknown){
+ if(!isRecord(value)||!isId(value.id)||!isRecord(value.body)||typeof value.body.operation!=="string"||!Object.prototype.hasOwnProperty.call(actions,value.body.operation)||!isRecord(value.body.payload))return false;
+ const p=value.body.payload;
+ return isDate(p.date)&&typeof p.feed_type==="string"&&FEED_TYPES.includes(p.feed_type as typeof FEED_TYPES[number])&&(p.feed_source===undefined||p.feed_source==="local"||p.feed_source==="foreign")&&typeof p.bags==="number"&&Number.isInteger(p.bags)&&p.bags>=(["received","opened"].includes(value.body.operation)?1:0)&&p.bags<=99999999
+  &&(p.notes===undefined||typeof p.notes==="string")&&(p.request_review===undefined||typeof p.request_review==="boolean")&&(p.included_in_starting_count===undefined||typeof p.included_in_starting_count==="boolean")
+  &&(p.receipt_inclusions===undefined||Array.isArray(p.receipt_inclusions)&&p.receipt_inclusions.every(row=>isRecord(row)&&isId(row.movement_id)&&typeof row.included==="boolean"));
+}
 export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:{open:boolean;onOpenChange:(value:boolean)=>void;stocks:FeedInventoryRow[];onSaved:()=>void;returnFocus:()=>void}){
  const send=useManagerFetch(),scope=useManagerPeriod(),{profile}=useAuth(),key=useManagerStorageKey(profile?"primefield-feed-record:"+profile.id:null),setup=scope?.status==="awaiting_handover";
  const [form,setForm]=useState<Form>({operation:setup||!stocks.find(s=>s.feed_type==='fish'&&s.feed_source==='local')?.initialized_at?"starting":"opened",type:"fish",source:"local",date:farmDateToday(),bags:"",notes:"",review:false,included:"",inclusions:{}}),[pending,setPending]=useState<Saved|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[countRows,setCountRows]=useState(stocks),[countError,setCountError]=useState(""),[countLoading,setCountLoading]=useState(false);
- const lock=useRef(false);const [restoredKey,setRestoredKey]=useState<string|null>(null);
- useEffect(()=>{if(!key)return;try{const saved=JSON.parse(localStorage.getItem(key)||"null");if(saved?.form)setForm(saved.form);if(saved?.pending)setPending(saved.pending);setRestoredKey(key);}catch{setError("Your saved feed entry could not be read. It remains on this device for review.");}},[key]);
- useEffect(()=>{if(!key||restoredKey!==key)return;try{localStorage.setItem(key,JSON.stringify({form,pending}));}catch{setError("Device storage is unavailable. Your entry has not been sent.");}},[key,form,pending,restoredKey]);
+ const lock=useRef(false);const [restoredKey,setRestoredKey]=useState<string|null>(null),[storageFault,setStorageFault]=useState(false);
+ useEffect(()=>{setRestoredKey(null);setStorageFault(false);if(!key)return;try{const raw=localStorage.getItem(key),saved=raw===null?null:JSON.parse(raw);if(raw!==null){
+   if(!saved||typeof saved!=="object"||!saved.form||!Object.prototype.hasOwnProperty.call(actions,saved.form.operation)||!["type","source","date","bags","notes","included"].every(field=>typeof saved.form[field]==="string")||typeof saved.form.review!=="boolean"||!saved.form.inclusions||typeof saved.form.inclusions!=="object"||Array.isArray(saved.form.inclusions)||Object.values(saved.form.inclusions).some(value=>typeof value!=="string"))throw Error("Invalid saved form");
+   if(saved.pending!=null&&!validSavedRetry(saved.pending))throw Error("Invalid saved retry");
+   setForm(saved.form);
+  }setPending(saved?.pending??null);setRestoredKey(key);}catch{setStorageFault(true);setError("Your saved feed entry could not be read. It remains on this device for review. Do not enter it again; ask for help recovering it.");}},[key]);
+ useEffect(()=>{if(!key||restoredKey!==key||storageFault)return;try{localStorage.setItem(key,JSON.stringify({form,pending}));}catch{setError("Device storage is unavailable. Your entry has not been sent.");}},[key,form,pending,restoredKey,storageFault]);
  useEffect(()=>{if(!open)return;let current=true;setCountLoading(true);setCountError("");send("/api/farm/feed-stock?date="+encodeURIComponent(form.date)).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||"Unable to check dated deliveries");if(current)setCountRows(b.data||[]);}).catch(e=>{if(current)setCountError(e.message);}).finally(()=>{if(current)setCountLoading(false);});return()=>{current=false;};},[open,form.date,send]);
  const selected=countRows.find(s=>s.feed_type===form.type&&s.feed_source===form.source),sameDay=(selected?.uncounted_receipts||[]).filter(r=>r.date===form.date);
  const update=<K extends keyof Form>(name:K,value:Form[K])=>setForm(old=>({...old,[name]:value}));
  async function save(){
-  if(lock.current||!key)return;
+  if(lock.current||!key||storageFault||restoredKey!==key)return;
   let saved=pending;
   if(!saved){
    if(form.operation==="starting"&&(countLoading||countError))return setError("Wait for the dated delivery check before saving this count.");
@@ -52,8 +66,8 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
   <DialogHeader className="shrink-0 pr-12"><DialogTitle>Add feed record</DialogTitle><DialogDescription>Enter what actually happened. Bimbo sees the record automatically.</DialogDescription></DialogHeader>
   <div className="min-h-0 space-y-4 overflow-y-auto pr-1 text-slate-900">
    {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}</p>}{pending&&<p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">This entry is awaiting confirmation. Its date and values are kept for a safe retry. A closed date needs Bimbo&apos;s review.</p>}
-   {!pending&&!selected?.initialized_at&&form.operation!=="starting"&&<button type="button" disabled={busy||countLoading} className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>{try{if(key)localStorage.setItem(key+':before-starting-count',JSON.stringify({form,pending:null}));setForm(old=>({...old,operation:'starting',bags:'',inclusions:{}}));setError('');}catch{setError('Your saved entry could not be preserved. Restore device storage before recording the count.');}}}>Record starting count</button>}
-   <fieldset disabled={busy||!!pending} className="min-w-0 space-y-4 text-sm">
+   {!pending&&!selected?.initialized_at&&form.operation!=="starting"&&<button type="button" disabled={busy||countLoading||storageFault||restoredKey!==key} className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>{try{if(key)localStorage.setItem(key+':before-starting-count',JSON.stringify({form,pending:null}));setForm(old=>({...old,operation:'starting',bags:'',inclusions:{}}));setError('');}catch{setError('Your saved entry could not be preserved. Restore device storage before recording the count.');}}}>Record starting count</button>}
+   <fieldset disabled={busy||!!pending||storageFault||restoredKey!==key} className="min-w-0 space-y-4 text-sm">
     <label className="block font-medium">Activity<select aria-label="Activity" className={input} value={form.operation} onChange={e=>update("operation",e.target.value as Action)}>{Object.entries(actions).filter(([action])=>!setup||action==="starting").map(([action,label])=><option key={action} value={action}>{label}</option>)}</select></label>
     <div className="grid grid-cols-2 gap-3"><label className="min-w-0 font-medium">Feed type<select aria-label="Feed type" className={input} value={form.type} onChange={e=>update("type",e.target.value)}>{FEED_TYPES.map(type=><option key={type} value={type}>{type[0].toUpperCase()+type.slice(1)}</option>)}</select></label><label className="min-w-0 font-medium">Source<select aria-label="Source" className={input} value={form.source} onChange={e=>update("source",e.target.value)}><option value="local">Local</option><option value="foreign">Foreign</option></select></label></div>
     <label className="block font-medium">Activity date<input type="date" max={farmDateToday()} className={input} value={form.date} onChange={e=>update("date",e.target.value)}/></label>
@@ -65,6 +79,6 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
     <label className="block font-medium">{form.operation==="problem"?"Explain the count problem":"Notes (optional)"}<textarea aria-label={form.operation==="problem"?"Explain the count problem":"Notes (optional)"} className={input} rows={2} maxLength={2000} value={form.notes} onChange={e=>update("notes",e.target.value)}/></label>
     {form.operation!=="problem"&&<label className="flex min-h-11 items-center gap-3"><input type="checkbox" className="h-5 w-5 shrink-0" checked={form.review} onChange={e=>update("review",e.target.checked)}/>Ask Bimbo to review this record (optional)</label>}
    </fieldset>
-  </div><DialogFooter className="shrink-0 gap-2"><button className="min-h-11 rounded-lg border px-4 text-sm" disabled={busy} onClick={()=>onOpenChange(false)}>Close</button><button className="min-h-11 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white disabled:opacity-50" disabled={busy||(!pending&&form.operation==="starting"&&(!!countError||countLoading))} onClick={()=>void save()}>{busy?"Saving…":pending?"Retry saved entry":"Save feed record"}</button></DialogFooter>
+  </div><DialogFooter className="shrink-0 gap-2"><button className="min-h-11 rounded-lg border px-4 text-sm" disabled={busy} onClick={()=>onOpenChange(false)}>Close</button><button className="min-h-11 rounded-lg bg-emerald-800 px-4 text-sm font-semibold text-white disabled:opacity-50" disabled={busy||storageFault||restoredKey!==key||(!pending&&form.operation==="starting"&&(!!countError||countLoading))} onClick={()=>void save()}>{busy?"Saving…":pending?"Retry saved entry":"Save feed record"}</button></DialogFooter>
  </DialogContent></Dialog>;
 }

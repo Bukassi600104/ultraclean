@@ -12,3 +12,13 @@ const growth={...data,batches:[{...data.batches[0],laying_hens:false,movement_da
 assert.equal(batchPerformance(growth).batches[0].feed_conversion_estimate,1);
 assert.equal(batchPerformance({...growth,batches:[{...growth.batches[0],movement_dates:['2026-10-29']}]}).batches[0].feed_conversion_estimate,null);
 console.log('PASS measured feed conversion requires a complete window and unchanged population');
+
+const newGroup={...growth,from:'2026-10-01',batches:[{...growth.batches[0],expected_dates:['2026-10-28','2026-10-29','2026-10-30']}]};
+const measured=batchPerformance(newGroup).batches[0];
+assert.equal(measured.expected_days,3,'Days before stocking are not missing manager records');
+assert.equal(measured.feed_kg,15);
+assert.deepEqual(measured.trend.map(row=>row.sample_average_kg),[2,null,3],'Unknown sample weights stay gaps');
+assert.equal(batchPerformance({...newGroup,records:growth.records.slice(1)}).batches[0].feed_kg,null,'A genuinely missing stocked day remains incomplete');
+assert.equal(batchPerformance({...newGroup,batches:[{...newGroup.batches[0],expected_dates:[]}],records:[]}).batches[0].expected_days,0);
+assert.equal(batchPerformance({...newGroup,batches:[{...newGroup.batches[0],expected_dates:[]}],records:[]}).batches[0].feed_kg,null,'Unstocked groups do not invent measured zero feeding');
+console.log('PASS genuine stocking-window completeness and sampled-weight trend');

@@ -6,6 +6,7 @@ import {requestManagerScope,managerReadError} from '@/lib/manager-read-api';
 import {readManagerRecords} from '@/lib/manager-periods';
 import {withManagerWrite,managerRpc} from '@/lib/manager-write-api';
 import {farmErrorResponse} from '@/lib/farm-v2';
+import {sumMoney,subtractMoney} from '@/lib/money';
 import {batchWriteSchema} from '@/lib/farm-batches';
 
 export const runtime='nodejs';
@@ -14,6 +15,27 @@ export async function GET(request:Request){
  try{
   const scope=await requestManagerScope(request,'farm');
   const params=new URL(request.url).searchParams;
+  if(params.get('resource')==='availability'){
+   await requireAdmin();
+   const id=z.string().uuid().safeParse(params.get('batch_id'));
+   if(!id.success)return NextResponse.json({error:'Choose a farm group'},{status:400});
+   const db=createServerClient();if(!db)return farmErrorResponse({code:'503',message:'Stock availability unavailable'});
+   const batch=await db.from('farm_batches').select('id,product,stock_group_id').eq('id',id.data).maybeSingle();
+   if(batch.error)return farmErrorResponse(batch.error);
+   if(!batch.data)return NextResponse.json({error:'Farm group not found'},{status:404});
+   const balances=await db.rpc('farm_livestock_balances');if(balances.error)return farmErrorResponse(balances.error);
+   const quantities:string[]=[];
+   for(let page=0;;page++){
+    let query=db.from('farm_batch_movements').select('quantity,batch:farm_batches!inner(product,stock_group_id)').eq('batch.product',batch.data.product);
+    query=batch.data.stock_group_id?query.eq('batch.stock_group_id',batch.data.stock_group_id):query.is('batch.stock_group_id',null);
+    const rows=await query.order('id').range(page*500,page*500+499);
+    if(rows.error)return farmErrorResponse(rows.error);
+    quantities.push(...(rows.data||[]).map(row=>String(row.quantity)));
+    if((rows.data?.length||0)<500)break;
+   }
+   const balance=(balances.data as {id:string|null;product:string;quantity:string|number}[]).find(row=>row.product===batch.data!.product&&(row.id||null)===(batch.data!.stock_group_id||null));
+   return NextResponse.json({available:subtractMoney(String(balance?.quantity??0),sumMoney(quantities)),as_of:new Date().toISOString()},{headers:{'Cache-Control':'private, no-store'}});
+  }
   const query=querySchema.safeParse({resource:params.get('resource')||'farm_batches',page:params.get('page')||0,limit:params.get('limit')||100});
   if(!query.success)return NextResponse.json({error:'Invalid batch filters'},{status:400});
   const {resource,page,limit}=query.data;

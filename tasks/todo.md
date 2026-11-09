@@ -325,13 +325,21 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Sample-aligned navigation and layouts; preserve all existing history.
 - [x] Feed rejection recovery and resolved funding-review synchronization.
 - [x] Sales/payment status, partial receipts and expense history/reconciliation.
-- [ ] Apply rehearsed audited cancellation of the three confirmed test requests and linked test purchase in production.
+- [x] Apply rehearsed audited cancellation of the three confirmed test requests and linked test purchase in production (verified in prior release evidence).
 - [x] Guided genuine setup, clear assignments, safe retry and audited reassignment.
 - [x] Daily logs, Health and species-relevant performance.
 - [x] Persistent report filters, readable analytics, bounded loading and reporting dates.
 - [x] Offline/update compatibility and recovery diagnostics.
 - [x] Isolated journey tests, preservation comparison, lint/types/build.
-- [ ] Coordinated GitHub/database/Vercel release and exact live verification. Walkthrough prepared in docs/releases/2026-11-10-workflow-recovery.md.
+- [x] Coordinated GitHub/database/Vercel release and exact live verification (prior release cfcd8e1). Walkthrough prepared in docs/releases/2026-11-10-workflow-recovery.md.
 - Bimbo confirmed all three old requests were tests; payments show date/invoice/customer/paid/balance; use supplied sample. Unidentified historical credit corrections remain excluded. Paid login-protection activation remains on hold.
 
 - [x] November 9 additional feedback: route Farm Add Transfer through named recipient/manager-period funds workflow; show real recipient or attribution gap in history, preserve earlier balances.
+- November 10 audit completion (approved implementation and production release)
+  - [x] Repair feed count decision recovery, unreadable saved entries and incompatible opening selection; add reproductions.
+  - [x] Restore saved transfer details, manager-scoped transfer access and receipt balances.
+  - [x] Preserve performance drilldown filters; correct genuine reporting interval and show sampled-weight trend.
+  - [x] Complete compact Daily Report/Today, desktop Health schedule, stock availability and reviewer names using the approved reference.
+  - [x] Keep report visible after clipboard failure; verify responsive layouts and existing workflows.
+  - [x] Run targeted regression tests, lint, TypeScript and production build; review preservation scope.
+  - Release authorized: verify the pushed commit and Vercel domains after promotion; final evidence is recorded in private audit-completion-2026-11-10/verified-live-release.json and the delivery message.

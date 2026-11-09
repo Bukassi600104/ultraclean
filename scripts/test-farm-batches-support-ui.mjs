@@ -18,6 +18,7 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[],has_more:false};
  if(req.method()==='POST'){posts.push(req.postDataJSON());body={data:{id}};}
+ else if(url.pathname==='/api/farm/batches'&&url.searchParams.get('resource')==='availability')body={available:'12',as_of:'2026-11-10T12:00:00Z'};
  else if(url.pathname==='/api/farm/batches')body={data:url.searchParams.get('resource')==='farm_sites'?[{id,name:'Actual site'}]:[{id,name:'Actual flock',site_id:id,product:'chicken',kind:'flock',stock_group_id:null,archived_at:null}],has_more:false};
  else if(url.pathname==='/api/farm/batch-records')body={batches:[{id,quantity_exact:'20'}]};
  else if(url.pathname==='/api/farm/support-access')body={accounts:[{id,name:'Assigned accountant',role:'farm_accountant',suspended:false}],grants:[],batches:[],periods:[{id,name:'Actual manager',starts_on:'2026-10-30'}],recommendations:[]};
@@ -27,7 +28,7 @@ try{
  for(const width of [375,390,768,1440]){
  await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port);
  await page.getByRole('heading',{name:'Actual flock'}).waitFor();
- await page.getByRole('button',{name:'Allocate existing stock',exact:true}).click();await page.getByRole('dialog').waitFor();
+ await page.getByRole('button',{name:'Allocate existing stock',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByText('12 animals of this type are not yet placed in a pond, pen, flock or herd.',{exact:false}).waitFor();
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const rect=await page.getByRole('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=width+1);
  await page.getByLabel('Number of animals').fill('5');await page.getByLabel('Reason',{exact:true}).fill('Assign existing actual stock');await page.getByRole('button',{name:'Save change',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
  assert.equal(posts.at(-1).operation,'allocate');assert.equal(posts.at(-1).payload.quantity,5);
