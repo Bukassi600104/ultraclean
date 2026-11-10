@@ -26,3 +26,16 @@ console.log('PASS 27 dashboard parent routes, home and single active destination
 
 const farmDestinations=["/dashboard","/dashboard/farm/control","/dashboard/farm/supplies"];
 for(const route of ["sales","expenses","inventory","today","configuration","support"])assert.deepEqual(farmDestinations.filter(href=>isDashboardDestinationActive("/dashboard/farm/"+route,href,farmDestinations)),["/dashboard/farm/control"]);
+
+const {farmPerformanceBackLink}=mod.exports;
+const filters={from:'2026-10-01',to:'2026-11-10',period_id:'period',site_id:'site',batch_id:'batch'};
+for(const [page,destination] of [['/dashboard/farm/today','/dashboard/farm/performance'],['/manager/today','/manager/performance'],['/today','/performance']]){
+ const query=new URLSearchParams({...filters,return_to:destination,date:'2026-11-09'}),back=farmPerformanceBackLink(page,query.toString()),url=new URL(back.href,'https://example.invalid');
+ assert.equal(back.label,'Back to Batch Performance');assert.equal(url.pathname,destination);assert.deepEqual(Object.fromEntries(url.searchParams),filters);
+ for(const invalid of ['https://evil.invalid/performance','//evil.invalid/performance','javascript:alert(1)','/dashboard/farm/performance?x=1','/dashboard/farm/performance#x','/manager/../performance','/property','/performance/','\\evil.invalid'])assert.equal(farmPerformanceBackLink(page,new URLSearchParams({return_to:invalid}).toString()),null);
+}
+assert.equal(farmPerformanceBackLink('/dashboard/farm/today','return_to=/manager/performance'),null);
+assert.equal(farmPerformanceBackLink('/manager/today','return_to=/dashboard/farm/performance'),null);
+assert.equal(farmPerformanceBackLink('/dashboard/farm/health','return_to=/dashboard/farm/performance'),null);
+assert.equal(farmPerformanceBackLink('/manager/today',''),null);
+console.log('PASS performance return links preserve scope and reject external, cross-role and unrelated destinations');

@@ -1,13 +1,13 @@
 'use client';
 import {useEffect,useState} from 'react';
 import Image from 'next/image';
-import {ReportFields} from '@/components/manager/FarmOperations';
+import {ReportFields,validReportDraft} from '@/components/manager/FarmOperations';
 import type {ReportSections} from '@/lib/farm-reports';
 import {createClient} from '@/lib/supabase/client';
 import {FARM_WORKSPACE_POINTER,matchingWorkspace,farmReportDraftKey,preparedWorkspace,sameWorkspace,type PreparedFarmWorkspace} from '@/lib/farm-offline-workspace';
-import {getPendingItems,savePending} from '@/lib/offline-storage';
+import {getPendingItems,savePending,getSubmissionStatus,getQuarantinedCount} from '@/lib/offline-storage';
 import {getFarmMedia} from '@/lib/farm-offline-media';
-import {syncManagerPending} from '@/lib/manager-offline-sync';
+import {syncManagerPending,checkFarmSubmission} from '@/lib/manager-offline-sync';
 type Draft={form:{report_date:string;sections:ReportSections;decision_required:boolean};selected?:{id:string;revision:number;status:string}|null;mediaIds?:string[];requestId?:string;queuedRequest?:string;[key:string]:unknown};
 
 export function FarmOfflineWorkspace(){
@@ -23,7 +23,8 @@ export function FarmOfflineWorkspace(){
    if(!prepared){lock();return;}
    const saved=JSON.parse(localStorage.getItem(farmReportDraftKey(prepared.identity))||'null') as Draft|null;
    setWorkspace(prepared);
-   if(saved?.form?.sections&&typeof saved.form.report_date==='string'){const queued=saved.requestId&&getPendingItems(prepared.identity).some(item=>item.requestId===saved.requestId);setDraft(queued?{...saved,queuedRequest:saved.requestId}:saved);setMessage('Saved on this device. Nothing here is sent until the server confirms it.');
+   if(saved&&!validReportDraft(saved))throw Error('Saved report needs recovery');
+   if(saved){const queued=saved.requestId&&(getPendingItems(prepared.identity).some(item=>item.requestId===saved.requestId)||getSubmissionStatus(prepared.identity,saved.requestId)==='sent'||getQuarantinedCount(prepared.identity)>0);setDraft(queued?{...saved,queuedRequest:saved.requestId}:saved);setMessage('Saved on this device. Nothing here is sent until the server confirms it.');
     const media=await getFarmMedia(prepared.identity);if(!alive)return;
     setPhotos(media.filter(item=>saved.mediaIds?.includes(item.id)).map(item=>{const url=URL.createObjectURL(item.blob);urls.push(url);return {id:item.id,url};}));
    }else setMessage('No prepared daily report on this device. Reconnect to prepare a report.');
@@ -42,8 +43,13 @@ export function FarmOfflineWorkspace(){
    const scope=await response.json(),verified=preparedWorkspace(scope,data.session.user.id);
    if(!verified||!sameWorkspace(verified.identity,workspace.identity))throw Error('Your account or responsibility period changed. Saved entries are retained for review.');
    const scopedSend:typeof fetch=(input,init={})=>{const headers=new Headers(init.headers);headers.set('X-Manager-Actor',scope.actorId);headers.set('X-Manager-Period',scope.periodId||'legacy');return fetch(input,{...init,headers,cache:'no-store'});};
-   await syncManagerPending(workspace.identity,{send:scopedSend,isCurrent:()=>localStorage.getItem(FARM_WORKSPACE_POINTER)===JSON.stringify(workspace)});
-   const pending=getPendingItems(workspace.identity);setMessage(pending.length?`${pending.length} saved entries remain. Open the app to review any entries needing attention.`:'Server confirmed all queued entries. Reopen the app to view sent records.');
+   const isCurrent=()=>localStorage.getItem(FARM_WORKSPACE_POINTER)===JSON.stringify(workspace);
+   await syncManagerPending(workspace.identity,{send:scopedSend,isCurrent});
+   if(!isCurrent())throw Error('Open the original workspace to check saved work.');
+   const pending=getPendingItems(workspace.identity),requestId=draft?.queuedRequest||draft?.requestId;
+   let status=requestId?getSubmissionStatus(workspace.identity,requestId):'unknown';
+   if(requestId&&status!=='sent'&&!pending.some(item=>item.requestId===requestId))status=await checkFarmSubmission(workspace.identity,requestId,'report',{send:scopedSend,isCurrent});
+   setMessage(status==='sent'?'The server confirmed this report. Reopen the app to view its saved record.':getQuarantinedCount(workspace.identity)?'Saved work needs attention. Its original contents remain on this device. Open the app for recovery.':pending.length?`${pending.length} saved entries remain. Open the app to review any entries needing attention.`:'Confirmation unavailable. Open the app to check saved work before entering it again.');
   }catch(error){setMessage(error instanceof Error?error.message:'Unable to send. Saved work remains on this device.');}finally{setBusy(false);}
  }
  useEffect(()=>{

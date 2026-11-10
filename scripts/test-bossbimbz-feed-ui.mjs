@@ -20,12 +20,12 @@ let enabled=true;await page.route('**/api/operations/manager-context*',r=>r.fulf
 const faults=[],calls=[];page.on('pageerror',error=>faults.push(error.message));
 
 const id='00000000-0000-4000-8000-000000000001';
-let stock={id,feed_type:'fish',feed_source:'local',current_bags:null,initialized_at:null,opening_date:null,revision:0,uncounted_receipts:[]},movements=[],daily=[],failDaily=false,failPhysical=false,failRead=false,rejectDaily=false;const receipts=new Map();let reviewProblems=[],rejectReview=false,failReview=false;
+let stock={id,feed_type:'fish',feed_source:'local',current_bags:null,initialized_at:null,opening_date:null,revision:0,uncounted_receipts:[]},movements=[],daily=[],failDaily=false,failPhysical=false,failRead=false,rejectDaily=false;const receipts=new Map();let reviewProblems=[],rejectReview=false,failReview=false,extraStocks=[],failDailySource="",physicalReplyOverrides=[];
 await page.route('**/api/farm/**',async route=>{
  const req=route.request(),url=new URL(req.url()),method=req.method(),body=req.postDataJSON()??{},retryId=req.headers()['x-request-id'];calls.push({method,body,requestId:retryId,path:url.pathname});let result;
  if(method==='GET'){
   if(failRead)return route.fulfill({status:503,json:{error:'Feed inventory unavailable'}});
-  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:movements,total:movements.length}:{data:[stock],total:1,problems:reviewProblems}:{data:daily,total:daily.length};
+  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:movements,total:movements.length}:{data:[stock,...extraStocks],total:1+extraStocks.length,problems:reviewProblems}:{data:daily,total:daily.length};
  }else if(receipts.has(retryId)){result=receipts.get(retryId);}
  else if(body.operation==='review_problem'){
   if(rejectReview){rejectReview=false;return route.fulfill({status:409,json:{code:'40001',error:'Feed changed since this check. Ask the manager to confirm the current count'}});}
@@ -37,8 +37,9 @@ await page.route('**/api/farm/**',async route=>{
   stock={...stock,current_bags:operation==='starting'?p.bags:stock.current_bags===null?null:stock.current_bags+delta,initialized_at:operation==='starting'?'2026-10-28T12:00:00Z':stock.initialized_at,opening_date:operation==='starting'?p.date:stock.opening_date,revision:stock.revision+1};
   const activity={id:crypto.randomUUID(),stock_id:id,kind:operation,bags:p.bags,activity_date:p.date,recorded_at:'2026-10-28T12:00:00Z',actor_name:'Recorded manager',notes:p.notes||null,resulting_bags:stock.current_bags,feed_type:'fish',feed_source:'local',review_status:p.request_review?'pending':'not_requested',stock_revision:stock.revision};movements.push(activity);result={data:{stock,activity}};receipts.set(retryId,result);if(failPhysical){failPhysical=false;await route.abort('failed');return;}
  }else{
-  if(rejectDaily){rejectDaily=false;return route.fulfill({status:409,json:{code:'23514',error:'Record the actual starting bag count first'}});}stock.current_bags-=body.bags_opened;daily.push({...body,id:crypto.randomUUID()});if(body.bags_opened)movements.push({id:crypto.randomUUID(),stock_id:id,kind:'opened',bags:body.bags_opened,activity_date:body.date,recorded_at:'2026-10-28T12:01:00Z',actor_name:'Recorded manager',resulting_bags:stock.current_bags,feed_type:'fish',feed_source:'local',daily_feed_id:daily.at(-1).id});result={data:daily.at(-1)};receipts.set(retryId,result);if(failDaily){failDaily=false;await route.abort('failed');return;}
+  if(rejectDaily){rejectDaily=false;return route.fulfill({status:409,json:{code:'23514',error:'Record the actual starting bag count first'}});}stock.current_bags-=body.bags_opened||0;daily.push({...body,id:crypto.randomUUID()});if(body.bags_opened)movements.push({id:crypto.randomUUID(),stock_id:id,kind:'opened',bags:body.bags_opened,activity_date:body.date,recorded_at:'2026-10-28T12:01:00Z',actor_name:'Recorded manager',resulting_bags:stock.current_bags,feed_type:'fish',feed_source:'local',daily_feed_id:daily.at(-1).id});result={data:daily.at(-1)};receipts.set(retryId,result);if(failDaily||failDailySource===body.feed_source){failDaily=false;failDailySource='';await route.abort('failed');return;}
  }
+ if(method==='POST'&&url.pathname.includes('feed-stock')&&['starting','received','opened','problem'].includes(body.operation)&&physicalReplyOverrides.length)result=physicalReplyOverrides.shift();
  await route.fulfill({status:method==='POST'?201:200,json:result});
 });
 let checks=0;
@@ -103,6 +104,81 @@ try{
   assert.equal(await page.getByRole('dialog').getByRole('combobox').isDisabled(),true);assert.equal(await page.getByRole('button',{name:'Save decision',exact:true}).isDisabled(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key),decisionKey),raw);checks+=3;
  }
  await page.evaluate(({key,decision})=>localStorage.setItem(key,JSON.stringify(decision)),{key:decisionKey,decision:validDecision});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved count decision',exact:true}).click();await page.getByRole('button',{name:'Retry saved count decision',exact:true}).waitFor({state:'hidden'});const legacyDecision=calls.filter(c=>c.body.operation==='review_problem').at(-1);assert.equal(legacyDecision.requestId,validDecision.id);assert.deepEqual(legacyDecision.body,validDecision.body);checks+=2;
+ console.log('Existing feed coverage complete; testing final reliability failures.');
+ // Failed local acknowledgement cannot release a retry identifier, including partial local/foreign saves.
+ const dailyKey='primefield-daily-feed-retry:00000000-0000-4000-8000-000000000001:period:admin';
+ await page.evaluate(key=>{localStorage.removeItem(key);localStorage.removeItem(key+':draft');},dailyKey);
+ await page.goto(origin+'/?screen=daily',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();
+ for(const reload of [false,true]){
+  const before=daily.length,previousStock=stock.current_bags;
+  await page.locator('input[type=number]').nth(0).fill('0.5');await page.getByLabel('Local new bags opened',{exact:true}).fill('1');
+  await page.evaluate(key=>{const original=Storage.prototype.setItem;window.restoreFeedStorage=()=>{Storage.prototype.setItem=original;};Storage.prototype.setItem=function(k,v){if(k===key&&v==='[]'){Storage.prototype.setItem=original;throw Error('Local confirmation could not be saved');}return original.call(this,k,v);};},dailyKey);
+  await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.getByRole('alert').filter({hasText:'Local confirmation could not be saved'}).waitFor();
+  assert.equal(daily.length,before+1);assert.equal(stock.current_bags,previousStock-1);const original=calls.filter(c=>c.path.includes('daily-feed')&&c.method==='POST').at(-1);
+  assert.equal(JSON.parse(await page.evaluate(key=>localStorage.getItem(key),dailyKey))[0].id,original.requestId);
+  if(reload){await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).waitFor();}
+  await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).click();await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();
+  const retried=calls.filter(c=>c.path.includes('daily-feed')&&c.method==='POST').at(-1);assert.equal(retried.requestId,original.requestId);assert.deepEqual(retried.body,original.body);assert.equal(daily.length,before+1);assert.equal(stock.current_bags,previousStock-1);checks+=7;
+ }
+ const bothBefore=daily.length,bothStock=stock.current_bags;
+ await page.locator('input[type=number]').nth(0).fill('0.25');await page.locator('input[type=number]').nth(1).fill('0.75');await page.getByLabel('Local new bags opened',{exact:true}).fill('1');await page.getByLabel('Foreign new bags opened',{exact:true}).fill('1');failDailySource='foreign';
+ await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).waitFor();await page.getByRole('alert').waitFor();
+ const foreignOriginal=calls.filter(c=>c.path.includes('daily-feed')&&c.method==='POST').at(-1);const retained=JSON.parse(await page.evaluate(key=>localStorage.getItem(key),dailyKey));assert.equal(retained.length,1);assert.equal(retained[0].payload.feed_source,'foreign');assert.equal(daily.length,bothBefore+2);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).click();await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();
+ const foreignRetry=calls.filter(c=>c.path.includes('daily-feed')&&c.method==='POST').at(-1);assert.equal(foreignRetry.requestId,foreignOriginal.requestId);assert.deepEqual(foreignRetry.body,foreignOriginal.body);assert.equal(daily.length,bothBefore+2);assert.equal(stock.current_bags,bothStock-2);checks+=7;
+ // Malformed pending arrays and drafts cannot be overwritten or sent. Legacy optional fields remain valid.
+ const pendingPayload={date:new Date().toISOString().slice(0,10),feed_type:'fish',num_bags:0.25,feed_source:'local'};
+ for(const raw of ['', '{broken','{}','null',JSON.stringify([{id:'not-an-id',payload:pendingPayload}]),JSON.stringify([{id:crypto.randomUUID(),payload:{...pendingPayload,date:'2026-02-31'}}]),JSON.stringify([{id:crypto.randomUUID(),payload:{...pendingPayload,bags_opened:'1'}}]),JSON.stringify([{id:crypto.randomUUID(),payload:{...pendingPayload,opening_activity_id:'unknown'}}])]){
+  await page.evaluate(({key,raw})=>{localStorage.setItem(key,raw);localStorage.removeItem(key+':draft');},{key:dailyKey,raw});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('alert').filter({hasText:'saved feed entry could not be read'}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).isDisabled(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key),dailyKey),raw);checks+=2;
+ }
+ for(const raw of ['{broken','{}','null',JSON.stringify({date:'2026-02-31',feedType:'fish',notes:'',localBags:'1',foreignBags:''}),JSON.stringify({date:pendingPayload.date,feedType:'fish',notes:[],localBags:'1',foreignBags:''})]){
+  await page.evaluate(({key,raw})=>{localStorage.setItem(key,'[]');localStorage.setItem(key+':draft',raw);},{key:dailyKey,raw});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('alert').filter({hasText:'saved feed entry could not be read'}).waitFor();assert.equal(await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).isDisabled(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key+':draft'),dailyKey),raw);checks+=2;
+ }
+ const legacySaved={id:crypto.randomUUID(),payload:{date:pendingPayload.date,feed_type:'fish',num_bags:0.25,notes:null}};
+ await page.evaluate(({key,saved})=>{localStorage.setItem(key,JSON.stringify([saved]));localStorage.removeItem(key+':draft');},{key:dailyKey,saved:legacySaved});await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).click();await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();const legacyPost=calls.filter(c=>c.method==='POST'&&c.path.includes('daily-feed')).at(-1);assert.equal(legacyPost.requestId,legacySaved.id);assert.deepEqual(legacyPost.body,legacySaved.payload);checks+=2;
+ // Each changed count context requires a fresh inclusion answer; unrelated notes keep it.
+ extraStocks=[{...stock,id:crypto.randomUUID(),feed_source:'foreign',opening_date:pendingPayload.date},{...stock,id:crypto.randomUUID(),feed_type:'goat',opening_date:pendingPayload.date}];stock.opening_date=pendingPayload.date;
+ await page.evaluate(()=>localStorage.removeItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin'));await page.goto(origin,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();await page.getByLabel('Activity',{exact:true}).selectOption('received');await page.getByLabel('Number of whole bags',{exact:true}).fill('1');
+ const inclusion=page.getByLabel(/Were these bags already included/);
+ await inclusion.selectOption('yes');await page.getByLabel('Notes (optional)',{exact:true}).fill('Same receipt');assert.equal(await inclusion.inputValue(),'yes');checks++;
+ for(const change of ['source','type','date','operation']){
+  await inclusion.selectOption('yes');
+  if(change==='source')await page.getByLabel('Source',{exact:true}).selectOption('foreign');
+  if(change==='type'){await page.getByLabel('Source',{exact:true}).selectOption('local');await inclusion.selectOption('yes');await page.getByLabel('Feed type',{exact:true}).selectOption('goat');}
+  if(change==='date')await page.getByLabel('Activity date',{exact:true}).fill(new Date(Date.now()-86400000).toISOString().slice(0,10));
+  if(change==='operation'){await page.getByLabel('Activity',{exact:true}).selectOption('opened');await page.getByLabel('Activity',{exact:true}).selectOption('received');}
+  assert.equal(await inclusion.inputValue(),'');const sent=calls.filter(c=>c.method==='POST').length;await page.getByRole('button',{name:'Save feed record',exact:true}).click();await page.getByRole('alert').filter({hasText:'Confirm whether these bags'}).waitFor();assert.equal(calls.filter(c=>c.method==='POST').length,sent);checks+=2;
+ }
+ await page.getByRole('button',{name:'Close',exact:true}).first().click();
+ // Clearing an editable date is a recoverable unfinished draft, never a corrupt retry.
+ await page.getByRole('button',{name:'Add feed record',exact:true}).click();
+ await page.getByLabel('Activity date',{exact:true}).fill('');
+ await page.getByLabel('Notes (optional)',{exact:true}).fill('Count date still to be chosen');
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();
+ assert.equal(await page.getByLabel('Activity',{exact:true}).isEnabled(),true);
+ assert.equal(await page.getByLabel('Activity date',{exact:true}).inputValue(),'');
+ assert.equal(await page.getByLabel('Notes (optional)',{exact:true}).inputValue(),'Count date still to be chosen');checks+=3;
+ await page.getByRole('button',{name:'Close',exact:true}).first().click();
+ // A successful HTTP code without the persisted stock/activity receipt must retain the exact retry.
+ const badReplies=[{},null,{data:{stock:{id},activity:{id:'not-an-id'}}},{data:{activity:{id:crypto.randomUUID()}}}];
+ for(const [index,operation] of ['starting','received','opened','problem'].entries()){
+  const form={...savedForm,operation,bags:operation==='starting'?'20':'1',notes:operation==='problem'?'Physical count differs':'',included:operation==='received'?'no':''};
+  await page.evaluate(form=>localStorage.setItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin',JSON.stringify({form,pending:null})),form);
+  if(operation==='starting')stock={...stock,initialized_at:null,current_bags:null,opening_date:null,uncounted_receipts:[]};
+  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();
+  const before=movements.length;physicalReplyOverrides=[badReplies[index]];
+  await page.getByRole('button',{name:'Save feed record',exact:true}).click();
+  await page.getByRole('alert').filter({hasText:'server has not confirmed this feed entry'}).waitFor();
+  assert.equal(await page.getByLabel('Activity',{exact:true}).isDisabled(),true);
+  const original=calls.filter(call=>call.method==='POST').at(-1);
+  const pending=await page.evaluate(()=>JSON.parse(localStorage.getItem('primefield-feed-record:00000000-0000-4000-8000-000000000001:period:admin')).pending);
+  assert.equal(pending.id,original.requestId);assert.deepEqual(pending.body,original.body);assert.equal(movements.length,before+1);
+  await page.reload({waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();
+  await page.getByRole('button',{name:'Retry saved entry',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+  const retry=calls.filter(call=>call.method==='POST').at(-1);
+  assert.equal(retry.requestId,original.requestId);assert.deepEqual(retry.body,original.body);assert.equal(movements.length,before+1);checks+=7;
+ }
  assert.deepEqual(faults,[]);checks++;
  console.log(`PASS ${checks} actual feed UI checks: manager-led starting count, optional review, CEO observation, partial feeding, earlier opening linkage, retry identity, history, storage failure, error isolation, centred dialog/focus and responsive layouts. Screenshots: ${artifacts}`);
-}catch(error){console.error({faults,body:await page.locator('body').innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+}catch(error){console.error({faults,body:await page.locator('body').innerText().catch(()=>'<browser unavailable>')});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

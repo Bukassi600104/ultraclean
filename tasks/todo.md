@@ -1,4 +1,6 @@
-# Bossbimbz operations expansion — active implementation plan
+# Bossbimbz operations — historical checkpoints and current release ledger
+
+Current status: see the final reliability goal at the end and `docs/releases/2026-11-10-final-reliability.md`. Earlier pending/local-only checkpoints record their original date; later released evidence supersedes them.
 
 Baseline: 574eee3f6358c03707adfb547deb9d289b1aeaf0 (released Primefield V2).
 Branch: bossbimbz-operations-expansion. Production remains untouched in this phase.
@@ -343,3 +345,14 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
   - [x] Keep report visible after clipboard failure; verify responsive layouts and existing workflows.
   - [x] Run targeted regression tests, lint, TypeScript and production build; review preservation scope.
   - Release authorized: verify the pushed commit and Vercel domains after promotion; final evidence is recorded in private audit-completion-2026-11-10/verified-live-release.json and the delivery message.
+
+## Final reliability goal — 10 November 2026
+- [x] Reproduce every final-audit finding and retain baseline evidence.
+- [x] Repair Daily Feed acknowledgement ordering, malformed saved entries and count-context resets.
+- [x] Add durable scoped acknowledgements and guarded read-only submission recovery; remove false Sent inference.
+- [x] Validate report/request saved state and preserve invalid originals.
+- [x] Restore parent reporting context; finish Health validation and single headings.
+- [x] Cross-reference entire approved workflow checklist and independently review changes.
+- [x] Complete isolated regression, lint, types, build and preservation verification.
+- Release execution is verified after this source commit is published. The exact GitHub SHA, Vercel promotion, live checks and final preservation result are recorded in the private final-reliability-2026-11-10/verified-live-release.json receipt; this source checklist does not preclaim deployment.
+- Genuine farm setup and physical-phone acceptance remain with farm staff; no invented records or deferred paid security activation.

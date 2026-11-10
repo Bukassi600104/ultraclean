@@ -22,5 +22,5 @@ assert.equal(sent.length,1);checks++;assert.equal(sent[0][1].headers['X-Manager-
 assert.equal(store.getPendingItems(a).length,1,'Lost/stale response must retain the original request');checks++;
 sent=[];await syncManagerPending(b,{isCurrent:()=>true,send:async()=>{sent.push(1);return Response.json({},{status:201})}});assert.equal(sent.length,0);checks++;
 assert.ok(map.has('farm_pending_legacy'));checks++;
-await syncManagerPending(a,{isCurrent:()=>true,send:async()=>Response.json({},{status:201})});assert.equal(store.getPendingItems(a).length,0);checks++;
+await syncManagerPending(a,{isCurrent:()=>true,send:async()=>Response.json({data:[{id:crypto.randomUUID()}]},{status:201})});assert.equal(store.getPendingItems(a).length,0);checks++;
 console.log(`PASS ${checks} offline identity checks: account/period boundaries, in-flight switch, retained unowned entries and safe retry`);

@@ -14,6 +14,9 @@ type Saved={id:string;body:Record<string,unknown>};
 const isRecord=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value);
 const isId=(value:unknown)=>typeof value==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function isDate(value:unknown){if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+"T12:00:00Z");return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;}
+function validForm(value:unknown):value is Form{
+ return isRecord(value)&&typeof value.operation==="string"&&Object.prototype.hasOwnProperty.call(actions,value.operation)&&FEED_TYPES.includes(value.type as typeof FEED_TYPES[number])&&(value.source==="local"||value.source==="foreign")&&(value.date===""||isDate(value.date))&&["bags","notes"].every(key=>typeof value[key]==="string")&&typeof value.review==="boolean"&&typeof value.included==="string"&&["","yes","no"].includes(value.included)&&isRecord(value.inclusions)&&Object.entries(value.inclusions).every(([key,answer])=>isId(key)&&typeof answer==="string"&&["","yes","no"].includes(answer));
+}
 function validSavedRetry(value:unknown){
  if(!isRecord(value)||!isId(value.id)||!isRecord(value.body)||typeof value.body.operation!=="string"||!Object.prototype.hasOwnProperty.call(actions,value.body.operation)||!isRecord(value.body.payload))return false;
  const p=value.body.payload;
@@ -26,14 +29,14 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
  const [form,setForm]=useState<Form>({operation:setup||!stocks.find(s=>s.feed_type==='fish'&&s.feed_source==='local')?.initialized_at?"starting":"opened",type:"fish",source:"local",date:farmDateToday(),bags:"",notes:"",review:false,included:"",inclusions:{}}),[pending,setPending]=useState<Saved|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[countRows,setCountRows]=useState(stocks),[countError,setCountError]=useState(""),[countLoading,setCountLoading]=useState(false);
  const lock=useRef(false);const [restoredKey,setRestoredKey]=useState<string|null>(null),[storageFault,setStorageFault]=useState(false);
  useEffect(()=>{setRestoredKey(null);setStorageFault(false);if(!key)return;try{const raw=localStorage.getItem(key),saved=raw===null?null:JSON.parse(raw);if(raw!==null){
-   if(!saved||typeof saved!=="object"||!saved.form||!Object.prototype.hasOwnProperty.call(actions,saved.form.operation)||!["type","source","date","bags","notes","included"].every(field=>typeof saved.form[field]==="string")||typeof saved.form.review!=="boolean"||!saved.form.inclusions||typeof saved.form.inclusions!=="object"||Array.isArray(saved.form.inclusions)||Object.values(saved.form.inclusions).some(value=>typeof value!=="string"))throw Error("Invalid saved form");
+   if(!isRecord(saved)||!validForm(saved.form))throw Error("Invalid saved form");
    if(saved.pending!=null&&!validSavedRetry(saved.pending))throw Error("Invalid saved retry");
    setForm(saved.form);
   }setPending(saved?.pending??null);setRestoredKey(key);}catch{setStorageFault(true);setError("Your saved feed entry could not be read. It remains on this device for review. Do not enter it again; ask for help recovering it.");}},[key]);
  useEffect(()=>{if(!key||restoredKey!==key||storageFault)return;try{localStorage.setItem(key,JSON.stringify({form,pending}));}catch{setError("Device storage is unavailable. Your entry has not been sent.");}},[key,form,pending,restoredKey,storageFault]);
  useEffect(()=>{if(!open)return;let current=true;setCountLoading(true);setCountError("");send("/api/farm/feed-stock?date="+encodeURIComponent(form.date)).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||"Unable to check dated deliveries");if(current)setCountRows(b.data||[]);}).catch(e=>{if(current)setCountError(e.message);}).finally(()=>{if(current)setCountLoading(false);});return()=>{current=false;};},[open,form.date,send]);
  const selected=countRows.find(s=>s.feed_type===form.type&&s.feed_source===form.source),sameDay=(selected?.uncounted_receipts||[]).filter(r=>r.date===form.date);
- const update=<K extends keyof Form>(name:K,value:Form[K])=>setForm(old=>({...old,[name]:value}));
+ const update=<K extends keyof Form>(name:K,value:Form[K])=>{if(pending)return;setForm(old=>({...old,[name]:value,...(["type","source","date","operation"].includes(name)&&old[name]!==value?{included:"",inclusions:{}}:{})}));};
  async function save(){
   if(lock.current||!key||storageFault||restoredKey!==key)return;
   let saved=pending;
@@ -57,8 +60,10 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
     }
     throw Error(body.error||"Unable to confirm this feed entry. Retry the saved entry.");
    }
-   const held=form.operation==='starting'?JSON.parse(localStorage.getItem(key+':before-starting-count')||'null'):null;
-   const nextForm:Form=held?.form||{...form,bags:"",notes:"",review:false,included:"",inclusions:{}};
+   if(!isRecord(body)||!isRecord(body.data)||!isRecord(body.data.stock)||!isId(body.data.stock.id)||!isRecord(body.data.activity)||!isId(body.data.activity.id))throw Error("The server has not confirmed this feed entry. Retry the saved entry; do not enter it again.");
+   const heldRaw=form.operation==='starting'?localStorage.getItem(key+':before-starting-count'):null,held=JSON.parse(heldRaw===null?'null':heldRaw);
+   if(held!==null&&(!isRecord(held)||!validForm(held.form)))throw Error("Your earlier feed entry could not be read. It remains on this device for recovery; ask for help before entering it again.");
+   const nextForm:Form=held?{...held.form,included:"",inclusions:{}}:{...form,bags:"",notes:"",review:false,included:"",inclusions:{}};
    localStorage.setItem(key,JSON.stringify({form:nextForm,pending:null}));localStorage.removeItem(key+':before-starting-count');setPending(null);setForm(nextForm);onOpenChange(false);onSaved();
   }catch(e){setError((e as Error).message);}finally{setBusy(false);lock.current=false;}
  }
@@ -66,7 +71,7 @@ export function FeedRecordDialog({open,onOpenChange,stocks,onSaved,returnFocus}:
   <DialogHeader className="shrink-0 pr-12"><DialogTitle>Add feed record</DialogTitle><DialogDescription>Enter what actually happened. Bimbo sees the record automatically.</DialogDescription></DialogHeader>
   <div className="min-h-0 space-y-4 overflow-y-auto pr-1 text-slate-900">
    {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">{error}</p>}{pending&&<p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950">This entry is awaiting confirmation. Its date and values are kept for a safe retry. A closed date needs Bimbo&apos;s review.</p>}
-   {!pending&&!selected?.initialized_at&&form.operation!=="starting"&&<button type="button" disabled={busy||countLoading||storageFault||restoredKey!==key} className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>{try{if(key)localStorage.setItem(key+':before-starting-count',JSON.stringify({form,pending:null}));setForm(old=>({...old,operation:'starting',bags:'',inclusions:{}}));setError('');}catch{setError('Your saved entry could not be preserved. Restore device storage before recording the count.');}}}>Record starting count</button>}
+   {!pending&&!selected?.initialized_at&&form.operation!=="starting"&&<button type="button" disabled={busy||countLoading||storageFault||restoredKey!==key} className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>{try{if(key)localStorage.setItem(key+':before-starting-count',JSON.stringify({form,pending:null}));setForm(old=>({...old,operation:'starting',bags:'',included:'',inclusions:{}}));setError('');}catch{setError('Your saved entry could not be preserved. Restore device storage before recording the count.');}}}>Record starting count</button>}
    <fieldset disabled={busy||!!pending||storageFault||restoredKey!==key} className="min-w-0 space-y-4 text-sm">
     <label className="block font-medium">Activity<select aria-label="Activity" className={input} value={form.operation} onChange={e=>update("operation",e.target.value as Action)}>{Object.entries(actions).filter(([action])=>!setup||action==="starting").map(([action,label])=><option key={action} value={action}>{label}</option>)}</select></label>
     <div className="grid grid-cols-2 gap-3"><label className="min-w-0 font-medium">Feed type<select aria-label="Feed type" className={input} value={form.type} onChange={e=>update("type",e.target.value)}>{FEED_TYPES.map(type=><option key={type} value={type}>{type[0].toUpperCase()+type.slice(1)}</option>)}</select></label><label className="min-w-0 font-medium">Source<select aria-label="Source" className={input} value={form.source} onChange={e=>update("source",e.target.value)}><option value="local">Local</option><option value="foreign">Foreign</option></select></label></div>

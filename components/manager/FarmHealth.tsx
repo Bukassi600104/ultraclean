@@ -3,7 +3,7 @@ import {farmTimestamp} from "@/lib/farm-products";
 import {useEffect,useState} from 'react';import Link from 'next/link';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {useManagerFetch,useQueueIdentity} from '@/contexts/ManagerPeriodContext';import {useOfflineSync} from '@/hooks/useOfflineSync';import {queueIdentityKey,getPendingItems} from '@/lib/offline-storage';
-import {farmDateToday} from '@/lib/farm-products';import {healthSchema,type HealthData,type HealthTask} from '@/lib/farm-health';import {FarmPhotoPicker} from './FarmPhotoPicker';import {FarmRecordThread} from './FarmRecordThread';
+import {farmDateToday} from '@/lib/farm-products';import {healthSchema,healthLocalCompletionSchema,healthValidationMessage,type HealthData,type HealthTask} from '@/lib/farm-health';import {FarmPhotoPicker} from './FarmPhotoPicker';import {FarmRecordThread} from './FarmRecordThread';
 const field='mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm',button='inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-950 disabled:opacity-50';
 function HealthForm({operation,id,task,data,onSaved}:{operation:string;id?:string;task?:HealthTask;data:HealthData;onSaved:()=>void}){
  const identity=useQueueIdentity(),{submitOrQueue,isSyncing}=useOfflineSync(),key=identity?`farm-health-draft:${queueIdentityKey(identity)}:${operation}:${id||''}`:'';
@@ -13,7 +13,7 @@ function HealthForm({operation,id,task,data,onSaved}:{operation:string;id?:strin
  async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{
  const schedule={title:draft.title,instructions:draft.instructions,due_date:draft.due_date};
  const payload=operation==='schedule'?{...schedule,batch_id:draft.batch_id,period_id:draft.period_id}:operation==='amend'?{...schedule,expected_revision:task?.revision,reason:draft.reason}:operation==='cancel'?{expected_revision:task?.revision,reason:draft.reason}:operation==='complete'?{date:draft.date,notes:draft.notes,evidence_ids:draft.mediaIds}:{reason:draft.reason};
- const parsed=healthSchema.safeParse({operation,payload,...(id?{id}:{}),request_id:draft.request_id});if(!parsed.success)throw Error(parsed.error.issues[0]?.message||'Check this task');
+ const parsed=(operation==='complete'?healthLocalCompletionSchema:healthSchema).safeParse({operation,payload,...(id?{id}:{}),request_id:draft.request_id});if(!parsed.success)throw Error(healthValidationMessage(parsed.error));
  const result=await submitOrQueue('/api/farm/health',parsed.data,{mediaIds:draft.mediaIds});if(!result.success)throw Error(result.error);if(key)localStorage.removeItem(key);onSaved();
  }catch(e){setError(e instanceof Error?e.message:'Entry retained. Please retry.');}finally{setBusy(false);}}
  return <form onSubmit={submit}><fieldset disabled={busy||isSyncing||photoBusy} className="space-y-4">

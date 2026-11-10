@@ -50,7 +50,7 @@ try {
   await periodWrite(db,ids.admin,'unassign',revoke);
   assert.equal(await asRole(db,'authenticated',managers[0],()=>scalar(db,'select count(*)::int from farm_batches')),0);
   assert.equal(await scalar(db,'select count(*)::int from manager_asset_assignments where period_id=$1',[periods[0].id]),1,'Assignment history retained');
-  assert.equal(await scalar(db,"select count(*)::int from farm_activity where record_type='batch_assignment' and operation='unassign'"),1,'Retry does not duplicate audit');
+  assert.equal(await scalar(db,"select count(*)::int from manager_period_events where period_id=$1 and action='unassign' and actor_id=$2 and reason=$3",[periods[0].id,ids.admin,revoke.reason]),1,'Retry does not duplicate the authoritative assignment audit');
   await periodWrite(db,ids.admin,'assign',{...revoke,reason:'Responsibility resumed',request_id:crypto.randomUUID()});
   assert.equal(await asRole(db,'authenticated',managers[0],()=>scalar(db,'select count(*)::int from farm_batches')),1);
   assert.deepEqual(await scalar(db, 'select jsonb_agg(to_jsonb(t) order by id) from farm_inventory t'),before);

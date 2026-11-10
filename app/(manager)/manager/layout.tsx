@@ -2,11 +2,11 @@
 
 import {ManagerHandoverGate} from "@/components/manager/ManagerHandover";
 import {ManagerPeriodProvider} from "@/contexts/ManagerPeriodContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {isTechnicalMessage,displayRecordValue} from "@/lib/record-display";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import {operationalBackLink} from "@/lib/dashboard-navigation";
+import {operationalBackLink,farmPerformanceBackLink} from "@/lib/dashboard-navigation";
 import {confirmUnsavedNavigation} from "@/lib/confirm-navigation";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
@@ -74,7 +74,9 @@ function ManagerShell({
 
   const normalised = pathname.replace(/^\/manager/, "") || "/";
   const pageTitle = PAGE_TITLES[normalised] ?? "Farm Portal";
-  const back=operationalBackLink(pathname,"manager");
+  const [performanceBack,setPerformanceBack]=useState<ReturnType<typeof farmPerformanceBackLink>>(null);
+  useEffect(()=>{setPerformanceBack(farmPerformanceBackLink(pathname,window.location.search));},[pathname]);
+  const back=performanceBack||operationalBackLink(pathname,"manager");
 
   return (
     <div onClickCapture={confirmUnsavedNavigation} className="flex min-h-screen" style={{ backgroundColor: "#f4fbf8" }}>

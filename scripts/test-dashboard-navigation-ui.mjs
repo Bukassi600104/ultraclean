@@ -24,5 +24,11 @@ try {
   for(const path of routes){await page.goto(origin+'/?path='+encodeURIComponent('/dashboard/'+path));const back=page.getByRole('link',{name:/^Back to/});await back.waitFor();assert.equal(await back.count(),1);assert.ok((await back.getAttribute('href')).startsWith('/dashboard'));assert.ok((await back.evaluate(el=>el.getBoundingClientRect().height))>=44);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);checks++;}
   await page.screenshot({path:artifacts+'/navigation-'+width+'.png',fullPage:true});
  }
+ for(const width of [375,390,768,1440]){
+  await page.setViewportSize({width,height:900});
+  const q=new URLSearchParams({path:'/dashboard/farm/today',return_to:'/dashboard/farm/performance',from:'2026-10-01',to:'2026-11-10',period_id:'period',site_id:'site',batch_id:'batch'});
+  await page.goto(origin+'/?'+q);const back=page.getByRole('link',{name:'Back to Batch Performance',exact:true});await back.waitFor();const target=new URL(await back.getAttribute('href'),origin);assert.equal(target.pathname,'/dashboard/farm/performance');for(const key of ['from','to','period_id','site_id','batch_id'])assert.equal(target.searchParams.get(key),q.get(key));assert.equal(await page.getByRole('link',{name:/^Back to/}).count(),1);checks++;
+ }
+ await page.goto(origin+'/?path=/dashboard/farm/today&return_to=https://evil.invalid');await page.getByRole('link',{name:'Back to Farm control centre',exact:true}).waitFor();checks++;
  assert.deepEqual(faults,[]);console.log(`PASS ${checks} real header/browser route checks across 390/768/1440; screenshots ${artifacts}`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -1,3 +1,19 @@
+export function farmPerformanceBackLink(pathname: string, search = "") {
+  const destinations: Record<string,string[]> = {
+    "/dashboard/farm/today": ["/dashboard/farm/performance"],
+    "/manager/today": ["/manager/performance", "/performance"],
+    "/today": ["/manager/performance", "/performance"],
+  };
+  const source = new URLSearchParams(search), destination = source.get("return_to");
+  if (!destination || !destinations[pathname]?.includes(destination)) return null;
+  const filters = new URLSearchParams();
+  for (const key of ["from", "to", "period_id", "site_id", "batch_id"]) {
+    const value = source.get(key);
+    if (value) filters.set(key, value);
+  }
+  return {href: destination + (filters.size ? "?" + filters : ""), label: "Back to Batch Performance"};
+}
+
 export function dashboardBackLink(pathname: string) {
   if (pathname === "/dashboard" || !pathname.startsWith("/dashboard/")) return null;
   if(pathname==='/dashboard/farm/control')return {href:'/dashboard',label:'Back to CEO Dashboard'};
