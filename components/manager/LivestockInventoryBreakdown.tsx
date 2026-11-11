@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { farmDateToday,farmProductLabel,LIVESTOCK_PRODUCTS } from "@/lib/farm-products";
 import { emptyClassification,validClassification,livestockGroupLabel,type LivestockGroup } from "@/lib/farm-livestock-categories";
 import { LivestockClassificationFields } from "./LivestockClassificationFields";
-export function LivestockInventoryBreakdown({canManage=false,refreshKey}:{canManage?:boolean;refreshKey?:number|string}){
+export function LivestockInventoryBreakdown({canManage=false,refreshKey,periodId}:{canManage?:boolean;refreshKey?:number|string;periodId?:string}){
  const managerFetch=useManagerFetch();
  const [rows,setRows]=useState<LivestockGroup[]>([]),[error,setError]=useState(""),[loaded,setLoaded]=useState(false),[refresh,setRefresh]=useState(0);
  const [operation,setOperation]=useState("allocate"),[product,setProduct]=useState("goat"),[source,setSource]=useState(""),[classification,setClassification]=useState(emptyClassification),[quantity,setQuantity]=useState(""),[reason,setReason]=useState(""),[date,setDate]=useState(farmDateToday),[saving,setSaving]=useState(false),[retry,setRetry]=useState(()=>crypto.randomUUID());
- useEffect(()=>{const controller=new AbortController();setLoaded(false);managerFetch("/api/farm/livestock/groups",{signal:controller.signal,cache:"no-store"}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error);setRows(b.data);setError("");setLoaded(true);}).catch(e=>{if(e.name!=="AbortError")setError("Category balances could not be loaded. Retry before making an adjustment.");});return()=>controller.abort();},[refresh,refreshKey,managerFetch]);
+ useEffect(()=>{const controller=new AbortController();setLoaded(false);managerFetch("/api/farm/livestock/groups"+(periodId?"?period_id="+encodeURIComponent(periodId):""),{signal:controller.signal,cache:"no-store"}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error);setRows(b.data);setError("");setLoaded(true);}).catch(e=>{if(e.name!=="AbortError")setError("Category balances could not be loaded. Retry before making an adjustment.");});return()=>controller.abort();},[refresh,refreshKey,managerFetch,periodId]);
  useEffect(()=>{setSource("");},[product]);
  // An edited request receives a new retry key; a retry of unchanged input keeps its key.
  useEffect(()=>{setRetry(crypto.randomUUID());},[operation,product,source,classification,quantity,reason,date]);

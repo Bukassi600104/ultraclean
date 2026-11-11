@@ -1,225 +1,62 @@
-"use client";
-import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+'use client';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Eye, EyeOff, Receipt } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useManagerFetch, useManagerPeriod } from '@/contexts/ManagerPeriodContext';
+import { PWAInstallPrompt } from '@/components/manager/PWAInstallPrompt';
+import { FarmOverviewPanels, overviewDate } from '@/components/manager/FarmOverviewPanels';
+import { formatExactCurrency } from '@/lib/money';
+import { farmDateToday } from '@/lib/farm-products';
+import type { FarmOverview } from '@/lib/farm-overview';
+import type { FarmAlert } from '@/lib/farm-summary';
+import { useFarmRecordRefresh } from '@/hooks/useFarmRecordRefresh';
 
-import { formatCurrency } from "@/lib/utils";
-import { farmDateToday } from "@/lib/farm-products";
-
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
-import { PWAInstallPrompt } from "@/components/manager/PWAInstallPrompt";
-import {
-  TrendingUp,
-  Receipt,
-  ChevronRight,
-  Eye,
-  EyeOff,
-  Package,
-  BarChart3,
-  Clock,
-  Wallet,
-} from "lucide-react";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(n: number) {
-  return formatCurrency(n);
-}
-
-function getTodayStr() {
-  return farmDateToday();
-}
-
-function getWeekRange() {
-  const today = farmDateToday();
-  const start = new Date(`${today}T12:00:00Z`);
-  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
-  return { from: start.toISOString().split("T")[0], to: today };
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+const action='inline-flex min-h-11 items-center justify-center rounded-lg border border-[#bdcdbd] bg-white px-4 py-2 text-sm font-semibold text-[#24583f] hover:bg-[#f2f6f0]';
+const cash=(value:number)=>formatExactCurrency(value,'NGN').replace('NGN ','₦');
 
 export default function ManagerHomePage() {
- const managerFetch=useManagerFetch();
-  const { profile } = useAuth();
-  const [openingBalance, setOpeningBalance] = useState<number | null>(null);
-  const [balanceErr, setBalanceErr] = useState(false);
-  const [weekError, setWeekError] = useState(false);
-  const [weekSales, setWeekSales] = useState<number | null>(null);
-  const [weekExpenses, setWeekExpenses] = useState<number | null>(null);
-  const [balanceVisible, setBalanceVisible] = useState(true);
-
-  useEffect(() => {
-    const today = getTodayStr();
-
-    managerFetch(`/api/farm/balance?date=${today}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.closing_balance !== undefined) setOpeningBalance(d.closing_balance);
-        else setBalanceErr(true);
-      })
-      .catch(() => setBalanceErr(true));
-
-    const { from, to } = getWeekRange();
-    managerFetch(`/api/farm/balance?date=${today}&from=${from}&to=${to}`)
-      .then(async (response) => { if (!response.ok) throw new Error("Finance unavailable"); return response.json(); })
-      .then((data) => { setWeekSales(data.revenue); setWeekExpenses(data.total_expenses); })
-      .catch(() => { setWeekError(true); });
-  }, [managerFetch]);
-
-  const balancePositive = openingBalance !== null && openingBalance >= 0;
-  const [dateLabel, setDateLabel] = useState("");
-  useEffect(() => {
-    setDateLabel(new Date().toLocaleDateString("en-NG", { timeZone: "Africa/Lagos", weekday: "long", day: "numeric", month: "long" }));
-  }, []);
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-4">
-
-      {/* Balance card */}
-      <div
-        className="rounded-2xl p-5"
-        style={{ background: "linear-gradient(160deg, #1b4332 0%, #012d1d 100%)" }}
-      >
-        <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
-          {dateLabel}
-        </p>
-        <p className="font-semibold text-white text-base mb-4">
-          Welcome back, {profile?.name?.split(" ")[0] ?? "Manager"}
-        </p>
-
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.4)" }}>
-          Owner Funds Available
-        </p>
-        <div className="flex items-center gap-3">
-          {balanceErr ? (
-            <p className="text-base" style={{ color: "rgba(255,255,255,0.55)" }}>Balance unavailable</p>
-          ) : openingBalance === null ? (
-            <div className="h-12 w-44 rounded-xl animate-pulse" style={{ backgroundColor: "rgba(255,255,255,0.1)" }} />
-          ) : balanceVisible ? (
-            <p className="text-4xl font-bold" style={{ color: balancePositive ? "#11d469" : "#ef4444" }}>
-              {fmt(openingBalance)}
-            </p>
-          ) : (
-            <p className="text-4xl font-bold text-white tracking-widest">••••••</p>
-          )}
-          <button
-            onClick={() => setBalanceVisible((v) => !v)}
-            className="ml-auto rounded-full p-2"
-            style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-            aria-label={balanceVisible ? "Hide balance" : "Show balance"}
-          >
-            {balanceVisible
-              ? <EyeOff className="h-4 w-4" style={{ color: "rgba(255,255,255,0.55)" }} />
-              : <Eye className="h-4 w-4" style={{ color: "rgba(255,255,255,0.55)" }} />
-            }
-          </button>
-        </div>
+  const {profile}=useAuth(), scope=useManagerPeriod(), managerFetch=useManagerFetch(), pathname=usePathname();
+  const identity=scope?.actorId+':'+scope?.periodId;
+  const [saved,setSaved]=useState<{identity:string;overview:FarmOverview;alerts:FarmAlert[]}|null>(null);
+  const [error,setError]=useState(''),[retry,setRetry]=useState(0),[visible,setVisible]=useState(true);
+  const revision=useFarmRecordRefresh();
+  useEffect(()=>{
+    const controller=new AbortController();
+    setError('');
+    managerFetch('/api/farm/overview',{signal:controller.signal}).then(async response=>{
+      const result=await response.json();
+      if(!response.ok||!result.overview||!Array.isArray(result.alerts))throw Error();
+      if(!controller.signal.aborted)setSaved({identity,...result});
+    }).catch(()=>{if(!controller.signal.aborted)setError('Farm figures could not be loaded. Your recording tools are available below.');});
+    return()=>controller.abort();
+  },[managerFetch,identity,retry,revision]);
+  const data=saved?.identity===identity?saved:null;
+  function link(path:string) {
+    const base=pathname==='/manager'||pathname.startsWith('/manager/')?'/manager':'';
+    if(path==='/dashboard/funds')return base+'/cash';
+    const target=path.replace(/^\/dashboard\/farm\//,'').replace(/^daily-reports(?=[?#]|$)/,'daily-report/history');
+    return base+'/'+target;
+  }
+  return <div className="mx-auto max-w-7xl space-y-4 rounded-xl bg-[#edf2ea] p-3 text-[#203328] sm:p-5">
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div><p className="text-sm font-medium text-[#536856]">{overviewDate(farmDateToday())} · Primefield Farm</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-[32px]">{profile?.name?'Welcome, '+profile.name.split(' ')[0]:'Farm activity'}</h2>
+        <p className="mt-1 text-sm text-[#455749]">{data?'Your work · '+overviewDate(data.overview.from)+' to '+overviewDate(data.overview.to):'Your farm records'}</p></div>
+      <div className="flex flex-wrap gap-2"><Link className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#295e40] px-4 py-2 text-sm font-bold text-white hover:bg-[#204c33]" href={link('expenses')}><Receipt className="h-4 w-4"/>Record Today’s Expenses</Link><Link className={action} href={link('today')}>Open today’s log</Link></div>
+    </header>
+    {error&&<div role="alert" className="rounded-lg border bg-white p-4">{error} {data&&'Showing the last figures loaded.'} <button className={action} onClick={()=>setRetry(n=>n+1)}>Try again</button></div>}
+    {data?<>
+      <FarmOverviewPanels data={data.overview} alerts={data.alerts} link={link} supervisor/>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <section className="rounded-xl border border-[#d5ded3] bg-white p-4"><div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-[#455749]">Owner funds available</h3><button className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-[#edf2ea]" aria-label={visible?'Hide balance':'Show balance'} onClick={()=>setVisible(!visible)}>{visible?<EyeOff className="h-4 w-4"/>:<Eye className="h-4 w-4"/>}</button></div><p className="break-words text-2xl font-bold tabular-nums">{visible?cash(data.overview.funds):'••••••'}</p></section>
+        <section className="rounded-xl border border-[#d5ded3] bg-white p-4"><h3 className="flex min-h-11 items-center text-sm font-semibold text-[#455749]">Expenses this week</h3><p className="break-words text-2xl font-bold tabular-nums">{cash(data.overview.expenses)}</p></section>
       </div>
-
-      {/* Week stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}>
-          <p className="text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>This Week Sales</p>
-          {weekError ? <p className="text-sm text-red-600">Unavailable</p> : weekSales === null ? (
-            <div className="h-7 w-28 rounded-lg animate-pulse" style={{ backgroundColor: "#e8efec" }} />
-          ) : (
-            <p className="text-xl font-bold" style={{ color: "#11d469" }}>{fmt(weekSales)}</p>
-          )}
-        </div>
-        <div className="rounded-2xl p-4" style={{ backgroundColor: "#fff", border: "1px solid rgba(27,67,50,0.08)" }}>
-          <p className="text-xs font-semibold mb-1" style={{ color: "#6b7280" }}>This Week Expenses</p>
-          {weekError ? <p className="text-sm text-red-600">Unavailable</p> : weekExpenses === null ? (
-            <div className="h-7 w-28 rounded-lg animate-pulse" style={{ backgroundColor: "#e8efec" }} />
-          ) : (
-            <p className="text-xl font-bold" style={{ color: "#F5C842" }}>{fmt(weekExpenses)}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div>
-        <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "#9ca3af" }}>
-          Quick Actions
-        </p>
-        <div className="space-y-2.5">
-
-          <Link
-            href="/expenses"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#11d469", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <Receipt className="h-5 w-5" style={{ color: "#012d1d" }} />
-              <span className="font-bold text-sm" style={{ color: "#012d1d" }}>Record Today&apos;s Expenses</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "rgba(1,45,29,0.45)" }} />
-          </Link>
-
-          <Link
-            href="/sales"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#fffbeb", border: "1.5px solid #fde68a", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5" style={{ color: "#92400e" }} />
-              <span className="font-bold text-sm" style={{ color: "#1b4332" }}>Record Today&apos;s Sales</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "#F5C842" }} />
-          </Link>
-
-          <Link
-            href="/supplies"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#eff6ff", border: "1.5px solid #bfdbfe", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <Package className="h-5 w-5" style={{ color: "#1d4ed8" }} />
-              <span className="font-bold text-sm" style={{ color: "#1e3a8a" }}>Farm Supplies</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "#3b82f6" }} />
-          </Link>
-
-          <Link
-            href="/inventory"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#f3e8ff", border: "1.5px solid #d8b4fe", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-5 w-5" style={{ color: "#7e22ce" }} />
-              <span className="font-bold text-sm" style={{ color: "#581c87" }}>View Inventory</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "#a855f7" }} />
-          </Link>
-
-          <Link
-            href="/records"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#eef5f2", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <Clock className="h-5 w-5" style={{ color: "#2d6a4f" }} />
-              <span className="font-semibold text-sm" style={{ color: "#1b4332" }}>View Past Records</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "#2d6a4f" }} />
-          </Link>
-
-          <Link
-            href="/cash"
-            className="flex items-center justify-between w-full rounded-2xl px-5 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#f0fdf4", border: "1.5px solid #bbf7d0", height: "60px" }}
-          >
-            <div className="flex items-center gap-3">
-              <Wallet className="h-5 w-5" style={{ color: "#166534" }} />
-              <span className="font-semibold text-sm" style={{ color: "#166534" }}>Today&apos;s Finances Summary</span>
-            </div>
-            <ChevronRight className="h-5 w-5" style={{ color: "#16a34a" }} />
-          </Link>
-
-        </div>
-      </div>
-
-      <PWAInstallPrompt />
-    </div>
-  );
+    </>:!error&&<p role="status">Loading your farm records…</p>}
+    <nav aria-label="Farm shortcuts" className="grid grid-cols-1 gap-2 sm:grid-cols-3">{[
+      ['sales','Record Today’s Sales'],['supplies','Farm Supplies'],['inventory','View Inventory'],['records','View Past Records'],['cash','Today’s Finances Summary'],['operational-requests','Operational Requests'],
+    ].map(([path,label])=><Link className={action} href={link(path)} key={path}>{label}</Link>)}</nav>
+    <PWAInstallPrompt/>
+  </div>;
 }

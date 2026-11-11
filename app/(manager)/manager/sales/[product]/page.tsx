@@ -188,7 +188,7 @@ export default function SaleProductPage() {
       rows.push({ label: "Price per unit", value: fmt(Number(form.unit_price)) });
     }
     rows.push({ label: "Total", value: fmt(computedTotal) });
-    rows.push({label:"Payment",value:credit?Number(amountReceived)>0?"Part paid":"Unpaid":"Paid in full"});
+    rows.push({label:"Payment",value:credit?Number(amountReceived)>0?"Credit sale · Part paid":"On credit · Unpaid":"Paid in full"});
     rows.push({label:"Received now",value:fmt(credit?Number(amountReceived):computedTotal)});
     rows.push({label:"Balance to collect",value:fmt(credit?computedTotal-Number(amountReceived):0)});
     if (form.customer_name) rows.push({ label: "Customer", value: form.customer_name });
@@ -369,9 +369,10 @@ export default function SaleProductPage() {
           </div>
         )}
 
+        <FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
+        {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
         {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
-        {/* 4. Payment method */}
-        <div>
+        {(!credit||Number(amountReceived)>0)&&<div>
           <label className="text-sm font-semibold text-slate-700">Payment Method</label>
           <div className="mt-1.5 grid grid-cols-3 gap-2">
             {["cash", "transfer", "pos"].map((m) => (
@@ -386,10 +387,7 @@ export default function SaleProductPage() {
               </button>
             ))}
           </div>
-        </div>
-
-        <FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
-        {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
+        </div>}
         {(!credit||Number(amountReceived)>0)&&<label className="block text-sm font-semibold">Payment date<input aria-label="Payment date" type="date" min={form.date} max={today} className="mt-1 min-h-11 w-full rounded-xl border p-3" value={paymentDate||form.date} onChange={e=>setPaymentDate(e.target.value)}/></label>}
         {/* 6. Notes — optional */}
         <div>

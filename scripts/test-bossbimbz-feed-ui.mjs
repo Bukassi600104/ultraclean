@@ -25,7 +25,8 @@ await page.route('**/api/farm/**',async route=>{
  const req=route.request(),url=new URL(req.url()),method=req.method(),body=req.postDataJSON()??{},retryId=req.headers()['x-request-id'];calls.push({method,body,requestId:retryId,path:url.pathname});let result;
  if(method==='GET'){
   if(failRead)return route.fulfill({status:503,json:{error:'Feed inventory unavailable'}});
-  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:movements,total:movements.length}:{data:[stock,...extraStocks],total:1+extraStocks.length,problems:reviewProblems}:{data:daily,total:daily.length};
+  const legacyOpening={id:'00000000-0000-4000-9000-000000000107',kind:'opened',movement_type:'use',activity_date:'2024-01-01',feed_type:'fish',feed_source:'local',bags:1,actor_name:'Earlier manager',stock_id:id,recorded_at:'2024-01-01T12:00:00Z'};
+  result=url.pathname.includes('feed-stock')?url.searchParams.has('history')?{data:[...movements,legacyOpening],total:movements.length+1}:{data:[stock,...extraStocks],total:1+extraStocks.length,problems:reviewProblems}:{data:daily,total:daily.length};
  }else if(receipts.has(retryId)){result=receipts.get(retryId);}
  else if(body.operation==='review_problem'){
   if(rejectReview){rejectReview=false;return route.fulfill({status:409,json:{code:'40001',error:'Feed changed since this check. Ask the manager to confirm the current count'}});}
@@ -53,6 +54,7 @@ try{
  await page.getByRole('button',{name:/View history/}).click();await page.getByText('Recorded by Recorded manager',{exact:false}).first().waitFor();checks++;
  await page.goto(origin+'/?screen=daily',{waitUntil:'domcontentloaded'});await page.getByText('Feed Usage',{exact:true}).waitFor();await page.locator('input[type=number]').nth(0).fill('0.5');await page.getByLabel('Local new bags opened',{exact:true}).fill('1');rejectDaily=true;await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(await page.getByLabel('Local new bags opened',{exact:true}).isEnabled(),true);assert.equal(daily.length,0);checks+=2;await page.reload({waitUntil:"domcontentloaded"});await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();assert.equal(await page.locator('input[type=number]').nth(0).inputValue(),'0.5');checks++;failDaily=true;await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).waitFor();assert.equal(stock.current_bags,9);assert.equal(await page.getByLabel('Local new bags opened',{exact:true}).isDisabled(),true);checks+=2;
  await page.reload({waitUntil:"domcontentloaded"});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).waitFor();const retryPosts=calls.filter(c=>c.method==='POST').length;await page.evaluate(()=>{window.originalStorageSet=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw Error('Quota exceeded');};});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).click();await page.getByRole('alert').waitFor();assert.equal(calls.filter(c=>c.method==='POST').length,retryPosts);await page.evaluate(()=>{Storage.prototype.setItem=window.originalStorageSet;});await page.getByRole('button',{name:'Retry saved feed entry',exact:true}).click();await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();assert.equal(stock.current_bags,9);const posts=calls.filter(c=>c.method==='POST'&&c.path.includes('daily-feed'));assert.equal(posts.length,3);assert.equal(posts[1].requestId,posts[2].requestId);assert.equal(daily.length,1);checks+=5;
+ assert.equal(await page.locator('option[value="00000000-0000-4000-9000-000000000107"]').count(),0,'Older movement remains in history but cannot be submitted as an opening receipt');checks++;
  await page.locator('input[type=number]').nth(0).fill('0.25');await page.getByLabel('local recorded opening (optional)',{exact:false}).selectOption(movements[1].id);await page.getByRole('button',{name:'Record Feed Usage',exact:true}).click();await page.getByRole('button',{name:'Record Feed Usage',exact:true}).waitFor();assert.equal(stock.current_bags,9);assert.equal(daily.length,2);assert.equal(daily[1].opening_activity_id,movements[1].id);assert.equal(daily[1].bags_opened,0);checks+=4;
  for(const screen of['','?admin=yes','?screen=daily'])for(const width of[390,768,1440]){await page.setViewportSize({width,height:900});await page.goto(origin+'/'+screen,{waitUntil:'domcontentloaded'});await (screen.includes('daily')?page.getByText('Feed Usage',{exact:true}):page.getByRole('heading',{name:'Unopened feed bags',exact:true})).waitFor();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`feed-${screen.replace(/\W/g,'')}-${width}.png`),fullPage:true});checks++;}
  await page.setViewportSize({width:390,height:560});await page.goto(origin,{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Add feed record',exact:true}).click();dialog=page.getByRole('dialog');await page.getByLabel('Notes (optional)',{exact:true}).fill('Keep this unsaved note');await page.waitForFunction(()=>getComputedStyle(document.querySelector('[role=dialog]')).opacity==='1');const bounds=await dialog.boundingBox();assert.ok(bounds.x>=15&&bounds.x+bounds.width<=375&&bounds.y>=15&&bounds.y+bounds.height<=545);assert.ok(await page.getByRole('button',{name:'Save feed record',exact:true}).isVisible());await page.screenshot({path:path.join(artifacts,'feed-dialog-short-phone.png'),fullPage:true});await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:'Add feed record',exact:true}).evaluate(el=>el===document.activeElement),true);await page.getByRole('button',{name:'Add feed record',exact:true}).click();assert.equal(await page.getByLabel('Notes (optional)',{exact:true}).inputValue(),'Keep this unsaved note');checks+=4;
@@ -179,6 +181,37 @@ try{
   const retry=calls.filter(call=>call.method==='POST').at(-1);
   assert.equal(retry.requestId,original.requestId);assert.deepEqual(retry.body,original.body);assert.equal(movements.length,before+1);checks+=7;
  }
+ // Count the actual feed without replacing a network-uncertain feeding draft.
+ stock={...stock,initialized_at:null,opening_date:null,current_bags:null};
+ extraStocks=[];const savedDay=new Date().toISOString().slice(0,10),feedRetry=crypto.randomUUID();
+ const waiting=[{id:feedRetry,payload:{date:savedDay,feed_type:'fish',feed_source:'local',num_bags:0.5,bags_opened:1}}];
+ await page.evaluate(({dailyKey,waiting})=>localStorage.setItem(dailyKey,JSON.stringify(waiting)),{dailyKey,waiting});
+ await page.goto(origin+'/?screen=daily');
+ await page.getByRole('button',{name:'Record starting count for fish foreign'}).click();
+ assert.equal(await page.getByLabel('Source',{exact:true}).inputValue(),'foreign');
+ await page.getByRole('button',{name:'Close',exact:true}).first().click();
+ await page.getByRole('button',{name:'Record starting count for fish local'}).click();
+ const count=page.getByRole('dialog');await count.getByLabel('Actual unopened bags counted',{exact:true}).fill('5');
+ await count.getByRole('button',{name:'Save feed record'}).click();await count.waitFor({state:'hidden'});
+ assert.deepEqual(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),dailyKey),waiting);
+ const beforeFeed=daily.length;await page.getByRole('button',{name:'Retry saved feed entry'}).click();
+ await page.getByRole('button',{name:'Saved!',exact:true}).waitFor();
+ assert.equal(daily.length,beforeFeed+1);assert.equal(stock.current_bags,4);assert.ok(receipts.has(feedRetry));checks+=5;
+ await page.goto(origin);assert.equal(await page.getByRole('link',{name:'Record feed usage',exact:true}).getAttribute('href'),'/manager/daily-feed');
+ await page.getByRole('button',{name:'Record a bag count'}).click();await page.getByRole('dialog').getByLabel('Feed type',{exact:true}).selectOption('pig');
+ await page.getByRole('dialog').getByLabel('Source',{exact:true}).selectOption('foreign');assert.equal(await page.getByRole('dialog').getByLabel('Activity',{exact:true}).inputValue(),'starting');
+ checks+=2;
+ // An uncertain physical opening may also need its count first. Preserve its exact retry through reload.
+ await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).first().click();
+ stock={...stock,initialized_at:null,opening_date:null,current_bags:null};
+ const physicalKey='primefield-feed-record:'+id+':period:admin';
+ const heldForm={operation:'opened',type:'fish',source:'local',date:savedDay,bags:'1',notes:'Held opening',review:false,included:'',inclusions:{}};
+ const held={id:crypto.randomUUID(),body:{operation:'opened',payload:{date:savedDay,feed_type:'fish',feed_source:'local',bags:1,notes:'Held opening'}}};
+ await page.evaluate(({physicalKey,heldForm,held})=>localStorage.setItem(physicalKey,JSON.stringify({form:heldForm,pending:held})),{physicalKey,heldForm,held});
+ await page.reload();await page.getByRole('button',{name:'Add feed record',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Record starting count',exact:true}).click();
+ await page.getByLabel('Actual unopened bags counted',{exact:true}).fill('6');await page.getByRole('dialog').getByRole('button',{name:'Save feed record'}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ await page.reload();await page.getByRole('button',{name:'Add feed record',exact:true}).click();await page.getByRole('button',{name:'Retry saved entry',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ const actual=calls.filter(c=>c.requestId===held.id).at(-1);assert.deepEqual(actual.body,held.body);assert.equal(stock.current_bags,5);checks+=2;
  assert.deepEqual(faults,[]);checks++;
  console.log(`PASS ${checks} actual feed UI checks: manager-led starting count, optional review, CEO observation, partial feeding, earlier opening linkage, retry identity, history, storage failure, error isolation, centred dialog/focus and responsive layouts. Screenshots: ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator('body').innerText().catch(()=>'<browser unavailable>')});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

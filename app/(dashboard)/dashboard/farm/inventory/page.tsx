@@ -26,7 +26,7 @@ import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPan
 interface MortalitySummary {
   product: string;
   total_deaths: number;
-  current_stock: number;
+  current_stock: number | null;
 }
 
 const ACTION_BADGE: Record<
@@ -47,20 +47,28 @@ export default function FarmInventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [refresh, setRefresh] = useState(0);
+  const [selectedTab, setSelectedTab] = useState("stock");
+  const [periodId, setPeriodId] = useState<string|null>(null);
   useEffect(() => {
     async function load() {
       setIsLoading(true);setLoadError("");
       try {
+        const scope = new URLSearchParams(window.location.search);
+        const period = scope.get("period_id") || "", from = scope.get("from"), to = scope.get("to");
+        setPeriodId(period);
+        if (scope.get("tab") === "mortality") setSelectedTab("mortality");
+        const filter = period ? "?period_id=" + encodeURIComponent(period) : "";
         const [invRes, allRes] = await Promise.all([
-          fetch("/api/farm/inventory"),
-          fetch("/api/farm/inventory/transaction"),
+          fetch("/api/farm/inventory" + filter),
+          fetch("/api/farm/inventory/transaction" + (filter ? filter + "&all=1" : "")),
         ]);
         const invData = await invRes.json();
         const allData = await allRes.json();
         if (!invRes.ok || !allRes.ok) throw new Error("Inventory unavailable");
         setInventory(Array.isArray(invData) ? invData : []);
-        setMortalityLog(activeMortality(allData.data || []));
-        setAllTransactions(allData.data || []);
+        const throughEnd = (allData.data || []).filter((row:FarmInventoryTransaction) => !to || row.date <= to);
+        setMortalityLog(activeMortality(throughEnd).filter(row => !from || row.date >= from));
+        setAllTransactions(throughEnd.filter((row:FarmInventoryTransaction) => !from || row.date >= from));
       } catch {
         setLoadError("Farm inventory could not be loaded. Please retry.");
       } finally {
@@ -71,14 +79,15 @@ export default function FarmInventoryPage() {
   }, [refresh]);
 
   // Report recorded deaths; current stock is not a reliable historical cohort size.
-  const mortalitySummary: MortalitySummary[] = inventory.map((inv) => {
+  const mortalityProducts = new Set([...inventory.map(row=>row.product),...mortalityLog.map(row=>row.product)]);
+  const mortalitySummary: MortalitySummary[] = Array.from(mortalityProducts, product => {
     const deaths = mortalityLog
-      .filter((m) => m.product === inv.product)
+      .filter((m) => m.product === product)
       .reduce((sum, m) => sum + m.quantity, 0);
     return {
-      product: inv.product,
+      product,
       total_deaths: deaths,
-      current_stock: inv.current_stock,
+      current_stock: inventory.find(row=>row.product===product)?.current_stock??null,
     };
   });
 
@@ -92,10 +101,10 @@ export default function FarmInventoryPage() {
     <>
       <DashboardHeader title="Farm Inventory" />
       <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
-      <LivestockInventoryBreakdown canManage refreshKey={refresh} />
+      {periodId!==null&&<LivestockInventoryBreakdown canManage={!periodId} refreshKey={refresh} periodId={periodId}/>}
         
 
-        <Tabs defaultValue="stock">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList>
             <TabsTrigger value="stock">Current Stock</TabsTrigger>
             <TabsTrigger value="transactions">All Transactions</TabsTrigger>
@@ -298,9 +307,9 @@ export default function FarmInventoryPage() {
                           </span>
                           <span>
                             <span className="font-semibold text-gray-700">
-                              {s.current_stock}
+                              {s.current_stock ?? 'Count unavailable'}
                             </span>{" "}
-                            remaining
+                            {s.current_stock!==null?'remaining':''}
                           </span>
                         </div>
                       </CardContent>

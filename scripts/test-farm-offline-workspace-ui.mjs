@@ -35,5 +35,15 @@ try{
  await page.evaluate(()=>sessionStorage.setItem('actor','bob'));await page.reload();await page.getByText('This workspace is locked.',{exact:false}).waitFor();assert.equal(await page.getByLabel('Pond 1',{exact:true}).count(),0);checks++;
  assert.ok(await page.evaluate(key=>localStorage.getItem(key),key));assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('farm_pending_')).length),1);checks+=2;
  assert.equal(await page.evaluate(identity=>window.media.getFarmMedia(identity).then(rows=>rows.length),identity),1);checks++;
+ // The next active period has two prepared forms. The quarantined earlier period stays intact.
+ const nextKey=key.replace('period:p1','period:p2');
+ await page.evaluate(({key,pointer,identity})=>{
+  sessionStorage.setItem('actor','alice');localStorage.setItem(pointer,JSON.stringify({version:1,identity,preparedAt:'2026-11-11T08:00:00Z'}));
+  localStorage.setItem(key,'{}');
+  localStorage.setItem(key+':area:poultry_a:2026-11-11',JSON.stringify({form:{report_date:'2026-11-11',sections:{template_version:3,area:'poultry_a',observations:{eggs:0}},decision_required:false},requestId:crypto.randomUUID()}));
+ },{key:nextKey,pointer,identity:{...identity,periodId:'p2'}});
+ await page.reload();await page.getByLabel('Saved report',{exact:true}).selectOption(nextKey+':area:poultry_a:2026-11-11');
+ await page.getByLabel('Eggs collected',{exact:true}).waitFor();assert.equal(await page.getByLabel('Eggs collected',{exact:true}).inputValue(),'0');await page.getByLabel('Notes',{exact:true}).fill('Checked while offline');
+ assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key+':area:poultry_a:2026-11-11')).form.sections.observations.notes,nextKey),'Checked while offline');assert.equal(await page.evaluate(key=>localStorage.getItem(key),key),'{}');checks+=3;
  console.log('PASS '+checks+' actual browser offline workspace checks: identity lock, preserved legacy fields, editing/reload, retained photos, queue persistence, no duplicate and account mismatch');
-}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+}catch(error){console.error(await page.locator('main').innerText());throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -13,7 +13,7 @@ for(const prefix of ['', '/manager']) {
 }
 for(const app of ['property','content']) {assert.equal(operationalBackLink('/'+app,app),null);assert.equal(operationalBackLink('/'+app+'/login',app),null);assert.equal(operationalBackLink('/'+app+'/history',app).href,'/'+app);}
 assert.equal(dashboardBackLink('/dashboard'),null);
-assert.equal(dashboardBackLink('/dashboard/farm/control').href,'/dashboard');assert.equal(dashboardBackLink('/dashboard/farm').href,'/dashboard/farm/control');
+assert.equal(dashboardBackLink('/dashboard/farm/control').href,'/dashboard');assert.equal(dashboardBackLink('/dashboard/farm').href,'/dashboard');assert.equal(dashboardBackLink('/dashboard/farm/history').href,'/dashboard/farm/control');
 for(const route of ['appointments','leads','blog','courses','dba','managers','settings','ultratidy','properties','content'])assert.equal(dashboardBackLink('/dashboard/'+route).href,'/dashboard');
 for(const route of ['sales','expenses','inventory','supplies','feed-stock','daily-feed','daily-reports','operational-requests'])assert.equal(dashboardBackLink('/dashboard/farm/'+route).href,'/dashboard/farm/control');
 for(const route of ['inflow','expenses','inventory'])assert.equal(dashboardBackLink('/dashboard/ultratidy/'+route).href,'/dashboard/ultratidy');

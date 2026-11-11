@@ -10,7 +10,7 @@ import { Droplets, Check } from "lucide-react";
 import {sumMoney} from "@/lib/money";
 import type {FeedActivity,FeedInventoryRow} from "@/lib/farm-feed-types";
 import {feedSubmissionRejected} from "@/lib/feed-submission";
-import {FeedRecordDialog} from "./FeedRecordDialog";
+import {FeedRecordDialog,type FeedCountTarget} from "./FeedRecordDialog";
 
 const FEED_TYPES = [
   { value: "fish", label: "Fish Feed" },
@@ -59,7 +59,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
   const [saveError,setSaveError]=useState("");
   const [uncertain,setUncertain]=useState(false);
   const [dirty,setDirty]=useState(false);
-  const [countOpen,setCountOpen]=useState(false);
+  const [countFor,setCountFor]=useState<FeedCountTarget|null>(null);
   const countButton=useRef<HTMLButtonElement|null>(null);
   const lock=useRef(false);
   const pending=useRef<SavedFeed[]>([]);
@@ -95,7 +95,7 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
       const response=await managerFetch("/api/farm/daily-feed?limit=30",{cache:"no-store"});const res=await response.json();if(!response.ok)throw Error(res.error||"Unable to load feed history");setRecords(res.data||[]);
       if(enabled!==true){setStockError("");setStockRows([]);setOpenings([]);return;}
       const stockResponse=await managerFetch("/api/farm/feed-stock",{cache:"no-store"});const stocks=await stockResponse.json();if(!stockResponse.ok)throw Error(stocks.error||"Unable to load available bags");setStockRows(stocks.data??[]);setStockError("");
-      const openingResponse=await managerFetch("/api/farm/feed-stock?history=1&limit=500",{cache:"no-store"}),openingRows=await openingResponse.json();if(!openingResponse.ok)throw Error(openingRows.error||"Unable to load recorded openings");setOpenings((openingRows.data||[]).filter((row:FeedActivity)=>row.kind==="opened"));
+      const openingResponse=await managerFetch("/api/farm/feed-stock?history=1&limit=500",{cache:"no-store"}),openingRows=await openingResponse.json();if(!openingResponse.ok)throw Error(openingRows.error||"Unable to load recorded openings");setOpenings((openingRows.data||[]).filter((row:FeedActivity)=>row.kind==="opened"&&!row.movement_type));
     } catch(error) {setRecords([]);setStockRows([]);setOpenings([]);setStockError(error instanceof Error?error.message:"Unable to load feed history and available bags");}
     finally { setLoadingRecords(false); }
   },[managerFetch,enabled]);
@@ -179,12 +179,17 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
       </div>
 
       {enabled===true&&<>      <p className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">Record feeding quantities separately from new bags opened. Opening a new bag deducts it immediately. Feeding from an already opened bag uses 0 new bags. <Link className="font-semibold underline" href={admin?"/dashboard/farm/feed-stock":"/feed-stock"}>View available feed and history</Link>.</p>
-      {!stockError&&<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);return <p key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span><br/>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Starting count needed"}</p>;})}</div>}</>}
+      {!stockError&&!loadingRecords&&<div className="grid grid-cols-2 gap-3">{["local","foreign"].map(source=>{
+        const stock=stockRows.find(row=>row.feed_type===feedType&&row.feed_source===source);
+        return <div key={source} className="rounded-xl border bg-white p-3 text-sm"><span className="font-semibold capitalize">{feedType} {source}</span>
+          <p>{stock?.initialized_at&&stock.current_bags!==null?`${stock.current_bags} bags available`:"Starting count needed"}</p>
+          {!admin&&!stock?.initialized_at&&<button type="button" aria-label={`Record starting count for ${feedType} ${source}`} className="min-h-11 text-left font-semibold text-emerald-900 underline" onClick={e=>{countButton.current=e.currentTarget;setCountFor({type:feedType,source,date:date||today});}}>Record starting count</button>}
+        </div>;
+      })}</div>}</>}
       {stockError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{stockError}<button type="button" className="ml-2 min-h-11 underline" onClick={()=>void loadRecords()}>Retry feed history</button></p>}
       {saveError&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800">{saveError}</p>}
       {uncertain&&!storageFault&&<p role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A saved entry is awaiting confirmation. Retry it without changing its values. The original date and values are kept for a safe retry.</p>}
-      {enabled===true&&!admin&&!uncertain&&(!stockRows.some(s=>s.feed_type===feedType&&s.initialized_at)||stockRows.some(s=>s.feed_type===feedType&&!s.initialized_at))&&<button ref={countButton} type="button" className="min-h-11 font-semibold text-emerald-900 underline" onClick={()=>setCountOpen(true)}>Record starting count</button>}
-      <FeedRecordDialog open={countOpen} onOpenChange={setCountOpen} stocks={stockRows} onSaved={()=>void loadRecords()} returnFocus={()=>countButton.current?.focus()}/>
+      {countFor&&<FeedRecordDialog open countFor={countFor} onOpenChange={v=>{if(!v)setCountFor(null);}} stocks={stockRows} onSaved={()=>void loadRecords()} returnFocus={()=>countButton.current?.focus()}/>}
       <fieldset disabled={saving||uncertain||storageFault||restoredKey!==storageKey} className="min-w-0 space-y-4">
       {/* Form */}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
@@ -224,7 +229,8 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
               <p className="text-xs font-bold text-green-700 mb-1.5">Local</p>
               <input
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any" min={0}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-center font-bold focus:outline-none focus:border-green-400 bg-white"
                 placeholder="0"
                 value={localBags}
@@ -236,7 +242,8 @@ export default function DailyFeed({admin=false}: {admin?:boolean}) {
               <p className="text-xs font-bold text-blue-700 mb-1.5">Foreign</p>
               <input
                 type="number"
-                inputMode="numeric"
+                inputMode="decimal"
+                step="any" min={0}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-center font-bold focus:outline-none focus:border-blue-400 bg-white"
                 placeholder="0"
                 value={foreignBags}

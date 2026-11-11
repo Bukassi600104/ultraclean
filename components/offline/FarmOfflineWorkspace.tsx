@@ -4,7 +4,8 @@ import Image from 'next/image';
 import {ReportFields,validReportDraft} from '@/components/manager/FarmOperations';
 import type {ReportSections} from '@/lib/farm-reports';
 import {createClient} from '@/lib/supabase/client';
-import {FARM_WORKSPACE_POINTER,matchingWorkspace,farmReportDraftKey,preparedWorkspace,sameWorkspace,type PreparedFarmWorkspace} from '@/lib/farm-offline-workspace';
+import {FARM_WORKSPACE_POINTER,matchingWorkspace,farmReportDraftKey,localReportChoice,preparedWorkspace,sameWorkspace,type PreparedFarmWorkspace} from '@/lib/farm-offline-workspace';
+import {areaSectionsSchema,areaTitle,isAreaSections} from '@/lib/farm-report-areas';
 import {getPendingItems,savePending,getSubmissionStatus,getQuarantinedCount} from '@/lib/offline-storage';
 import {getFarmMedia} from '@/lib/farm-offline-media';
 import {syncManagerPending,checkFarmSubmission} from '@/lib/manager-offline-sync';
@@ -12,7 +13,9 @@ type Draft={form:{report_date:string;sections:ReportSections;decision_required:b
 
 export function FarmOfflineWorkspace(){
  const [workspace,setWorkspace]=useState<PreparedFarmWorkspace|null>(null),[draft,setDraft]=useState<Draft|null>(null),[message,setMessage]=useState('Checking this device’s saved sign-in…'),[busy,setBusy]=useState(false),[reason,setReason]=useState(''),[photos,setPhotos]=useState<{id:string;url:string}[]>([]);
+ const [requested,setRequested]=useState(''),[selectedKey,setSelectedKey]=useState(''),[choices,setChoices]=useState<{key:string;label:string}[]>([]);
  useEffect(()=>{
+  setDraft(null);setPhotos([]);setChoices([]);setSelectedKey('');setReason('');
   const auth=createClient();if(!auth){setMessage('Reconnect and sign in before opening saved work.');return;}let alive=true;const urls:string[]=[];
   const lock=()=>{if(alive){setWorkspace(null);setDraft(null);setPhotos([]);setMessage('This workspace is locked. Reconnect and sign in with the account that saved this work.');}try{localStorage.removeItem(FARM_WORKSPACE_POINTER);}catch{/* Preserve drafts and photos. */}};
   let actor='';const {data:{subscription}}=auth.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT'||(actor&&session?.user.id!==actor))lock();});
@@ -21,18 +24,23 @@ export function FarmOfflineWorkspace(){
    const {data}=await Promise.race([auth.auth.getSession(),new Promise<never>((_,reject)=>setTimeout(()=>reject(Error('Saved sign-in unavailable')),8000))]);if(!alive)return;actor=data.session?.user.id||'';
    const prepared=matchingWorkspace(JSON.parse(localStorage.getItem(FARM_WORKSPACE_POINTER)||'null'),actor);
    if(!prepared){lock();return;}
-   const saved=JSON.parse(localStorage.getItem(farmReportDraftKey(prepared.identity))||'null') as Draft|null;
+   const base=farmReportDraftKey(prepared.identity);
+   const options=Object.keys(localStorage).sort().map(key=>localReportChoice(base,key)).filter(option=>option!==null);
+   const selected=options.find(option=>option.key===requested)||options[0];
+   setChoices(options.map(option=>({key:option.key,label:option.area?areaTitle(option.area)+' · '+option.date:'Whole farm report'})));
+   setSelectedKey(selected?.key||base);
+   const saved=selected?JSON.parse(localStorage.getItem(selected.key)||'null') as Draft|null:null;
    setWorkspace(prepared);
-   if(saved&&!validReportDraft(saved))throw Error('Saved report needs recovery');
+   if(saved&&(!validReportDraft(saved)||(selected?.area&&(!isAreaSections(saved.form.sections)||saved.form.sections.area!==selected.area.key||saved.form.report_date!==selected.date))))throw Error('Saved report needs recovery');
    if(saved){const queued=saved.requestId&&(getPendingItems(prepared.identity).some(item=>item.requestId===saved.requestId)||getSubmissionStatus(prepared.identity,saved.requestId)==='sent'||getQuarantinedCount(prepared.identity)>0);setDraft(queued?{...saved,queuedRequest:saved.requestId}:saved);setMessage('Saved on this device. Nothing here is sent until the server confirms it.');
     const media=await getFarmMedia(prepared.identity);if(!alive)return;
     setPhotos(media.filter(item=>saved.mediaIds?.includes(item.id)).map(item=>{const url=URL.createObjectURL(item.blob);urls.push(url);return {id:item.id,url};}));
    }else setMessage('No prepared daily report on this device. Reconnect to prepare a report.');
   }catch{if(alive)setMessage('Saved work could not be opened. Reconnect and sign in. Your saved entries have not been deleted.');}})();
   return()=>{alive=false;subscription.unsubscribe();window.removeEventListener('storage',storageChanged);urls.forEach(url=>URL.revokeObjectURL(url));};
- },[]);
+ },[requested]);
  const locked=!!draft?.queuedRequest||draft?.selected?.status==='submitted';
- function change(next:Draft){if(!workspace||locked)return;try{localStorage.setItem(farmReportDraftKey(workspace.identity),JSON.stringify(next));setDraft(next);setMessage('Saved on this device.');}catch{setMessage('Device storage is full or unavailable. Your change was not saved. Keep the app open and restore storage.');}}
+ function change(next:Draft){if(!workspace||!selectedKey||locked)return;try{localStorage.setItem(selectedKey,JSON.stringify(next));setDraft(next);setMessage('Saved on this device.');}catch{setMessage('Device storage is full or unavailable. Your change was not saved. Keep the app open and restore storage.');}}
  async function send(){
   if(!workspace||busy)return;setBusy(true);
   try{
@@ -58,24 +66,27 @@ export function FarmOfflineWorkspace(){
   return()=>{window.removeEventListener('online',online);document.removeEventListener('visibilitychange',foreground);};
  // The workspace identity is immutable while this shell is open.
  // eslint-disable-next-line react-hooks/exhaustive-deps
- },[workspace]);
+ },[workspace,draft?.queuedRequest,draft?.requestId]);
  return <main data-farm-offline-shell className="min-h-screen bg-emerald-50 px-4 py-8"><div className="mx-auto max-w-4xl space-y-5 rounded-2xl border bg-white p-5 sm:p-8">
   <h1 className="text-2xl font-bold text-emerald-950">Saved Farm workspace</h1><p className="text-sm text-slate-700">First-time sign-in needs internet. Uploading may wait until you reopen the app. Only previously prepared work is available here.</p>
   <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950">{message}</p>
-  {workspace&&draft&&<><p className="font-semibold">Daily Report · {draft.form.report_date}</p><ReportFields sections={draft.form.sections} disabled={locked||busy} onChange={sections=>change({...draft,form:{...draft.form,sections}})}/>
-   <label className="flex gap-2"><input type="checkbox" disabled={locked||busy} checked={draft.form.decision_required} onChange={event=>change({...draft,form:{...draft.form,decision_required:event.target.checked}})}/>Bimbo’s decision is needed</label>
+  {workspace&&choices.length>1&&<label className="block font-semibold">Saved report<select aria-label="Saved report" className="mt-1 block min-h-11 w-full rounded-lg border p-2" disabled={busy} value={selectedKey} onChange={event=>setRequested(event.target.value)}>{choices.map(choice=><option key={choice.key} value={choice.key}>{choice.label}</option>)}</select></label>}
+  {workspace&&draft&&<><p className="font-semibold">{isAreaSections(draft.form.sections)?choices.find(option=>option.key===selectedKey)?.label:'Daily Report · '+draft.form.report_date}</p><ReportFields sections={draft.form.sections} disabled={locked||busy} onChange={sections=>change({...draft,form:{...draft.form,sections}})}/>
+   {!isAreaSections(draft.form.sections)&&<label className="flex gap-2"><input type="checkbox" disabled={locked||busy} checked={draft.form.decision_required} onChange={event=>change({...draft,form:{...draft.form,decision_required:event.target.checked}})}/>Bimbo’s decision is needed</label>}
    {!!photos.length&&<section><h2 className="font-semibold">Saved photos</h2><div className="flex flex-wrap gap-3">{photos.map(photo=><Image unoptimized width={112} height={112} key={photo.id} src={photo.url} alt="Saved supporting evidence" className="h-28 w-28 rounded-lg object-cover"/>)}</div><p className="text-xs text-slate-600">Original photos remain on this device until the server confirms the report.</p></section>}
    {!locked&&<>{draft.selected&&<label className="block">Reason for changing this saved draft<input className="mt-1 w-full rounded-lg border p-3" maxLength={2000} value={reason} onChange={event=>setReason(event.target.value)}/></label>}<button disabled={busy||!!draft.selected&&!reason.trim()} className="min-h-11 rounded-lg bg-emerald-900 px-4 text-white disabled:opacity-50" onClick={()=>{
     try{
+     if(!selectedKey)throw Error('Choose a saved report');
+     if(isAreaSections(draft.form.sections)){const parsed=areaSectionsSchema.safeParse(draft.form.sections);if(!parsed.success){setMessage(parsed.error.issues[0].message);return;}}
      const retryKey=`primefield-operation-retry:${workspace.identity.actorId}:daily-reports:period:${workspace.identity.periodId}`;
      if(localStorage.getItem(retryKey)||sessionStorage.getItem(retryKey)){setMessage('An earlier submission is unconfirmed. Reconnect and resolve it in the Farm app before sending another copy.');return;}
      const requestId=draft.requestId||crypto.randomUUID();
      // Persist a stable identifier before queue insertion so a storage failure cannot create a second report.
-     localStorage.setItem(farmReportDraftKey(workspace.identity),JSON.stringify({...draft,requestId}));
+     localStorage.setItem(selectedKey,JSON.stringify({...draft,requestId}));
      setDraft({...draft,requestId});
      if(!getPendingItems(workspace.identity).some(item=>item.requestId===requestId))savePending('/api/farm/daily-reports/submit',{...draft.form,request_id:requestId,...(draft.selected?{id:draft.selected.id,revision:draft.selected.revision,reason}:{})},workspace.identity,{mediaIds:draft.mediaIds});
      const queuedDraft={...draft,requestId,queuedRequest:requestId};setDraft(queuedDraft);
-     localStorage.setItem(farmReportDraftKey(workspace.identity),JSON.stringify(queuedDraft));setMessage('Waiting to send. Reconnect and reopen the app to send this report.');if(navigator.onLine)void send();
+     localStorage.setItem(selectedKey,JSON.stringify(queuedDraft));setMessage('Waiting to send. Reconnect and reopen the app to send this report.');if(navigator.onLine)void send();
     }catch{setMessage('Unable to save the entry. Keep this report open and retry.');}
    }}>Save report to send</button></>}
   </>}

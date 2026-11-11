@@ -48,6 +48,17 @@ export async function managerReadResponse(request:Request,business:Business,reso
    const {data,error}=await db.rpc("manager_day_read",{p_actor:scope.actorId,p_period_id:scope.periodId,p_date:params.get("date")||new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())});
    if(error)throw error;return NextResponse.json({record:data},{headers:{"Cache-Control":"private, no-store"}});
   }
+  if(shape==="expenses"){
+   const category=params.get("category")||"all",range={from:filters.from,to:filters.to};
+   const [expenses,feed,purchases]=await Promise.all([
+    category==="feed"?[]:allManagerRecords(scope,"farm_expenses",{...filters,active:true}),
+    ["all","feed"].includes(category)?allManagerRecords(scope,"farm_feed_purchases",range):[],
+    allManagerRecords(scope,"farm_purchase_payments",{...range,active:true,...(category==="all"?{}:{category})}),
+   ]);
+   const rows=[...purchases.map(data=>({_type:"purchase",data})),...expenses.map(data=>({_type:"expense",data})),...feed.map(data=>({_type:"feed",data}))];
+   rows.sort((a,b)=>String(b.data.date).localeCompare(String(a.data.date))||String(b.data.created_at).localeCompare(String(a.data.created_at))||String(b.data.id).localeCompare(String(a.data.id))||b._type.localeCompare(a._type));
+   return NextResponse.json({data:rows.slice(page*limit,(page+1)*limit),total:rows.length,page:page+1,limit},{headers:{"Cache-Control":"private, no-store"}});
+  }
   let result=shape==="array"||shape==="livestock"||params.get("all")==="1"?{data:await allManagerRecords(scope,resource,filters),total:0,has_more:false}:await readManagerRecords(scope,resource,filters);
   if(shape==="array"||params.get("all")==="1")result.total=result.data.length;
   if(shape==="livestock"){
@@ -55,13 +66,6 @@ export async function managerReadResponse(request:Request,business:Business,reso
    const visible=new Set(result.data.map(row=>row.id));
    const inventory=await allManagerRecords(scope,"farm_inventory"),products=new Set(inventory.map(row=>row.product));
    result={...result,data:(data||[]).filter((row:{id:string|null;product:string})=>row.id?visible.has(row.id):products.has(row.product))};
-  }
-  if(shape==="expenses"){
-   const expenses=await allManagerRecords(scope,"farm_expenses",{...filters,active:true}),feed=await allManagerRecords(scope,"farm_feed_purchases",{from:filters.from,to:filters.to});
-   const category=params.get("category")||"all";
-   const purchases=(await allManagerRecords(scope,"farm_purchase_payments",{from:filters.from,to:filters.to,active:true})).filter(r=>!r.voided_at&&(category==="all"||r.category===category));
-   const rows=[...purchases.map(data=>({_type:"purchase",data})),...(category==="feed"?[]:expenses.map(data=>({_type:"expense",data}))),...(!["all","feed"].includes(category)?[]:feed.map(data=>({_type:"feed",data})))].sort((a,b)=>String(b.data.date).localeCompare(String(a.data.date))||String(b.data.id).localeCompare(String(a.data.id)));
-   return NextResponse.json({data:rows.slice(page*limit,(page+1)*limit),total:rows.length,page:page+1,limit});
   }
   return NextResponse.json(shape==="array"?result.data:{...result,...(zeroBased?{page}:{} )},{headers:{"Cache-Control":"private, no-store"}});
  }catch(error){return managerReadError(error);}

@@ -9,8 +9,8 @@ import {readFileSync,mkdtempSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const require=createRequire(import.meta.url),{chromium}=require('@playwright/test');
 const {build}=await import(pathToFileURL(path.join(os.tmpdir(),'primefield-v2-test-runtime/node_modules/esbuild/lib/main.js')));
-const source=`import React from 'react';import {createRoot} from 'react-dom/client';import {ManagerPeriodProvider} from './contexts/ManagerPeriodContext';import {FarmDailyReports,FarmOperationalRequests} from './components/manager/FarmOperations';const q=new URL(location.href).searchParams;const Page=q.get('screen')==='requests'?FarmOperationalRequests:FarmDailyReports;createRoot(document.getElementById('root')).render(<ManagerPeriodProvider business="farm"><Page admin={q.get('admin')==='yes'} historyOnly={q.get('history')==='yes'}/></ManagerPeriodProvider>);`;
-const bundle=await build({stdin:{contents:source,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-auth-next',setup(builder){builder.onResolve({filter:/^(next\/link|@\/contexts\/AuthContext)$/},args=>({path:args.path,namespace:'mock'}));builder.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='next/link'?`import React from 'react';export default function Link({children,...props}){return React.createElement('a',props,children);}`:`export const useAuth=()=>({profile:{id:'00000000-0000-4000-8000-000000000001',role:'manager',name:'Bimbo'}});`,loader:'js',resolveDir:process.cwd()}));}}]});
+const source=`import React from 'react';import {createRoot} from 'react-dom/client';import {ManagerPeriodProvider} from './contexts/ManagerPeriodContext';import {FarmDailyReports,FarmOperationalRequests} from './components/manager/FarmOperations';import DailyPage from './app/(manager)/manager/daily-report/page';import TodayPage from './app/(manager)/manager/today/page';const q=new URL(location.href).searchParams;const Page=q.get('screen')==='requests'?FarmOperationalRequests:FarmDailyReports;createRoot(document.getElementById('root')).render(<ManagerPeriodProvider business="farm">{location.pathname.endsWith('/today')?<TodayPage/>:location.pathname.endsWith('/daily-report')?<DailyPage searchParams={Object.fromEntries(q)}/>:<Page admin={q.get('admin')==='yes'} historyOnly={q.get('history')==='yes'||location.pathname.endsWith('/daily-report/history')}/>}</ManagerPeriodProvider>);`;
+const bundle=await build({stdin:{contents:source,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-auth-next',setup(builder){builder.onResolve({filter:/^(next\/(link|navigation)|@\/contexts\/AuthContext)$/},args=>({path:args.path,namespace:'mock'}));builder.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='next/navigation'?'export const usePathname=()=>location.pathname;':args.path==='next/link'?`import React from 'react';export default function Link({children,...props}){return React.createElement('a',props,children);}`:`export const useAuth=()=>({profile:{id:'00000000-0000-4000-8000-000000000001',role:'manager',name:'Bimbo'}});`,loader:'js',resolveDir:process.cwd()}));}}]});
 const artifacts=mkdtempSync(path.join(os.tmpdir(),'bossbimbz-farm-ui-')),cssPath=path.join(artifacts,'styles.css');
 execFileSync(process.execPath,[require.resolve('tailwindcss/lib/cli.js'),'-i','app/globals.css','-o',cssPath],{stdio:'pipe'});
 const styles=readFileSync(cssPath,'utf8');
@@ -37,6 +37,7 @@ await page.route('**/api/farm/**',async route=>{const req=route.request(),url=ne
 });
 let checks=0;
 try{
+ if(!process.argv.includes('--locations-only')){
   await page.goto(origin);await page.getByLabel('Pond 1 Water Quality',{exact:true}).waitFor();assert.equal(await page.getByLabel('Tarpaulin Vat 3 Feed',{exact:true}).isVisible(),false);await page.getByRole('button',{name:'All sections',exact:true}).click();checks++;for(const label of ['Pond 1 Water Quality','Tarpaulin Vat 3 Feed','Goats','Ram','Cattle','Piggery','Poultry','Workers present','Tasks completed'])assert.equal(await page.getByLabel(label,{exact:true}).count(),1);checks+=5;
   await page.getByLabel('Pond 1 Water Quality',{exact:true}).fill('Fish healthy');await page.getByLabel('Issues',{exact:true}).fill('Pump needs repair');await page.getByLabel('Request category',{exact:true}).selectOption('repair');await page.getByRole('checkbox').check();await page.reload();await page.getByLabel('Pond 1 Water Quality',{exact:true}).waitFor();await page.getByRole('button',{name:'All sections',exact:true}).click();assert.equal(await page.getByLabel('Pond 1 Water Quality',{exact:true}).inputValue(),'Fish healthy');checks++;
   for(const pond of [1,2,3,4])for(const field of ['Water Quality','Mortality','Feed','General Remarks']){assert.equal(await page.getByLabel(`Pond ${pond} ${field}`,{exact:true}).count(),1);checks++;}
@@ -92,5 +93,58 @@ try{
   await page.evaluate(([rkey,qkey,dkey,qid])=>{localStorage.removeItem(rkey);localStorage.removeItem(qkey);localStorage.setItem(dkey,JSON.stringify({date:'2026-11-02',category:'repair',description:'Unconfirmed saved request',requestId:qid,queuedRequest:qid}));},[reportKey,brokenKey,requestKey,'20000000-0000-4000-8000-000000000090']);
   statusMode='unknown';await page.goto(origin+'/?screen=requests');await page.getByRole('button',{name:'Check saved submission status'}).waitFor();await page.getByRole('button',{name:'New request',exact:true}).click();assert.equal(await page.getByLabel('What do you need?').inputValue(),'Unconfirmed saved request');assert.equal(await page.getByRole('button',{name:'Submit request',exact:true}).isDisabled(),true);assert.equal(await page.getByText('Sent. The server confirmed your request.',{exact:true}).count(),0);checks+=3;
   await page.getByRole('button',{name:'Close and keep draft'}).click();statusMode='confirmed';await page.getByRole('button',{name:'Check saved submission status'}).click();await page.getByText('Sent. The server confirmed your request.',{exact:true}).waitFor();await page.getByRole('button',{name:'New request',exact:true}).click();assert.equal(await page.getByLabel('What do you need?').inputValue(),'');checks++;
-  assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual farm React/browser checks with project Tailwind CSS: all report fields, local draft reload, create/submit/review, locked history, safe retry, request approve/resolve, mobile/tablet/desktop overflow. Screenshots: ${artifacts}`);
+ }
+  // Use the supervisor's normal navigation with no stock groups in the database.
+  const countPosts=()=>calls.filter(call=>call.path.endsWith('/daily-reports/submit')&&call.method==='POST').length;
+  if(page.url()==='about:blank')await page.goto(origin+'/daily-report');
+  await page.evaluate(()=>localStorage.clear());report=null;
+  await page.route('**/api/farm/batch-records?**',r=>r.fulfill({json:{batches:[],records:[]}}));
+  await page.goto(origin+'/daily-report');
+  await page.getByText('Catfish',{exact:true}).click();
+  for(const area of ['Pond 1','Pond 2','Pond 3','Pond 4','Tarpaulin Vat 1','Tarpaulin Vat 2','Tarpaulin Vat 3'])await page.getByText(area,{exact:true}).waitFor();
+  await page.getByText('Piggery',{exact:true}).click();for(const n of [1,2,3,4])await page.getByText('Sty '+n,{exact:true}).waitFor();
+  await page.getByText('Poultry',{exact:true}).click();
+  for(const letter of ['A','B','C','D'])await page.getByText('Pen '+letter,{exact:true}).waitFor();
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(artifacts,'location-selector-mobile.png'),fullPage:true});
+  await page.getByRole('link',{name:'Log Poultry · Pen D'}).click();
+  await page.getByLabel('Eggs collected',{exact:true}).fill('17');await page.getByLabel('Deaths observed',{exact:true}).fill('0');await page.getByLabel('Notes',{exact:true}).fill('Nest checked');
+  await page.reload();await page.getByLabel('Notes',{exact:true}).waitFor();assert.equal(await page.getByLabel('Notes',{exact:true}).inputValue(),'Nest checked');
+  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+  await page.screenshot({path:path.join(artifacts,'location-form-desktop.png'),fullPage:true});
+  const proof='30000000-0000-4000-8000-000000000007';
+  const photo=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=8;canvas.height=8;canvas.getContext('2d').fillRect(0,0,8,8);return canvas.toDataURL('image/png');});
+  await page.route('**/api/farm/evidence**',r=>{const req=r.request(),url=new URL(req.url());return r.fulfill({json:req.method()==='POST'?{data:{id:proof,status:'uploaded'}}:url.searchParams.has('id')?{id:proof,url:photo}:{data:report?.evidence_ids?.includes(proof)?[{id:proof}]:[]}});});
+  await page.getByLabel('Add a photo',{exact:true}).setInputFiles({name:'pen-check.png',mimeType:'image/png',buffer:Buffer.from(photo.split(',')[1],'base64')});
+  await page.getByText(/Photo 1 .* Saved on phone/).waitFor();
+  const beforeArea=countPosts();failSubmit=true;await page.getByRole('button',{name:'Send location log'}).click();
+  await page.getByText('Saved on this device. Waiting to send.',{exact:true}).waitFor();failSubmit=false;await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.getByText('Sent. The server confirmed your report.',{exact:true}).waitFor();
+  assert.deepEqual(report.sections,{template_version:3,area:'poultry_d',observations:{eggs:17,deaths:0,notes:'Nest checked'}});assert.ok(countPosts()>beforeArea);assert.deepEqual(report.evidence_ids,[proof]);
+  await page.goto(origin+'/daily-report');await page.getByText('Poultry',{exact:true}).click();await page.getByRole('link',{name:/View Poultry · Pen D/}).click();await page.getByText('Nest checked',{exact:true}).first().waitFor();
+  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:'Enlarge photo 1'}).click();await page.getByRole('img',{name:'Enlarged report photo'}).waitFor();await page.getByRole('button',{name:'Close',exact:true}).click();
+  await page.getByRole('button',{name:'Mark reviewed',exact:true}).click();await page.getByText('Review saved.',{exact:true}).waitFor();assert.equal(report.review_note,'Reviewed');
+  await page.route('**/api/farm/batch-records?**',r=>r.fulfill({json:{batches:[{id,name:'Pond 1',site_name:'Farm 1',product:'catfish',kind:'pond',quantity_exact:'40'}],records:[]}}));
+  await page.goto(origin+'/daily-report');await page.getByText('Catfish',{exact:true}).first().click();await page.getByRole('button',{name:'Log stock group',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByLabel('Feed consumed (kg)').waitFor();assert.equal(await page.getByRole('link',{name:'Log Catfish · Farm 1 · Pond 1',exact:true}).count(),0);
+  for(const prefix of ['', '/manager']){
+    await page.goto(origin+prefix+'/today');assert.equal(await page.getByRole('link',{name:'Whole farm report'}).getAttribute('href'),prefix+'/daily-report?whole=1');
+    await page.getByText('Poultry',{exact:true}).click();const sent=page.getByRole('link',{name:/View Poultry · Pen D/});await sent.waitFor();
+    assert.equal(new URL(await sent.getAttribute('href'),origin).pathname,prefix+'/daily-report/history');
+    const newLog=page.getByRole('link',{name:'Log Poultry · Pen B'});assert.equal(new URL(await newLog.getAttribute('href'),origin).pathname,prefix+'/daily-report');await newLog.click();
+    assert.equal(await page.getByRole('link',{name:'Choose another area'}).getAttribute('href'),prefix+'/daily-report');
+    assert.equal(await page.getByRole('link',{name:'View report history'}).getAttribute('href'),prefix+'/daily-report/history');
+  }
+  const shown=['10000000-0000-4000-8000-000000000051','10000000-0000-4000-8000-000000000052'].map((key,index)=>({...report,id:key,reviewed_at:null,review_note:null,revision:1,sections:{template_version:3,area:index?'poultry_b':'poultry_a',observations:{eggs:index}}}));
+  const reviews=[];
+  await page.route('**/api/farm/daily-reports**',async r=>{
+    if(r.request().method()==='GET'){await r.fulfill({json:{data:shown,total:shown.length}});return;}
+    const row=shown.find(row=>r.request().url().endsWith(row.id));reviews.push(row.id);
+    if(row===shown[1]){await r.fulfill({status:409,json:{error:'This report changed. Refresh the records.'}});return;}
+    Object.assign(row,{reviewed_at:new Date().toISOString(),review_note:'Reviewed',revision:2});await r.fulfill({json:{data:row}});
+  });
+  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:'Mark shown as reviewed'}).click();
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.deepEqual(reviews,[]);
+  await page.getByRole('button',{name:'Mark shown as reviewed'}).click();await page.getByRole('button',{name:'Confirm reviews'}).click();
+  await page.getByText('1 of 2 reports marked as reviewed.',{exact:false}).waitFor();assert.deepEqual(reviews,shown.map(r=>r.id));assert.equal(shown[1].reviewed_at,null);
+  checks+=42;
+  assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual farm React/browser checks with project Tailwind CSS: report fields, per-location logging, scoped drafts, photos, confirmed reviews, retry safety and responsive layouts. Screenshots: ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator("body").innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

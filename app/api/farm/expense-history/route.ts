@@ -41,6 +41,7 @@ async function legacyGET(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
- const scoped=await managerReadResponse(request,"farm","farm_expenses","expenses",true);
+ const ownHistory=new URL(request.url).searchParams.get("scope")==="mine";
+ const scoped=await managerReadResponse(request,"farm","farm_expenses","expenses",!ownHistory);
  return scoped ?? legacyGET(request);
 }

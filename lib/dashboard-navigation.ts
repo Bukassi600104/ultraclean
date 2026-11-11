@@ -16,8 +16,7 @@ export function farmPerformanceBackLink(pathname: string, search = "") {
 
 export function dashboardBackLink(pathname: string) {
   if (pathname === "/dashboard" || !pathname.startsWith("/dashboard/")) return null;
-  if(pathname==='/dashboard/farm/control')return {href:'/dashboard',label:'Back to CEO Dashboard'};
-  if(pathname==='/dashboard/farm')return {href:'/dashboard/farm/control',label:'Back to Farm control centre'};
+  if(pathname==='/dashboard/farm/control'||pathname==='/dashboard/farm')return {href:'/dashboard',label:'Back to CEO Dashboard'};
   for (const [prefix, href, label] of [
     ["/dashboard/managers/", "/dashboard/managers", "Back to Manage Accounts"],
     ["/dashboard/dba/products/", "/dashboard/dba/products", "Back to Products"],
@@ -36,9 +35,11 @@ export function isDashboardDestinationActive(pathname: string, href: string, des
   return (closest || (pathname==='/dashboard/farm'||pathname.startsWith('/dashboard/farm/')?'/dashboard/farm/control':undefined)) === href;
 }
 
+export function farmManagerPrefix(pathname:string|null){return pathname&&/^\/manager(?:\/|$)/.test(pathname)?"/manager":"";}
+
 export function operationalBackLink(pathname: string, app: "manager" | "property" | "content") {
   if (app !== "manager") return pathname === `/${app}` || pathname === `/${app}/login` ? null : {href:`/${app}`,label:`Back to ${app === "property" ? "Property" : "Content"} Overview`};
-  const prefix = /^\/manager(?:\/|$)/.test(pathname) ? "/manager" : "", path = pathname.slice(prefix.length) || "/";
+  const prefix = farmManagerPrefix(pathname), path = pathname.slice(prefix.length) || "/";
   if (path === "/" || path === "/login") return null;
   for (const [section,label] of [["sales","Sales"],["expenses","Expenses"],["daily-report","Daily Report"]]) {
     if (path.startsWith(`/${section}/`)) return {href:`${prefix}/${section}`,label:`Back to ${label}`};

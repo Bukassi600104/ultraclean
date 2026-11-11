@@ -28,7 +28,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/purchases": "Purchases & Deliveries",
   "/credit": "Customers and payments",
   "/stores": "Physical Counts & Eggs",
-  "/health": "Health tasks",
+  "/health": "Health & vaccination",
   "/performance": "Batch performance",
   "/sales": "Record Sales",
   "/sales/catfish": "Catfish Sales",

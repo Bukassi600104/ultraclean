@@ -1,12 +1,13 @@
 import {withManagerWrite,managerRpc} from "@/lib/manager-write-api";
-import {managerReadResponse} from "@/lib/manager-read-api";
+import {managerReadResponse,requestManagerScope,managerReadError} from "@/lib/manager-read-api";
 import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 import { classificationFields } from "@/lib/farm-livestock-validation";
-import { FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
+import type {CreditData} from "@/lib/farm-credit";
+import { farmDateToday, FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import {cashReceiver,cashDate} from "@/lib/operations-cash-validation";
 
@@ -129,7 +130,20 @@ async function legacyPOST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
  const scoped=await managerReadResponse(request,"farm","farm_sales","list",false);
- return scoped ?? legacyGET(request);
+ const result=scoped ?? await legacyGET(request);
+ if(!result.ok||new URL(request.url).searchParams.get("with_payment")!=="1")return result;
+ const page=await result.json() as {data:{id:string;invoice_id?:string|null}[];total:number};
+ const linked=page.data.filter(sale=>sale.invoice_id);
+ if(!linked.length)return NextResponse.json(page,{headers:{"Cache-Control":"private, no-store"}});
+ try{
+  const scope=await requestManagerScope(request,"farm"),db=createServerClient();
+  if(!db)throw Error();
+  const {data,error}=await db.rpc("farm_credit_read",{p_actor:scope.actorId,p_period:scope.periodId,p_date:farmDateToday()});
+  if(error)throw error;
+  const invoices=new Map((data as CreditData).invoices.map(i=>[i.sale_id,i]));
+  return NextResponse.json({...page,data:page.data.map(sale=>({...sale,invoice:invoices.get(sale.id)??null}))},{headers:{"Cache-Control":"private, no-store"}});
+ }catch(error){return managerReadError(error);}
+
 }
 
 export async function POST(request: NextRequest) { return withManagerWrite(request,"farm",()=>legacyPOST(request)); }

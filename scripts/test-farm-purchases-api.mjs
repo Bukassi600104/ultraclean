@@ -16,3 +16,6 @@ console.log('PASS purchase API: strict payloads, authenticated actor, scoped rec
 pending=false;assert.equal((await api.POST(request({operation:'cancel',id,payload:{expected_revision:0,reason:'Confirmed test entry'},request_id:id}))).status,201);
 const post={operation:'resolve_exception',id,payload:{decision:'post',category:'utilities',cash_payer_account_id:id,expense_source:'bimbo_transfer',reason:'Verified actual work'},request_id:id};
 pending=true;assert.equal((await api.POST(request(post))).status,202);assert.equal((await api.POST(request({...post,payload:{...post.payload,cash_payer_account_id:undefined}}))).status,400);
+pending=false;const held={...post,payload:{decision:'approve_awaiting_funding',reason:'Confirmed emergency repair',category:'utilities'}};
+assert.equal((await api.POST(request(held))).status,201);
+assert.equal((await api.POST(request({...held,payload:{...held.payload,expense_source:'sales_cash'}}))).status,400);

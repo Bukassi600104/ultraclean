@@ -30,14 +30,40 @@ try{
  await assert.rejects(()=>purchase(actor,'delivery',{date,line_id:line,quantity:'1'},order.id),e=>e.code==='23514');
  const proofKey=crypto.randomUUID(),proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'f'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:date,target_resource:'farm_purchase_exceptions'}),proofKey]);await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:proof.id}),proofKey]);
  const exception=await purchase(actor,'exception',{date,supplier:'Actual electrician',amount:'4500',description:'Actual repair',evidence_ids:[proof.id]});
+ const held={decision:'approve_awaiting_funding',category:'utilities',reason:'Verified workmanship; waiting for the payer'},heldKey=crypto.randomUUID();
+ const beforeExpense=(await db.query('select to_jsonb(e) as original from farm_purchase_exceptions e where id=$1',[exception.id])).rows[0].original;
+ await assert.rejects(()=>purchase(actor,'resolve_exception',held,exception.id),e=>e.code==='42501');
+ await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{...held,manager_period_id:ids.farm},exception.id),e=>e.code==='42501');
+ const approval=await purchase(ids.admin,'resolve_exception',held,exception.id,heldKey);
+ assert.equal(approval.status,'approved_awaiting_funding');assert.deepEqual(await purchase(ids.admin,'resolve_exception',held,exception.id,heldKey),approval);
+ await assert.rejects(()=>purchase(ids.admin,'resolve_exception',held,exception.id),e=>e.code==='40001');
+ for(const [viewer,periodId] of [[ids.admin,null],[actor,period.id]]){
+  const report=(await scalar(db,'select farm_purchase_read($1,$2)',[viewer,periodId])).exceptions.find(e=>e.id===exception.id);
+  assert.equal(report.approval.category,'utilities');assert.equal(report.resolution,null);assert.equal(report.reported_by_name,'Remediation tester');
+ }
+ assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),0);
+ assert.equal(await scalar(db,"select count(*)::int from manager_pending_expenses"),0);
+ assert.deepEqual(await scalar(db,'select to_jsonb(e) from farm_purchase_exceptions e where id=$1',[exception.id]),beforeExpense);
  const payer=await scalar(db,"select operations_private.cash_account($1,'farm','NGN','owner','manager',$2,'Remediation tester',$3)",[ids.admin,period.id,period.id]);
  const postKey=crypto.randomUUID(),postPayload={decision:'post',category:'utilities',expense_source:'bimbo_transfer',cash_payer_account_id:payer,reason:'Verified actual work'};
  const pending=await purchase(ids.admin,'resolve_exception',postPayload,exception.id,postKey);assert.equal(pending.status,'pending_funding');assert.deepEqual(await purchase(ids.admin,'resolve_exception',postPayload,exception.id,postKey),pending);assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),0);
+ assert.equal((await scalar(db,'select farm_purchase_read($1,$2)',[ids.admin,period.id])).exceptions.find(e=>e.id===exception.id).pending_funding_id,pending.id);
  await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{decision:'decline',reason:'Concurrent decision'},exception.id),e=>e.code==='23514');
  const cash=(who,op,p)=>scalar(db,'select operations_cash_write($1,$2,$3::jsonb,$4)',[who,op,JSON.stringify({business:'farm',currency:'NGN',...p}),crypto.randomUUID()]);
+ const nextDay='2026-11-02',later=await cash(ids.admin,'fund',{date:nextDay,amount:'4500',recipient:{type:'manager',period_id:period.id}});
+ await cash(actor,'receive',{date:nextDay,amount:'4500',event_id:later.data.id});
+ const stillPending=await scalar(db,'select operations_pending_expense_write($1,$2,$3::jsonb,$4)',[ids.admin,pending.id,JSON.stringify({action:'post',payer_account_id:payer,expected_revision:0,reason:'Check funds on original date'}),crypto.randomUUID()]);
+ assert.equal(stillPending.status,'pending_funding');assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),0);
  const fund=await cash(ids.admin,'fund',{date,amount:'4500',recipient:{type:'manager',period_id:period.id}}),received=await cash(actor,'receive',{date,amount:'4500',event_id:fund.data.id});
  const posted=await scalar(db,'select operations_pending_expense_write($1,$2,$3::jsonb,$4)',[ids.admin,pending.id,JSON.stringify({action:'post',payer_account_id:received.data.target_account_id,expected_revision:0,reason:'Confirmed actual funding'}),crypto.randomUUID()]);assert.equal(posted.status,'posted');
  const view=await scalar(db,'select farm_purchase_read($1,$2)',[actor,period.id]);assert.equal(view.exceptions.find(v=>v.id===exception.id).resolution.decision,'link');assert.equal(Number(await scalar(db,'select sum(amount)::text from farm_expenses')),4500);
+ assert.equal(view.exceptions.find(v=>v.id===exception.id).approval.reason,held.reason);
+ for(const [viewer,selected] of [[ids.admin,null],[actor,period.id]]){
+  const history=await scalar(db,"select manager_read_records($1,'farm','farm_expenses',$2,'{\"active\":true}')",[viewer,selected]);
+  assert.equal(history.data.filter(e=>e.id===posted.data.id).length,1);assert.equal(history.data.find(e=>e.id===posted.data.id).date,date);
+ }
+ assert.equal((await scalar(db,"select manager_read_records($1,'farm','farm_expenses',null,'{\"personal_report\":true}')",[ids.farm])).data.some(e=>e.id===posted.data.id),false);
+ assert.deepEqual(await scalar(db,'select to_jsonb(e) from farm_purchase_exceptions e where id=$1',[exception.id]),beforeExpense);
  const more=await cash(ids.admin,'fund',{date,amount:'4500',recipient:{type:'manager',period_id:period.id}});await cash(actor,'receive',{date,amount:'4500',event_id:more.data.id});
  const secondProofKey=crypto.randomUUID(),secondProof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'e'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:date,target_resource:'farm_purchase_exceptions'}),secondProofKey]);await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:secondProof.id}),secondProofKey]);
  const direct=await purchase(actor,'exception',{date,supplier:'Second actual supplier',amount:'4500',description:'Different confirmed expense',evidence_ids:[secondProof.id]});

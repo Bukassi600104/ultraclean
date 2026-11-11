@@ -1,10 +1,14 @@
 "use client";
 import Link from "next/link";
+import {ReportedExpenses} from "@/components/manager/FarmPurchases";
+import type {ReportedExpense} from "@/lib/farm-purchases";
+import {useFarmRecordRefresh} from "@/hooks/useFarmRecordRefresh";
 import { formatCurrency } from "@/lib/utils";
+import {formatExactCurrency,sumMoney} from "@/lib/money";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
+import { format,parseISO } from "date-fns";
 import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,7 +47,13 @@ type DisplayRow =
   | { _type: "feed"; data: FeedPurchase }
   | { _type: "purchase"; data: {id:string;date:string;amount:number;recipient:string;category:string} };
 
-export default function FarmExpensesPage() {
+export default function FarmExpensesPage({searchParams={}}:{searchParams?:{period_id?:string;manager_id?:string;from?:string;to?:string}}) {
+  const refresh=useFarmRecordRefresh();
+  const {period_id:periodId,manager_id:managerId,from,to}=searchParams;
+  const filters=new URLSearchParams();
+  if(periodId)filters.set("period_id",periodId);if(managerId)filters.set("manager_id",managerId);
+  const scopeQuery=filters.toString();
+  const [reported,setReported]=useState<ReportedExpense[]>([]),[reportError,setReportError]=useState(false);
   const [rows, setRows] = useState<DisplayRow[]>([]);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalFeed, setTotalFeed] = useState(0);
@@ -54,10 +64,17 @@ export default function FarmExpensesPage() {
   const limit = 20;
 
   const [loadError, setLoadError] = useState("");
+  useEffect(()=>{
+    const controller=new AbortController();setReportError(false);setReported([]);
+    fetch('/api/farm/purchases?'+scopeQuery,{cache:'no-store',signal:controller.signal}).then(async response=>{
+      if(!response.ok)throw Error();const body=await response.json();if(!controller.signal.aborted)setReported(body.exceptions.filter((e:ReportedExpense)=>!e.resolution));
+    }).catch(()=>{if(!controller.signal.aborted)setReportError(true);});return()=>controller.abort();
+  },[scopeQuery,version,refresh]);
   useEffect(() => {
     const controller = new AbortController();
     setIsLoading(true); setLoadError("");
-    const params = new URLSearchParams({page: String(page), limit: String(limit), category});
+    const params = new URLSearchParams(scopeQuery);params.set("page",String(page));params.set("limit",String(limit));params.set("category",category);
+    if(from)params.set("from",from);if(to)params.set("to",to);
     fetch(`/api/farm/expense-history?${params}`, {signal: controller.signal, cache: "no-store"})
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
       .then(result => {
@@ -68,27 +85,29 @@ export default function FarmExpensesPage() {
       .catch(error => { if (error.name !== "AbortError") {setRows([]);setLoadError("Expense history unavailable. Please retry.");} })
       .finally(() => {if (!controller.signal.aborted) setIsLoading(false);});
     return () => controller.abort();
-  }, [page, category, version]);
+  }, [page, category, version,scopeQuery,from,to,refresh]);
 
   const combinedTotal = totalExpenses + totalFeed;
   const totalPages = Math.ceil(combinedTotal / limit);
 
   // Grand total amount for current page
-  const pageTotalAmount =
-    rows.reduce((sum, row) => sum + Number(row._type === "feed" ? row.data.cost : row.data.amount), 0);
+  const pageTotalAmount = sumMoney(rows.map(row=>row._type==="feed"?row.data.cost:row.data.amount));
 
   if(loadError)return <DashboardReadError title="Farm Expenses" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
   return (
     <>
       <DashboardHeader title="Farm Expenses" />
       <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
+        <ReportedExpenses compact admin reports={reported} periodId={periodId}/>
+        {reportError&&<p role="alert">Emergency reports could not be loaded. <button className="min-h-11 underline" onClick={()=>setVersion(v=>v+1)}>Retry reports</button></p>}
+        <h2 className="text-xl font-bold">Recorded expenses</h2>
         
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-500">{combinedTotal} total records</p>
-            {pageTotalAmount > 0 && (
+            <p className="text-sm text-gray-600">{isLoading?'Loading records…':combinedTotal+' records'} · {from||to?[from||'Beginning',to||'Today'].join(' to '):'All dates'} · {periodId||managerId?'Selected manager':'Whole farm'}</p>
+            {!isLoading && rows.length > 0 && (
               <p className="text-xs text-gray-600">
-                Page total: {formatCurrency(pageTotalAmount)}
+                Page total · {formatExactCurrency(pageTotalAmount,"NGN")}
               </p>
             )}
           </div>
@@ -130,13 +149,13 @@ export default function FarmExpensesPage() {
                 </TableHeader>
                 <TableBody>
                   {rows.map((row) => {
-                    if(row._type === "purchase")return <TableRow key={`purchase-${row.data.id}`}><TableCell>{format(new Date(row.data.date),"MMM d")}</TableCell><TableCell>{row.data.category}</TableCell><TableCell>{row.data.recipient}</TableCell><TableCell>{formatCurrency(row.data.amount)}</TableCell><TableCell><Link className="inline-flex min-h-11 items-center text-emerald-800 underline" href="/dashboard/farm/purchases">View purchase payment</Link></TableCell><TableCell className="hidden md:table-cell">Recorded payment</TableCell></TableRow>;
+                    if(row._type === "purchase")return <TableRow key={`purchase-${row.data.id}`}><TableCell>{format(parseISO(row.data.date),"d MMM yyyy")}</TableCell><TableCell>{row.data.category}</TableCell><TableCell>{row.data.recipient}</TableCell><TableCell>{formatCurrency(row.data.amount)}</TableCell><TableCell><Link className="inline-flex min-h-11 items-center text-emerald-800 underline" href={"/dashboard/farm/purchases"+(scopeQuery?"?"+scopeQuery:"")}>View purchase payment</Link></TableCell><TableCell className="hidden md:table-cell">Recorded payment</TableCell></TableRow>;
                     if (row._type === "feed") {
                       const f = row.data;
                       return (
                         <TableRow key={`feed-${f.id}`}>
                           <TableCell className="text-sm">
-                            {format(new Date(f.date), "MMM d")}
+                            {format(parseISO(f.date), "d MMM yyyy")}
                           </TableCell>
                           <TableCell>
                             <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
@@ -160,7 +179,7 @@ export default function FarmExpensesPage() {
                     return (
                       <TableRow key={`exp-${e.id}`}>
                         <TableCell className="text-sm">
-                          {format(new Date(e.date), "MMM d")}
+                          {format(parseISO(e.date), "d MMM yyyy")}
                         </TableCell>
                         <TableCell className="capitalize">{e.category}</TableCell>
                         <TableCell className="text-sm text-gray-600">

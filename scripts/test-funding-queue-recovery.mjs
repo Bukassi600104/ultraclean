@@ -15,5 +15,14 @@ const db={from(table){const filters={};const q={select(){return q},eq(k,v){filte
 const route=typescriptLoader({'@/lib/manager-read-api':{requestManagerScope:async()=>scope,managerReadError:()=>Response.json({error:'Unavailable'},{status:503})},'@/lib/supabase/server':{createServerClient:()=>db}})('app/api/operations/funding-status/route.ts');
 const response=await route.GET(new Request('https://isolated.invalid/api/operations/funding-status?business=farm&request_id='+requestId));assert.equal(response.status,200);assert.equal((await response.json()).status,'posted');assert.equal(queries[0].filters.actor_id,identity.actorId);assert.equal(queries[0].filters.period_id,identity.periodId);assert.equal(queries[1].filters.requested_by,identity.actorId);assert.equal(queries[1].filters.period_id,identity.periodId);assert.equal(response.headers.get('cache-control'),'private, no-store');
 assert.equal((await route.GET(new Request('https://isolated.invalid?business=farm&request_id=bad'))).status,400);
+const purchaseChecks=[];
+const purchaseDB={from(table){const filters={};const q={select(){return q},eq(k,v){filters[k]=v;return q},in(k,v){filters[k]=v;return q},
+ async maybeSingle(){purchaseChecks.push({table,filters});return {data:table==='farm_purchase_receipts'?{result:{id:'linked-funding',status:'pending_funding'}}:null};},
+ then(fn){purchaseChecks.push({table,filters});fn({data:filters.period_id==='wrong-period'?[]:[{id:'linked-funding',status:'posted'}]});}};return q;}};
+const purchaseStatus=typescriptLoader({'@/lib/manager-read-api':{requestManagerScope:async()=>scope,managerReadError:()=>Response.json({}, {status:503})},'@/lib/supabase/server':{createServerClient:()=>purchaseDB}})('app/api/operations/funding-status/route.ts');
+const purchaseRequest=()=>new Request('https://isolated.invalid/api/operations/funding-status?business=farm&request_id='+requestId);
+scope={...scope,mode:'admin_all',periodId:null};assert.equal((await (await purchaseStatus.GET(purchaseRequest())).json()).status,'posted');
+assert.equal(purchaseChecks[1].filters.actor_id,identity.actorId);assert.equal(purchaseChecks[2].filters.requested_by,identity.actorId);
+scope={...scope,mode:'personal',periodId:'wrong-period'};assert.equal((await (await purchaseStatus.GET(purchaseRequest())).json()).status,'unknown');
 const {feedSubmissionRejected}=load('lib/feed-submission.ts');assert.equal(feedSubmissionRejected(409,{code:'23514',error:'Record the actual starting bag count first'}),true);assert.equal(feedSubmissionRejected(503,{code:'23514'}),false);assert.equal(feedSubmissionRejected(409,{code:'23514',error:'Retry identifier belongs to a different entry'}),false);
 console.log('PASS funding review recovery without reposting, actor/period filters, preserved rejected records, malformed queue visibility and atomic feed rejection handling');

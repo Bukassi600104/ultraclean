@@ -1,7 +1,10 @@
 "use client";
-import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
+import {SalePaymentDetails} from "@/components/manager/SalePaymentDetails";
+import type {FarmSale} from "@/types";
 import {useAuth} from "@/contexts/AuthContext";
 import {LegacyManagerExportButton} from "@/components/manager/LegacyManagerExportButton";
+import {useFarmRecordRefresh} from "@/hooks/useFarmRecordRefresh";
 
 import { formatCurrency } from "@/lib/utils";
 
@@ -13,9 +16,9 @@ function fmt(n: number): string {
 }
 
 type MainTab = "sales" | "expenses";
-type ExpenseSub = "general" | "feed";
+type ExpenseSub = "all" | "general" | "feed";
 
-interface SaleRecord {
+interface SaleRecord extends Pick<FarmSale,'invoice'|'invoice_id'> {
   id: string;
   date: string;
   product: string;
@@ -124,7 +127,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
       const version = ++requestRef.current; setLoadError("");
       try {
         const params = new URLSearchParams({
-          page: pageNum.toString(),
+          page: pageNum.toString(), with_payment:"1",
           limit: PAGE_SIZE.toString(),
           ...(from ? {from} : {}), ...(to ? {to} : {}),
         });
@@ -251,12 +254,7 @@ function SalesTab({ from, to }: { from: string; to: string }) {
                 {s.gender}
               </span>
             )}
-            <span
-              className="text-xs rounded-full px-2 py-0.5 capitalize"
-              style={{ backgroundColor: "rgba(245,200,66,0.15)", color: "#715800" }}
-            >
-              {s.payment_method}
-            </span>
+            <SalePaymentDetails sale={s}/>
           </div>
           <FarmCorrectionRequest recordType="sale" recordId={s.id} />
         </div>
@@ -534,16 +532,38 @@ function FeedTab({ from, to }: { from: string; to: string }) {
   );
 }
 
+function AllExpenses({from,to}:{from:string;to:string}){
+ const refresh=useFarmRecordRefresh();
+ const read=useManagerFetch(),[page,setPage]=useState(1),[retry,setRetry]=useState(0);
+ const [rows,setRows]=useState<({_type:'expense',data:ExpenseRecord}|{_type:'feed',data:FeedRecord}|{_type:'purchase',data:{id:string;date:string;category:string;recipient:string;amount:number}})[]>([]);
+ const [total,setTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(false);
+ useEffect(()=>{
+  const controller=new AbortController(),params=new URLSearchParams({scope:'mine',page:String(page),limit:String(PAGE_SIZE)});
+  if(from)params.set('from',from);if(to)params.set('to',to);
+  setLoading(true);setError(false);
+  read('/api/farm/expense-history?'+params,{signal:controller.signal}).then(async r=>{if(!r.ok)throw Error();const body=await r.json();if(!controller.signal.aborted){setRows(body.data);setTotal(body.total);}})
+   .catch(()=>{if(!controller.signal.aborted)setError(true);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  return()=>controller.abort();
+ },[from,to,page,retry,read,refresh]);
+ if(error)return <p role="alert" className="p-4">Expense history is unavailable. <button className="min-h-11 underline" onClick={()=>setRetry(v=>v+1)}>Retry</button></p>;
+ if(loading)return <p role="status" className="p-4">Loading expense history…</p>;
+ return <section className="space-y-2 px-4"><p className="text-sm text-slate-600">{total} recorded expenses · {from||to?'Selected dates':'All dates'}</p>
+  {rows.map(row=><article key={row._type+row.data.id} className="rounded-xl border bg-white p-4"><div className="flex flex-wrap justify-between gap-2">
+   <strong>{row._type==='feed'?row.data.feed_type+' feed':row._type==='purchase'?row.data.recipient:row.data.paid_to||row.data.category}</strong>
+   <strong>{fmt(row._type==='feed'?row.data.cost:row.data.amount)}</strong></div>
+   <p className="text-sm text-slate-600">{new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(row.data.date+'T00:00:00Z'))} · {row._type==='feed'?row.data.num_bags+' bags':row._type==='purchase'?'Purchase payment':row.data.category}</p>
+  </article>)}
+  {total>PAGE_SIZE&&<div className="flex items-center justify-between gap-3"><button className="min-h-11 underline" disabled={page===1} onClick={()=>setPage(p=>p-1)}>Previous</button>Page {page} of {Math.ceil(total/PAGE_SIZE)}<button className="min-h-11 underline" disabled={page*PAGE_SIZE>=total} onClick={()=>setPage(p=>p+1)}>Next</button></div>}
+ </section>;
+}
 export default function RecordsPage() {
   const {profile}=useAuth();
+  const scope=useManagerPeriod();
   const [mainTab, setMainTab] = useState<MainTab>("sales");
   useEffect(()=>{if(new URLSearchParams(window.location.search).get("tab")==="expenses")setMainTab("expenses");},[]);
-  const [expenseSub, setExpenseSub] = useState<ExpenseSub>("general");
+  const [expenseSub, setExpenseSub] = useState<ExpenseSub>(scope?.periodId?"all":"general");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  useEffect(() => {
-    setToDate(new Date().toISOString().split("T")[0]);
-  }, []);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -573,7 +593,7 @@ export default function RecordsPage() {
       {/* Expense sub-tabs */}
       {mainTab === "expenses" && (
         <div className="flex gap-2 mb-3">
-          {(["general", "feed"] as ExpenseSub[]).map((sub) => (
+          {((scope?.periodId?["all","general","feed"]:["general","feed"]) as ExpenseSub[]).map((sub) => (
             <button
               key={sub}
               onClick={() => setExpenseSub(sub)}
@@ -584,7 +604,7 @@ export default function RecordsPage() {
                   : { backgroundColor: "#e8efec", color: "#6b7280" }
               }
             >
-              {sub === "general" ? "General" : "Feed Purchases"}
+              {sub === "all" ? "All expenses" : sub === "general" ? "General" : "Feed Purchases"}
             </button>
           ))}
         </div>
@@ -598,6 +618,7 @@ export default function RecordsPage() {
       />
 
       <div className="mt-3">
+        {mainTab==="expenses"&&expenseSub==="all"&&<AllExpenses key={fromDate+toDate} from={fromDate} to={toDate}/>}
         {mainTab === "sales" && <SalesTab from={fromDate} to={toDate} />}
         {mainTab === "expenses" && expenseSub === "general" && (
           <GeneralExpensesTab from={fromDate} to={toDate} />

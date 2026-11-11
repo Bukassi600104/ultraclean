@@ -22,6 +22,22 @@ try{
  await assert.rejects(()=>asRole(db,'authenticated',ids.farm,()=>call(ids.farm,payload)),e=>e.code==='42501');
  const draft=await scalar(db,"select farm_operations_write($1,'report','create',$2::jsonb,null,null,$3)",[ids.farm,JSON.stringify({...payload,report_date:'2026-10-31',decision_required:false}),crypto.randomUUID()]);
  const submitted=await call(ids.farm,{...payload,report_date:'2026-10-31',decision_required:false,id:draft.id,revision:draft.revision,reason:'Confirm saved draft'});assert.equal(submitted.id,draft.id);assert.equal(submitted.status,'submitted');
+ const location=(area,observations)=>({report_date:payload.report_date,decision_required:false,sections:{template_version:3,area,observations}});
+ const observations={feed_kg:5,deaths:0,eggs:17,notes:'Supervisor checked this pen'};
+ const locationRetry=crypto.randomUUID(),pen=await call(ids.farm,location('poultry_a',observations),locationRetry);
+ assert.equal(pen.sections.observations.eggs,17);assert.equal(pen.manager_id,ids.farm);
+ assert.equal((await call(ids.farm,location('poultry_a',observations),locationRetry)).id,pen.id);
+ await assert.rejects(()=>call(ids.farm,location('poultry_a',observations)),e=>e.code==='23505');
+ for(const [area,values] of [['poultry_d',{eggs:0}],['farm1_pond4',{water_quality:'Clear'}],['farm2_vat3',{sample_count:40,sample_weight_kg:72}],['piggery_4',{feed_kg:3}],['goats',{notes:'Hooves checked'}]])assert.equal((await call(ids.farm,location(area,values))).sections.area,area);
+ for(const [area,values] of [['farm2_vat4',{feed_kg:1}],['piggery_4',{eggs:2}],['farm2_vat3',{sample_count:2}],['goats',{notes:'   '}],['poultry_b',{deaths:-1}],['crops',{deaths:0}]]){
+   await assert.rejects(()=>call(ids.farm,location(area,values)),e=>e.code==='22023');
+ }
+ await assert.rejects(()=>call(ids.farm,{...location('poultry_b',observations),decision_required:true}),e=>e.code==='22023');
+ const reviewed=await scalar(db,"select farm_operations_write($1,'report','review',$2::jsonb,$3,'Daily log reviewed',$4)",[ids.admin,JSON.stringify({expected_revision:pen.revision,review_note:'Reviewed'}),pen.id,crypto.randomUUID()]);
+ assert.equal(reviewed.reviewed_by,ids.admin);assert.equal(reviewed.sections.observations.eggs,17);
+ assert.deepEqual(await scalar(db,'select sections from farm_daily_reports where id=$1',[row.id]),sections);
+ assert.equal(await scalar(db,'select count(*)::int from farm_inventory_transactions'),0);
+ assert.equal(await scalar(db,'select count(*)::int from farm_operational_requests'),1);
  await scalar(db,"select farm_v2_write($1,'day','close',$2::jsonb,null,null,$3)",[ids.farm,JSON.stringify({date:'2026-10-29'}),crypto.randomUUID()]);
  await assert.rejects(()=>call(ids.farm,{...payload,report_date:'2026-10-29'}),e=>e.code==='23514');
  console.log('PASS atomic Daily Report submission: retry, evidence linkage/rollback, linked request once, saved draft, closure and role boundary');

@@ -1,5 +1,7 @@
 "use client";
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {FarmPurchases} from "@/components/manager/FarmPurchases";
+import {useFarmRecordRefresh} from "@/hooks/useFarmRecordRefresh";
 
 import type {PurchaseData} from "@/lib/farm-purchases";
 import {formatExactCurrency} from "@/lib/money";
@@ -80,6 +82,7 @@ export default function ExpensesOverviewPage() {
  const managerFetch=useManagerFetch();
   const router = useRouter();
   const today = getTodayStr();
+  const refresh=useFarmRecordRefresh();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [purchasePayments,setPurchasePayments]=useState<PurchaseCost[]>([]);
   const [feedPurchases, setFeedPurchases] = useState<FeedPurchase[]>([]);
@@ -96,17 +99,19 @@ export default function ExpensesOverviewPage() {
     setLoading(true);setLoadError(false);setSummary(null);
     try {
       const read = async (url:string) => {const response=await managerFetch(url);if(!response.ok)throw new Error("Unavailable");return response.json();};
-      const [expRes, feedRes, recordRes, financeRes, purchaseRes] = await Promise.all([
-        read(`/api/farm/expenses?date=${today}&limit=100`),
-        read(`/api/farm/feed-purchases?date=${today}&limit=100`),
+      const dailyRows=async(route:string)=>{
+        const rows=[];let page=1;
+        for(;;){const result=await read(`/api/farm/${route}?date=${today}&limit=100&page=${page++}`);rows.push(...result.data);if(result.data.length<100||rows.length>=result.total)return rows;}
+      };
+      const [expenses, feed, recordRes, financeRes] = await Promise.all([
+        dailyRows("expenses"),
+        dailyRows("feed-purchases"),
         read(`/api/farm/daily-record?date=${today}`),
         managerFetch(`/api/farm/balance?date=${today}&from=${today}&to=${today}`).then(async (r) => { if (!r.ok) throw new Error("Summary unavailable"); return r.json(); }),
-        read("/api/farm/purchases"),
       ]);
       setSummary(financeRes);
-      setPurchasePayments((purchaseRes as PurchaseData).purchases.flatMap(o=>o.payments.filter(p=>p.date===today&&!p.voided_at).map(p=>({...p,category:o.category,_type:"purchase" as const}))));
-      setExpenses(expRes.data || []);
-      setFeedPurchases((feedRes.data || []).map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
+      setExpenses(expenses);
+      setFeedPurchases(feed.map((f: FeedPurchase) => ({ ...f, _type: "feed" as const })));
       setDayRecord(recordRes.record || null);
     } catch {
       setLoadError(true);toast.error("Failed to load data");
@@ -115,7 +120,8 @@ export default function ExpensesOverviewPage() {
     }
   }, [today,managerFetch]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData,refresh]);
+  const acceptPurchases=useCallback((data:PurchaseData)=>setPurchasePayments(data.purchases.flatMap(o=>o.payments.filter(p=>p.date===today&&!p.voided_at).map(p=>({...p,category:o.category,_type:"purchase" as const})))),[today]);
 
   // Merge list — expenses first then feed purchases, sorted by created_at desc
   const allItems: ListItem[] = [
@@ -132,11 +138,16 @@ export default function ExpensesOverviewPage() {
 
   return (
     <div className="space-y-4">
+      <nav aria-label="Expense shortcuts" className="flex flex-wrap gap-x-5 text-sm font-semibold text-emerald-900">
+        <a className="inline-flex min-h-11 items-center underline" href="#recorded-expenses">Today&apos;s paid expenses</a>
+        <button className="min-h-11 underline" onClick={()=>router.push("/records?tab=expenses")}>View past expenses</button>
+      </nav>
+      <FarmPurchases expenses onRead={acceptPurchases}/>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div id="recorded-expenses" className="flex scroll-mt-20 items-center justify-between">
         <div>
           <p className="text-xs text-gray-400 uppercase tracking-widest">{dateLabel}</p>
-          <h1 className="text-lg font-bold text-gray-900">Expenses Overview</h1>
+          <h2 className="text-lg font-bold text-gray-900">Recorded expenses</h2>
         </div>
         {isDayClosed && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
@@ -147,7 +158,6 @@ export default function ExpensesOverviewPage() {
       </div>
 
       {loadError && <p role="alert" className="text-red-700">Financial summary unavailable. <button className="underline min-h-11" onClick={loadData}>Retry</button></p>}
-      <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm text-gray-600">Today · {today}</p><button className="min-h-11 rounded-xl border px-4 font-semibold text-emerald-900" onClick={()=>router.push("/records?tab=expenses")}>View past expenses</button></div>
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         {[

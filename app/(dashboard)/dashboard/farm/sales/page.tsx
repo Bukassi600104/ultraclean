@@ -1,4 +1,6 @@
 "use client";
+import Link from "next/link";
+import {SalePaymentDetails} from "@/components/manager/SalePaymentDetails";
 import { formatCurrency } from "@/lib/utils";
 import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
@@ -28,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { PenLine } from "lucide-react";
 import type { FarmSale } from "@/types";
 
-export default function FarmSalesPage() {
+export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<string,string|undefined>}) {
   const [sales, setSales] = useState<FarmSale[]>([]);
   const [total, setTotal] = useState(0);
   const [loadError,setLoadError]=useState("");
@@ -37,29 +39,34 @@ export default function FarmSalesPage() {
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
   const limit = 20;
+  const scope=new URLSearchParams();
+  for(const key of ["from","to","period_id","manager_id"]){const value=searchParams[key];if(value)scope.set(key,value);}
+  const filters=scope.toString();
 
   useEffect(() => {
+    const controller=new AbortController();
     async function load() {
       setIsLoading(true);setLoadError("");
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(filters);
+      params.set("with_payment","1");
       params.set("page", page.toString());
       params.set("limit", limit.toString());
       if (product !== "all") params.set("product", product);
 
       try {
-        const res = await fetch(`/api/farm/sales?${params}`);
+        const res = await fetch(`/api/farm/sales?${params}`,{signal:controller.signal,cache:"no-store"});
         const json = await res.json();
         if(!res.ok||!Array.isArray(json.data))throw Error();
         setSales(json.data);
         setTotal(json.total || 0);
       } catch {
-        setLoadError("Farm sales could not be loaded. Please retry.");
+        if(!controller.signal.aborted)setLoadError("Farm sales could not be loaded. Please retry.");
       } finally {
-        setIsLoading(false);
+        if(!controller.signal.aborted)setIsLoading(false);
       }
     }
-    load();
-  }, [page, product, version]);
+    load();return()=>controller.abort();
+  }, [page, product, version, filters]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -70,7 +77,7 @@ export default function FarmSalesPage() {
       <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
         
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">{total} total sales</p>
+          <div><p className="text-sm text-gray-600">{total} sales{scope.get("from")?" from "+scope.get("from"):""}{scope.get("to")?" to "+scope.get("to"):""}</p><Link className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={"/dashboard/farm/credit?"+filters}>Customers &amp; payments</Link></div>
           <Select value={product} onValueChange={(v) => { setProduct(v); setPage(1); }}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="All products" />
@@ -98,23 +105,23 @@ export default function FarmSalesPage() {
                 ))}
               </div>
             ) : sales.length ? (
-              <Table>
-                <TableHeader>
+              <Table className="block md:table">
+                <TableHeader className="hidden md:table-header-group">
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead className="hidden sm:table-cell">Qty</TableHead>
                     <TableHead className="hidden sm:table-cell">Price</TableHead>
-                    <TableHead>Total</TableHead><TableHead>Actions</TableHead>
+                    <TableHead>Sale value</TableHead><TableHead>Payment status</TableHead><TableHead>Actions</TableHead>
                     <TableHead className="hidden sm:table-cell"></TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="block md:table-row-group">
                   {sales.map((s) => (
-                    <TableRow key={s.id}>
+                    <TableRow key={s.id} className="grid grid-cols-2 gap-x-2 p-3 md:table-row md:p-0">
                       <TableCell className="text-sm">
-                        {format(new Date(s.date), "MMM d")}
+                        {format(new Date(s.date+"T12:00:00"), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>{s.customer_name}</TableCell>
                       <TableCell className="capitalize">{s.product}{s.stock_group&&<span className="block text-xs normal-case text-gray-600">{livestockGroupLabel(s.stock_group)}</span>}</TableCell>
@@ -125,8 +132,9 @@ export default function FarmSalesPage() {
                         {formatCurrency(s.unit_price)} {(s as FarmSale & { pricing_basis?: string }).pricing_basis?.replace("per_", "/")}
                       </TableCell>
                       <TableCell className="font-medium">
-                        {formatCurrency(s.total_amount)}
+                        <span className="block text-xs font-normal text-slate-600 md:hidden">Sale value</span>{formatCurrency(s.total_amount)}
                       </TableCell>
+                      <TableCell className="col-span-2"><SalePaymentDetails sale={s}/></TableCell>
                       <TableCell><FarmAdminCorrection recordType="sale" record={s} onSaved={() => setVersion(v => v + 1)} /></TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {(s as FarmSale & { is_edited?: boolean }).is_edited && (

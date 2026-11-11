@@ -86,6 +86,8 @@ export interface Profile {
 }
 
 export interface FarmSale {
+  invoice_id?: string | null;
+  invoice?: import("@/lib/farm-credit").CreditData["invoices"][number] | null;
   stock_group_id?: string | null;
   stock_group?: import("@/lib/farm-livestock-categories").LivestockGroup | null;
   id: string;

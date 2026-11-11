@@ -17,4 +17,8 @@ assert.equal((await send({...report,id:crypto.randomUUID()})).status,400);
 assert.equal((await send({...report,report_date:'2026-02-30'})).status,400);
 assert.equal((await send({...report,evidence_ids:[crypto.randomUUID()]})).status,201);
 assert.equal((await send({...report,id:crypto.randomUUID(),revision:1,reason:'Submit saved draft'})).status,201);
+const location={...report,sections:{template_version:3,area:'farm2_vat3',observations:{feed_kg:0,notes:'Clear water'}}};
+assert.equal((await send(location)).status,201);assert.deepEqual(call.args.p_payload.sections,location.sections);
+for(const sections of [{...location.sections,area:'farm3_vat1'},{...location.sections,observations:{eggs:5}},{...location.sections,observations:{sample_count:12}},{...location.sections,observations:{}}])assert.equal((await send({...report,sections})).status,400);
+assert.equal((await send({...location,decision_required:true})).status,400);
 console.log('PASS report API: actor derived on server, guarded atomic delegate, validated retry/evidence/date/revision');

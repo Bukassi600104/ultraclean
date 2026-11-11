@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {MessageBimbo} from '@/components/MessageBimbo';
 import {
   Home, TrendingUp, Receipt, Clock, Wallet,
-  LogOut, X, Layers, Droplets, PlusSquare, Skull, Package, ClipboardList, MessageSquare,
+  LogOut, Layers, Droplets, PlusSquare, Skull, Package, ClipboardList, MessageSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -62,112 +64,57 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
-  const pathname = usePathname();
-  const { profile, signOut } = useAuth();
-
-  // Normalize: strip /manager prefix if present
-  const normPath = pathname.replace(/^\/manager/, "") || "/";
-
-  function isActive(href: string) {
-    if (href === "/") return normPath === "/";
-    return normPath === href || normPath.startsWith(href + "/");
-  }
-
-  return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: "#0d2418" }}>
-      {/* Brand */}
-      <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-        <div>
-          <p className="font-bold text-white text-sm tracking-wide">Primefield</p>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>Farm Manager</p>
-        </div>
-        {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
-            <X className="h-4 w-4 text-white" />
-          </button>
-        )}
-      </div>
-
-      {/* Manager info */}
-      <div className="px-5 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-            style={{ backgroundColor: "#11d469", color: "#012d1d" }}>
-            {(profile?.name ?? "M").charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{profile?.name ?? "Manager"}</p>
-            <p className="text-xs truncate" style={{ color: "rgba(255,255,255,0.4)" }}>Farm Manager</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
-        <div className="px-2 text-emerald-100"><MessageBimbo/></div>
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.title}>
-            <p className="text-xs font-semibold uppercase tracking-widest px-2 mb-1.5"
-              style={{ color: "rgba(255,255,255,0.3)" }}>
-              {section.title}
-            </p>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className="flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 transition-colors"
-                    style={{
-                      backgroundColor: active ? "rgba(17,212,105,0.15)" : "transparent",
-                      color: active ? "#11d469" : "rgba(255,255,255,0.7)",
-                    }}
-                  >
-                    <item.icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* Logout */}
-      <div className="px-3 py-3 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-        <button
-          onClick={() => signOut()}
-          className="flex items-center gap-2.5 w-full rounded-xl px-3 py-2.5 transition-colors"
-          style={{ color: "rgba(255,255,255,0.45)" }}
-        >
-          <LogOut className="h-4 w-4" />
-          <span className="text-sm">Sign Out</span>
-        </button>
-      </div>
+  const pathname = usePathname(), { profile, signOut } = useAuth();
+  const prefix = /^\/manager(?:\/|$)/.test(pathname) ? "/manager" : "";
+  const path = pathname.slice(prefix.length) || "/";
+  return <div className="flex h-full flex-col bg-[#edf2eb] text-[#263d2c]">
+    <div className="border-b border-[#cfdbcd] px-5 py-4">
+      <p className="text-base font-bold tracking-tight">Primefield Farm</p>
     </div>
-  );
+    <nav aria-label="Farm menu" className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+      {NAV_SECTIONS.map(section=><div key={section.title}>
+        <p className="mb-1 px-3 text-xs font-semibold text-[#536754]">{section.title}</p>
+        {section.items.map(item=>{
+          const active=path===item.href||(item.href!=="/"&&path.startsWith(item.href+"/"));
+          const href=item.href==="/"?prefix||"/":prefix+item.href;
+          return <Link key={item.href} href={href} onClick={onClose}
+            aria-current={active?"page":undefined}
+            className={"flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors "+(active?"bg-[#d8e9dc] font-bold text-[#224f35]":"font-medium text-[#344b39] hover:bg-[#e2ebe0]")}>
+            <item.icon aria-hidden="true" className="h-4 w-4 shrink-0"/>{item.label}
+          </Link>;
+        })}
+      </div>)}
+      <div className="border-t border-[#cfdbcd] px-2.5 pt-2 text-[#24583f]"><MessageBimbo/></div>
+    </nav>
+    <div className="flex items-center justify-between gap-2 border-t border-[#cfdbcd] px-4 py-2">
+      <div className="min-w-0"><p className="break-words text-sm font-bold">{profile?.name||"Farm manager"}</p>{profile?.name&&<p className="text-xs text-[#526754]">Farm manager</p>}</div>
+      <button aria-label="Sign Out" className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm hover:bg-[#dae5d8]" onClick={()=>signOut()}><LogOut aria-hidden="true" className="h-4 w-4"/>Sign out</button>
+    </div>
+  </div>;
 }
 
 export function ManagerSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  return (
-    <>
-      {/* Desktop permanent sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 flex-shrink-0 h-screen sticky top-0 overflow-hidden">
-        <SidebarContent />
-      </aside>
-
-      {/* Mobile drawer */}
-      {isOpen && (
-        <div className="lg:hidden fixed inset-0 z-40">
-          <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} onClick={onClose} />
-          <div className="absolute left-0 top-0 h-full w-72 overflow-hidden">
-            <SidebarContent onClose={onClose} />
-          </div>
-        </div>
-      )}
-    </>
-  );
+  const opener = useRef<HTMLElement|null>(null);
+  useEffect(()=>{
+    if(!isOpen)return;
+    const desktop=window.matchMedia('(min-width: 1024px)');
+    const closeDesktop=()=>{if(desktop.matches)onClose();};
+    closeDesktop();
+    desktop.addEventListener('change',closeDesktop);
+    return ()=>desktop.removeEventListener('change',closeDesktop);
+  },[isOpen,onClose]);
+  return <>
+    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col overflow-hidden border-r border-[#cfdbcd] lg:flex">
+      <SidebarContent/>
+    </aside>
+    <Sheet open={isOpen} onOpenChange={open=>{if(!open)onClose();}}>
+      <SheetContent side="left" aria-describedby={undefined} className="w-72 max-w-[90vw] border-[#cfdbcd] bg-[#edf2eb] p-0 [&>button]:right-2 [&>button]:top-2 [&>button]:h-11 [&>button]:w-11 [&>button]:inline-flex [&>button]:items-center [&>button]:justify-center"
+        onOpenAutoFocus={()=>{opener.current=document.activeElement instanceof HTMLElement?document.activeElement:null;}}
+        onCloseAutoFocus={event=>{if(opener.current?.isConnected){event.preventDefault();opener.current.focus();}}}>
+        <SheetTitle className="sr-only">Farm navigation</SheetTitle><SidebarContent onClose={onClose}/>
+      </SheetContent>
+    </Sheet>
+  </>;
 }

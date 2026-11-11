@@ -3,15 +3,23 @@ import type {FarmControlSource} from './farm-control';
 import type {calculateFarmFinance} from './farm-finance-calculations';
 export type ReportingConfig={timezone:string;mortality_alert_count:number|null;feed_alert_days:number|null;display_currency:string|null;exchange_rate:string|null;rate_date:string|null;rate_valid_until:string|null;rate_source:string|null};
 export type FarmAlert={id:string;priority:number;title:string;detail:string;href:string};
-export function farmAlerts(s:FarmControlSource):FarmAlert[]{
+export function farmAlerts(s:Pick<FarmControlSource,'report'|'health'|'currentCredit'|'purchases'|'stores'|'config'|'currentPerformance'>,supervisor=false):FarmAlert[]{
  const alerts:FarmAlert[]=[],add=(id:string,priority:number,title:string,detail:string,path:string)=>alerts.push({id,priority,title,detail,href:'/dashboard/farm/'+path});
  for(const t of s.health.tasks)if(t.status==='overdue'||t.status==='due_today')add(t.id,1,t.title,`${t.batch_name}: ${t.status==='overdue'?'overdue since':'due'} ${t.due_date}`,'health');
  for(const i of s.currentCredit.invoices)if(i.overdue_days>0)add(i.id,2,`Invoice ${i.number} overdue`,`${i.customer_name}: ${formatExactCurrency(i.owed,'NGN')} outstanding`,'credit');
  for(const p of s.purchases.purchases)if(p.status==='pending')add(p.id,2,'Purchase awaiting decision',`${p.supplier}: ${formatExactCurrency(p.total_exact,'NGN')}`,'purchases');
- for(const e of s.purchases.exceptions)if(!e.resolution)add(e.id,1,'Spending needs reconciliation',`${e.supplier}: ${formatExactCurrency(e.amount_exact,'NGN')}`,'purchases');
+ const linked=new Set(s.purchases.purchases.map(p=>('request_id' in p?p.request_id:null)));
+ for(const r of s.report.decisions.operational_requests||[])if(r.status==='pending'&&!linked.has(r.id))add(String(r.id),2,'Request awaiting decision',String(r.description),'operational-requests?request_id='+r.id);
+ const emergencyFunding=new Set<string>();
+ for(const e of s.purchases.exceptions)if(!e.resolution){
+  if(e.funding_status==='pending'&&e.pending_funding_id)emergencyFunding.add(e.pending_funding_id);
+  const needsFunding=e.funding_status==='pending'||e.approval;
+  const title=supervisor?(needsFunding?'Awaiting funding confirmation':'Awaiting expense approval'):(needsFunding?'Confirm expense funding':'Review reported expense');
+  add(e.id,1,title,`${e.supplier}: ${formatExactCurrency(e.amount_exact,'NGN')}`,'purchases#expense-'+e.id);
+ }
  for(const c of s.stores.counts)if(!c.decision)add(c.id,2,'Physical count awaiting review',`${c.label}: counted ${c.date}`,'stores');
  for(const a of s.stores.assets)if(a.resource==='feed'&&s.config?.feed_alert_days&&a.coverage?.days_left!=null&&Number(a.coverage.days_left)<s.config.feed_alert_days)add(a.id,1,'Feed running low',`${a.label}: estimated ${a.coverage.days_left} days`,'stores');
- for(const e of s.report.cash.pending_expenses)if(e.status==='pending')alerts.push({id:e.id,priority:1,title:'Funding source needs confirmation',detail:`${formatExactCurrency(e.shortfall,e.currency)} missing funding on ${e.activity_date}`,href:'/dashboard/funds'});
+ for(const e of s.report.cash.pending_expenses)if(e.status==='pending'&&!emergencyFunding.has(e.id))alerts.push({id:e.id,priority:1,title:'Funding source needs confirmation',detail:`${formatExactCurrency(e.shortfall,e.currency)} missing funding on ${e.activity_date}`,href:'/dashboard/funds'});
  for(const b of s.currentPerformance.batches){
   const deaths=s.currentPerformance.deaths.filter(d=>d.batch_id===b.id),quantity=sumMoney(deaths.map(d=>d.quantity));
   if(Number(quantity)>0)add('loss:'+b.id,1,s.config?.mortality_alert_count&&Number(quantity)>=s.config.mortality_alert_count?'Mortality alert threshold reached':'Recent mortality recorded',`${b.name}: ${quantity} losses since ${s.currentPerformance.from}`,'performance');

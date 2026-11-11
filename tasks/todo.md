@@ -356,3 +356,15 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Complete isolated regression, lint, types, build and preservation verification.
 - Release execution is verified after this source commit is published. The exact GitHub SHA, Vercel promotion, live checks and final preservation result are recorded in the private final-reliability-2026-11-10/verified-live-release.json receipt; this source checklist does not preclaim deployment.
 - Genuine farm setup and physical-phone acceptance remain with farm staff; no invented records or deferred paid security activation.
+
+## Supervisor and CEO feedback — 11 November 2026
+
+- [x] Give Bimbo an explicit emergency expense approval and follow it into each expense history.
+- [x] Match the reference Overview, location-based Daily Logs and expense request cards on both entry routes.
+- [x] Check Health, Batch Performance, stock labels, feed count and feeding from the supervisor's normal navigation.
+- [x] Show invoice and payment status on sales and history; verify older expenses and manager isolation.
+- [x] Rehearse migrations on a fresh private restore, verify historical records, and test phone and desktop layouts.
+- Migration rehearsal matched all 145 original tables, including account password hashes. Submitted observations and photos, repeated emergency approvals and feed entries were exercised on isolated data. Browser checks cover 375, 390, 768 and 1440 pixels and the previous daily-report renderer.
+- Bimbo opens Farm → Expenses → Electrician → Approve and record expense. If the payer is unknown, approve and confirm funding later. Both parties can see that state. The confirmed expense posts once when the funding is established.
+- Supervisors open Today, choose the produce and location, and log observations. Daily Feed and Feed Inventory both offer the starting bag count. The Farm Overview identifies unknown counts, customer debt and outstanding decisions.
+- Production acceptance uses the GitHub commit, its promoted Vercel release ID on every live application domain and the private supervisor-feedback-2026-11-11 release receipt. A rollback after the first location log must keep the compatible Daily Reports API that can read both report formats.

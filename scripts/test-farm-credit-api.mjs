@@ -20,3 +20,18 @@ const partial={date:'2026-10-30',product:'goat',quantity:3,unit_price:80000,cust
 const saleRequest=row=>new Request('http://localhost/api/farm/sales',{method:'POST',headers:{'X-Request-ID':id},body:JSON.stringify([row])});
 assert.equal((await sales.POST(saleRequest(partial))).status,201);assert.equal(calls.at(-1)[1].p_payload.rows[0].amount_received,'40000.50');assert.equal(calls.at(-1)[1].p_payload.rows[0].payment_date,'2026-10-30');
 for(const row of [{...partial,amount_received:'1.001'},{...partial,amount_received:'-1'},{...partial,payment_date:'2026-02-30'},{...partial,customer_id:undefined}])assert.equal((await sales.POST(saleRequest(row))).status,400);
+
+const visibleSale = {id, invoice_id:id, total_amount:100000, payment_method:'transfer'};
+const earlySale = {id:'legacy-sale',invoice_id:null,total_amount:1000,payment_method:'cash'};
+const invoice = {id, sale_id:id, number:'PF-EXAMPLE',credit_days:30,owed:'25000',collected:'75000',total:'100000',overdue_days:0,voided_at:null};
+const scopedSales=typescriptLoader({
+ '@/lib/manager-read-api':{managerReadResponse:async()=>Response.json({data:[visibleSale,earlySale],total:2}),requestManagerScope:async()=>({actorId:id,periodId:id}),managerReadError:()=>Response.json({error:'Unavailable'},{status:503})},
+ '@/lib/supabase/server':{createServerClient:()=>({rpc:async(name,args)=>{assert.equal(name,'farm_credit_read');assert.equal(args.p_period,id);return {data:{invoices:[invoice]}};}})}
+})('app/api/farm/sales/route.ts');
+const ledger=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?with_payment=1'))).json();
+assert.equal(ledger.data[0].invoice.owed,'25000');assert.equal(ledger.data[1].invoice,null);
+const {invoiceStatus}=load('lib/farm-credit.ts');
+assert.match(invoiceStatus(invoice),/Credit sale.*Part paid/);assert.match(invoiceStatus({...invoice,collected:'0'}),/On credit/);
+assert.match(invoiceStatus({...invoice,owed:'0',collected:'100000'}),/Credit sale.*Paid in full/);
+assert.equal(invoiceStatus({...invoice,owed:'0',collected:'75000',credited:'25000'}),'Credit sale · Settled');
+console.log('PASS scoped sales history retains credit status, actual paid amount, outstanding debt and historical sales');
