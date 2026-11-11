@@ -68,3 +68,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Photo validation must distinguish scoped local references from uploaded evidence UUIDs. Browser reconnection tests must include the persistent sync host used by the real app shell.
 
 - For emergency expenses test an acknowledged report with no verified payer from both roles. Follow the decision into both expense histories and retry it. For a farm with no named batches, the supervisor must still be able to log observations for the real locations. Check both with a restored snapshot and the previous client before release.
+
+- Exercise the actual choice shown in the customer's screenshot. For emergency approvals, ‘Owner funds’ identifies the source, not the person who paid. The empty-payer and failed-load paths must still make the safe approval visible while keeping the chosen source and note.

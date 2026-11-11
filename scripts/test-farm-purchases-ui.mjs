@@ -6,29 +6,57 @@ import os from 'node:os';
 import http from 'node:http';
 import {readFileSync,mkdtempSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-const require=createRequire(import.meta.url),{chromium}=require('@playwright/test');
+const require=createRequire(import.meta.url),{chromium,expect:baseExpect}=require('@playwright/test');
+const expect=baseExpect.configure({timeout:20000});
 const {build}=await import(pathToFileURL(path.join(os.tmpdir(),'primefield-v2-test-runtime/node_modules/esbuild/lib/main.js')));
 const id='00000000-0000-4000-8000-000000000001';
-const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {FarmPurchases} from './components/manager/FarmPurchases';createRoot(document.getElementById('root')).render(<FarmPurchases admin={!location.search.includes('supervisor')} expenses={location.search.includes('supervisor')}/>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-scope',setup(b){b.onResolve({filter:/^next\/link$/},()=>({path:'link',namespace:'link-mock'}));b.onLoad({filter:/.*/,namespace:'link-mock'},()=>({contents:'import React from \"react\";export default function Link(p){return React.createElement(\"a\",p,p.children)}',loader:'js',resolveDir:process.cwd()}));b.onResolve({filter:/useOperationsFunds$/},()=>({path:'funds',namespace:'cash-mock'}));b.onLoad({filter:/.*/,namespace:'cash-mock'},()=>({contents:`export const useOperationsFunds=()=>({data:{sources:[{id:'${id}',currency:'NGN',bucket:'owner',name:'Supervisor',holder_type:'manager'}]},refresh(){}});`,loader:'js'}));b.onResolve({filter:/^@\/contexts\/AuthContext$/},()=>({path:'auth',namespace:'auth-mock'}));b.onLoad({filter:/.*/,namespace:'auth-mock'},()=>({contents:"export const useAuth=()=>({profile:{role:location.search.includes('supervisor')?'manager':'admin'}});",loader:'js'}));b.onResolve({filter:/^@\/contexts\/ManagerPeriodContext$/},a=>({path:a.path,namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:`const identity={actorId:'${id}',business:'farm',periodId:'${id}'};export const useQueueIdentity=()=>identity;export const useManagerPeriod=()=>({status:'active'});export const useOperationsFeature=()=>({enabled:true});export const useManagerFetch=()=>fetch;`,loader:'js'}));}}]});
+const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {FarmPurchases} from './components/manager/FarmPurchases';createRoot(document.getElementById('root')).render(<FarmPurchases admin={!location.search.includes('supervisor')} expenses={location.search.includes('supervisor')}/>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-scope',setup(b){b.onResolve({filter:/^next\/link$/},()=>({path:'link',namespace:'link-mock'}));b.onLoad({filter:/.*/,namespace:'link-mock'},()=>({contents:'import React from \"react\";export default function Link(p){return React.createElement(\"a\",p,p.children)}',loader:'js',resolveDir:process.cwd()}));b.onResolve({filter:/^@\/contexts\/AuthContext$/},()=>({path:'auth',namespace:'auth-mock'}));b.onLoad({filter:/.*/,namespace:'auth-mock'},()=>({contents:"export const useAuth=()=>({profile:{role:location.search.includes('supervisor')?'manager':'admin'}});",loader:'js'}));b.onResolve({filter:/^@\/contexts\/ManagerPeriodContext$/},a=>({path:a.path,namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:`const identity={actorId:'${id}',business:'farm',periodId:'${id}'};export const useQueueIdentity=()=>identity;export const useManagerPeriod=()=>({status:'active'});export const useOperationsFeature=()=>({enabled:true});export const useManagerFetch=()=>fetch;`,loader:'js'}));}}]});
 const folder=mkdtempSync(path.join(os.tmpdir(),'farm-today-ui-')),css=path.join(folder,'styles.css');execFileSync(process.execPath,[require.resolve('tailwindcss/lib/cli.js'),'-i','app/globals.css','-o',css],{stdio:'pipe'});
 const server=http.createServer((req,res)=>{if(req.url==='/bundle.js'){res.setHeader('Content-Type','text/javascript');res.end(bundle.outputFiles[0].text);}else if(req.url==='/style.css'){res.setHeader('Content-Type','text/css');res.end(readFileSync(css));}else res.end('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" class="p-4"></div><script src="/bundle.js"></script></body></html>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 console.log('UI bundle ready');
 const browser=await chromium.launch({headless:true}),page=await browser.newPage();const errors=[],posts=[];let rows=[];
-const report={id:'00000000-0000-4000-8000-000000000018',date:'2026-11-09',supplier:'Electrician',amount_exact:'4500',description:'Emergency pump repair',reported_by_name:'Assigned supervisor',matching_costs:[],resolution:null,approval:null};
-page.setDefaultTimeout(15000);console.log('Browser ready');
+const report={id:'00000000-0000-4000-8000-000000000018',period_id:'00000000-0000-4000-8000-000000000071',date:'2026-11-09',supplier:'Electrician',amount_exact:'4500',description:'Emergency pump repair',reported_by_name:'Assigned supervisor',matching_costs:[],resolution:null,approval:null};
+const reports=[report];
+const fundsQueries=[], decisions=new Map(), ledger=[];
+const ownerPayer={id,name:'Assigned supervisor',holder_type:'manager',currency:'NGN',bucket:'owner',available:'6000'};
+const salesPayer={...ownerPayer,id:'00000000-0000-4000-8000-000000000095',name:'Sales holder',bucket:'sales'};
+const foreignPayer={...ownerPayer,id:'00000000-0000-4000-8000-000000000096',name:'Foreign currency holder',currency:'USD'};
+let sources=[ownerPayer], fundsError=false, wrongFundsDate=false, missingAcknowledgement=null;
+function addReport(lastDigits,supplier){
+ const entry={...report,id:'00000000-0000-4000-8000-0000000000'+lastDigits,supplier,approval:null,resolution:null};
+ reports.push(entry);
+ return entry;
+}
+page.setDefaultTimeout(45000);console.log('Browser ready');
 page.on('pageerror',e=>errors.push(e.message));
-await page.route('**/api/**',async route=>{const request=route.request(),url=new URL(request.url());let body={data:[]};
+await page.route('**/api/**',async route=>{const request=route.request(),url=new URL(request.url());let body={data:[]},status=200;
  if(url.pathname==='/api/farm/purchases'){
   if(request.method()==='POST'){const p=request.postDataJSON();posts.push(p);
    if(p.operation==='resolve_exception'){
-    if(p.payload.decision==='approve_awaiting_funding')report.approval={category:p.payload.category,reason:p.payload.reason,approved_at:'2026-11-11T10:00:00Z'};
-    else report.resolution={decision:'link',reason:p.payload.reason,resolved_at:'2026-11-11T10:01:00Z'};
-    body={data:{id:report.id}};
+    const target=reports.find(r=>r.id===p.id), cached=decisions.get(p.request_id);
+    if(!target)throw Error('Missing isolated report');
+    assert.equal(request.headers()['x-request-id'],p.request_id);
+    if(cached)assert.deepEqual(p,cached,'A request retry must keep its original payload');
+    else{
+     decisions.set(p.request_id,p);
+     if(p.payload.decision==='approve_awaiting_funding')target.approval={category:p.payload.category,reason:p.payload.reason,expense_source:p.payload.expense_source||null,approved_at:'2026-11-11T10:00:00Z'};
+     else{
+      assert.equal(target.resolution,null,'A second distinct decision would post this report twice');
+      target.resolution={decision:'link',reason:p.payload.reason,resolved_at:'2026-11-11T10:01:00Z'};
+      if(p.payload.decision==='post')ledger.push({reportId:target.id,requestId:p.request_id});
+     }
+    }
+    if(p.payload.decision==='post'&&missingAcknowledgement===target.id){body={error:'Response unavailable'};status=503;}
+    else body={data:{id:target.id}};
    }else{const row={id,date:p.payload.date,supplier:p.payload.supplier,description:p.payload.description,category:p.payload.category,status:'pending',total_exact:'300000.00',paid_exact:'0',revision:0,lines:p.payload.lines.map(l=>({...l,id,received_exact:'0'})),payments:[],deliveries:[]};rows=[row];body={data:row};}}
-  else body={purchases:rows,policy:null,exceptions:[report]};
+  else body={purchases:rows,policy:null,exceptions:reports};
+ }else if(url.pathname==='/api/operations/funds'){
+  fundsQueries.push(Object.fromEntries(url.searchParams));
+  if(fundsError){status=503;body={error:'Funds could not be loaded'};}
+  else body={business:'farm',from:url.searchParams.get('from'),to:wrongFundsDate?'2026-11-11':url.searchParams.get('to'),accounts:[],sources,receipts:[],history:[],total:0,has_more:false,ceo_receivers:[],manager_receivers:[],pending_expenses:[]};
  }else if(url.pathname==='/api/farm/batch-records')body={batches:[]};
- await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+ await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 });
 try{
  for(const width of [375,390,768,1440]){
@@ -55,7 +83,7 @@ try{
  await dialog.getByLabel('Expense category',{exact:true}).selectOption('utilities');
  await dialog.getByLabel('How was it paid?',{exact:true}).selectOption('later');
  await dialog.getByLabel('Reason for this decision').fill('Confirmed the emergency work');
- await dialog.getByRole('button',{name:'Approve and confirm funding later'}).click();
+ await dialog.getByRole('button',{name:/^(Approve and confirm funding later|Approve expense)$/}).click();
  await page.getByRole('button',{name:'Confirm funding and record expense'}).waitFor();
  assert.equal(posts.at(-1).payload.decision,'approve_awaiting_funding');assert.equal(posts.at(-1).payload.cash_payer_account_id,undefined);
  await page.goto(originalUrl+'/?supervisor');await page.getByRole('button',{name:'New expense request'}).waitFor();
@@ -67,9 +95,125 @@ try{
  await dialog.getByLabel('How was it paid?',{exact:true}).selectOption('bimbo_transfer');
  await dialog.getByLabel('Who paid this expense?',{exact:true}).selectOption(id);
  await dialog.getByLabel('Reason for this decision').fill('Confirmed the original payer and source');
- await dialog.getByRole('button',{name:'Record approved expense'}).click();
+ await dialog.getByRole('button',{name:/^(Record approved expense|Approve and record expense|Confirm funding and record expense)$/}).click();
  await page.getByText('Expense recorded',{exact:true}).waitFor();
  assert.equal(posts.at(-1).payload.decision,'post');assert.equal(posts.at(-1).payload.cash_payer_account_id,id);
  await page.goto(originalUrl+'/?supervisor');await page.getByText('Expense recorded',{exact:true}).waitFor();
- assert.deepEqual(errors,[]);console.log('PASS 375/390/768/1440 purchase forms, named requests, CEO emergency approval with unknown funding, supervisor status and subsequent funded posting');
+ // Bimbo chose Equipment and Owner funds on the electrician report. No matching
+ // payer existed that day. Keep that fact separate from the financial posting.
+ await page.setViewportSize({width:375,height:900});
+ const named=addReport('19','Pump electrician'), stale=addReport('20','Replacement valve'), immediate=addReport('21','Equipment mechanic'), outage=addReport('22','Emergency technician');
+ const entry=target=>page.locator('#expense-'+target.id);
+ const openReport=async(target,approved=false)=>{
+  const url=originalUrl+'/#expense-'+target.id;
+  if(page.url()===url)await page.reload();else await page.goto(url);
+  await entry(target).getByRole('button',{name:approved?'Confirm funding and record expense':'Approve and record expense',exact:true}).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Decision',{exact:true})).toHaveValue('post');
+ };
+ const funding=dialog.getByLabel('How was it paid?',{exact:true});
+ const payer=dialog.getByLabel('Who paid this expense?',{exact:true});
+ const reason=dialog.getByLabel('Reason for this decision');
+ const category=dialog.getByLabel('Expense category',{exact:true});
+ const countPostings=target=>ledger.filter(l=>l.reportId===target.id).length;
+ const expectDatedFunds=async(start,date)=>{
+  await expect.poll(()=>fundsQueries.length).toBeGreaterThan(start);
+  assert.ok(fundsQueries.slice(start).every(q=>q.business==='farm'&&q.from===date&&q.to===date),'The payer list must use the original expense date at both ends');
+ };
+ sources=[];
+ let reads=fundsQueries.length;
+ await openReport(named);
+ await category.selectOption('equipment');await funding.selectOption('bimbo_transfer');
+ const firstNote='Approved the emergency pump repair from owner funds';
+ await reason.fill(firstNote);await expectDatedFunds(reads,named.date);
+ await expect(dialog.getByRole('button',{name:'Approve expense',exact:true})).toBeEnabled();
+ assert.equal(await payer.locator('option[value]:not([value=""])').count(),0);
+ await dialog.getByRole('button',{name:'Approve expense',exact:true}).click();
+ await expect(entry(named).getByRole('button',{name:'Confirm funding and record expense'})).toBeVisible();
+ assert.deepEqual(posts.at(-1).payload,{decision:'approve_awaiting_funding',category:'equipment',expense_source:'bimbo_transfer',reason:firstNote});
+ assert.equal(countPostings(named),0);
+ await page.goto(originalUrl+'/?supervisor');
+ await expect(entry(named)).toContainText('Approved · payer to confirm');
+ await expect(entry(named)).toContainText(/Owner funds/i);
+ await expect(entry(named)).toContainText(firstNote);
+ assert.equal(await entry(named).getByRole('button',{name:/approve|confirm funding/i}).count(),0);
+ // Later, the actual NGN owner-funds payer becomes known.
+ sources=[foreignPayer,salesPayer,ownerPayer];reads=fundsQueries.length;
+ await openReport(named,true);
+ await expect(category).toHaveValue('equipment');await expect(funding).toHaveValue('bimbo_transfer');
+ const fundsLink=new URL(await dialog.getByRole('link',{name:'Open Farm Funds'}).getAttribute('href'),originalUrl);
+ assert.equal(fundsLink.searchParams.get('period_id'),named.period_id);
+ assert.equal(fundsLink.searchParams.get('to'),named.date);
+ await expect(payer.locator('option[value="'+id+'"]')).toHaveCount(1);
+ await expectDatedFunds(reads,named.date);
+ assert.equal(await payer.locator('option[value="'+salesPayer.id+'"],option[value="'+foreignPayer.id+'"]').count(),0);
+ await payer.selectOption(id);await reason.fill('Confirmed who paid on the date of the repair');
+ missingAcknowledgement=named.id;
+ await dialog.locator('button[type=submit]').click();
+ await expect(entry(named)).toContainText('Expense recorded');
+ const posted=posts.filter(p=>p.id===named.id&&p.payload.decision==='post').at(-1);
+ assert.ok(posted);assert.equal(posted.payload.expense_source,'bimbo_transfer');assert.equal(posted.payload.cash_payer_account_id,id);
+ assert.equal(countPostings(named),1);
+ // Lose the first acknowledgement after the isolated server has applied it.
+ // Reopening a normal purchase form resumes the app's own saved queue.
+ missingAcknowledgement=null;
+ await page.getByRole('button',{name:'Request purchase',exact:true}).click();
+ await page.waitForFunction(requestId=>Object.keys(localStorage).some(k=>k.startsWith('farm_confirmed_')&&k.endsWith(requestId)),posted.request_id);
+ const repeated=posts.filter(p=>p.id===named.id&&p.payload.decision==='post');
+ assert.ok(repeated.length>=2,'The lost acknowledgement must exercise a real retry');
+ assert.equal(new Set(repeated.map(p=>p.request_id)).size,1);assert.equal(countPostings(named),1);
+ await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ await page.goto(originalUrl+'/?supervisor');await expect(entry(named)).toContainText('Expense recorded');
+ // A stale owner payer from a saved draft cannot be posted across sources,
+ // while its historical funds lookup is failing, or after the payer disappears.
+ await openReport(stale);
+ await category.selectOption('equipment');await funding.selectOption('bimbo_transfer');await payer.selectOption(id);
+ await funding.selectOption('sales_cash');await expect(payer).toHaveValue('');
+ await expect(payer.locator('option[value="'+salesPayer.id+'"]')).toHaveCount(1);
+ await expect(payer.locator('option[value="'+id+'"]')).toHaveCount(0);
+ await funding.selectOption('bimbo_transfer');await expect(payer).toHaveValue('');await payer.selectOption(id);
+ await reason.fill('Confirmed the equipment repair');
+ await page.waitForFunction(({id,reportId})=>Object.keys(localStorage).some(k=>k.startsWith('farm-purchase-draft:')&&k.endsWith(reportId)&&JSON.parse(localStorage.getItem(k)).payer===id),{id,reportId:stale.id});
+ const beforeFailure=posts.length;
+ fundsError=true;reads=fundsQueries.length;await openReport(stale);
+ const retryLookup=dialog.getByRole('button',{name:/retry/i});
+ await expect(retryLookup).toBeVisible();await expectDatedFunds(reads,stale.date);
+ await expect(payer).toHaveCount(0);
+ const unresolvedSubmit=dialog.locator('button[type=submit]');
+ if(await unresolvedSubmit.isEnabled())await unresolvedSubmit.click();
+ await expect(retryLookup).toBeVisible();
+ assert.equal(posts.length,beforeFailure,'A saved payer cannot be posted while verification is unavailable');
+ fundsError=false;wrongFundsDate=true;reads=fundsQueries.length;await retryLookup.click();await expectDatedFunds(reads,stale.date);
+ await expect(retryLookup).toBeVisible();await expect(payer).toHaveCount(0);
+ wrongFundsDate=false;sources=[];await retryLookup.click();
+ await expect(dialog.getByText(/No payer is listed/i)).toBeVisible();
+ await expect(payer).toHaveCount(0);
+ const explicitlyDefer=dialog.getByRole('button',{name:'Confirm who paid later',exact:true});
+ if(await explicitlyDefer.isVisible())await explicitlyDefer.click();
+ await expect(dialog.getByRole('button',{name:'Approve expense',exact:true})).toBeEnabled();
+ assert.equal(posts.length,beforeFailure);
+ await dialog.getByRole('button',{name:'Approve expense',exact:true}).click();
+ await expect(entry(stale)).toContainText('Approved · payer to confirm');
+ assert.equal(posts.at(-1).payload.decision,'approve_awaiting_funding');assert.equal(posts.at(-1).payload.cash_payer_account_id,undefined);
+ assert.equal(posts.at(-1).payload.expense_source,'bimbo_transfer');assert.equal(countPostings(stale),0);
+ // Once a genuine payer is available, the first decision can post immediately.
+ sources=[ownerPayer];await openReport(immediate);
+ await category.selectOption('equipment');await funding.selectOption('bimbo_transfer');await reason.fill('Confirmed the original payment');
+ await expect(payer.locator('option[value="'+id+'"]')).toHaveCount(1);
+ await expect(payer).toHaveValue('');
+ await payer.selectOption(id);await dialog.locator('button[type=submit]').click();
+ await expect(entry(immediate)).toContainText('Expense recorded');
+ assert.equal(countPostings(immediate),1);assert.equal(posts.at(-1).payload.decision,'post');
+ assert.equal(posts.at(-1).payload.expense_source,'bimbo_transfer');assert.equal(posts.at(-1).payload.cash_payer_account_id,id);
+ assert.equal([...decisions.values()].filter(p=>p.id===immediate.id).length,1);
+ // A first-time approval is still possible during a payer-list outage.
+ fundsError=true;await openReport(outage);
+ await category.selectOption('equipment');await funding.selectOption('sales_cash');await reason.fill('Sales money reported during the outage');
+ await expect(dialog.getByRole('alert')).toContainText(/payer list could not be loaded/i);
+ const approveDuringOutage=dialog.getByRole('button',{name:'Approve expense',exact:true});
+ await expect(approveDuringOutage).toBeEnabled();await approveDuringOutage.click();
+ await expect(entry(outage)).toContainText('Approved · payer to confirm');
+ assert.deepEqual(posts.at(-1).payload,{decision:'approve_awaiting_funding',category:'equipment',expense_source:'sales_cash',reason:'Sales money reported during the outage'});
+ assert.equal(countPostings(outage),0);
+ assert.deepEqual(errors,[]);console.log('PASS 375/390/768/1440 purchase forms and emergency expenses: named or unknown funding, historical payer choices, supervisor visibility, stale drafts and one posting across a lost acknowledgement');
 }catch(e){console.error(await page.locator('body').innerText(),errors);throw e;}finally{await browser.close();await new Promise(r=>server.close(r));}

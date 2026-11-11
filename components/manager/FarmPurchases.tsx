@@ -21,17 +21,28 @@ function PurchaseForm({operation,order,paymentId,exception,onSaved}:{operation:s
  const identity=useQueueIdentity(),send=useManagerFetch(),{submitOrQueue,isSyncing}=useOfflineSync();
  const key=identity?`farm-purchase-draft:${queueIdentityKey(identity)}:${operation}:${paymentId||order?.id||'new'}`:'';
  const [restored]=useState(()=>{
-  const defaults:Draft={date:farmDateToday(),supplier:'',description:'',category:exception?.approval?.category||'other',lines:[emptyLine()],amount:'',recipient:'',line_id:'',quantity:'',existing:'',included:'',reason:'',payer:'',source:operation==='resolve_exception'?(exception?.matching_costs.length?'link':'post'):'owner_fund',limit:'',quote:false,mediaIds:[],request_id:crypto.randomUUID()};
+  const defaults:Draft={date:farmDateToday(),supplier:'',description:'',category:exception?.approval?.category||'other',lines:[emptyLine()],amount:'',recipient:'',line_id:'',quantity:'',existing:'',included:'',reason:'',payer:'',source:operation==='resolve_exception'?(exception?.matching_costs.length?'link':'post'):'owner_fund',fundingSource:exception?.approval?.expense_source||'',limit:'',quote:false,mediaIds:[],request_id:crypto.randomUUID()};
   try{
    const saved=key&&localStorage.getItem(key);if(!saved)return {draft:defaults,fault:false};
    const value=JSON.parse(saved) as Draft;
    if(!value||typeof value.request_id!=='string'||!Array.isArray(value.lines)||!value.lines.every(l=>l&&typeof l.description==='string')||!Array.isArray(value.mediaIds))throw Error();
    const draft={...defaults,...value};
    if(operation==='resolve_exception'&&draft.source==='owner_fund'&&!draft.line_id)draft.source=exception?.matching_costs.length?'link':'post';
+   if(exception?.approval&&(!draft.fundingSource||draft.fundingSource==='later')){draft.fundingSource=defaults.fundingSource;draft.payer='';}
    return {draft,fault:false};
   }catch{return {draft:defaults,fault:true};}
  });
  const [draft,setDraft]=useState(restored.draft);
+ const [verifiedPayer,setVerifiedPayer]=useState('');
+ const knownSource=draft.fundingSource==='bimbo_transfer'||draft.fundingSource==='sales_cash';
+ const approvingWithoutPayer=operation==='resolve_exception'&&draft.source==='post'&&!exception?.approval&&!draft.payer;
+ const payerRequired=operation==='resolve_exception'&&draft.source==='post'&&!approvingWithoutPayer;
+ const payerReady=knownSource&&!!draft.payer&&draft.payer===verifiedPayer;
+ const decision=approvingWithoutPayer?'approve_awaiting_funding':draft.source==='post'?'post':draft.source==='decline'?'decline':'link';
+ const decisionLabel={
+  approve_awaiting_funding:draft.fundingSource==='later'?'Approve and confirm funding later':'Approve expense',
+  post:'Record approved expense',decline:'Decline report',link:'Link recorded expense',
+ }[decision];
  const [receipts,setReceipts]=useState<{id:string;date:string;quantity:string;notes:string|null}[]>([]);
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[photoBusy,setPhotoBusy]=useState(false),[choices,setChoices]=useState<{supplies:{id:string;item_name:string;unit:string}[];batches:{id:string;name:string}[]}>({supplies:[],batches:[]});
  useEffect(()=>{if(key&&!restored.fault)try{localStorage.setItem(key,JSON.stringify(draft));}catch{setError('Draft storage unavailable. Keep these details until sending succeeds.');}},[key,draft,restored.fault]);
@@ -48,9 +59,8 @@ function PurchaseForm({operation,order,paymentId,exception,onSaved}:{operation:s
   else if(operation==='delivery')payload={date:draft.date,line_id:draft.line_id,quantity:draft.quantity,...(draft.existing?{existing_movement_id:draft.existing}:{}),...(draft.included?{included_in_starting_count:draft.included==='yes'}:{})};
   else if(operation==='exception')payload={date:draft.date,supplier:draft.supplier,amount:draft.amount,description:draft.description};
   else if(operation==='resolve_exception'){
-   const decision=draft.source==='post'&&draft.fundingSource==='later'?'approve_awaiting_funding':draft.source==='post'?'post':draft.source==='decline'?'decline':'link';
-   if(decision==='post'&&(!draft.fundingSource||!draft.payer))throw Error('Choose the funding source and the person who paid, or choose to confirm funding later.');
-   payload={decision,reason:draft.reason,...(decision==='approve_awaiting_funding'?{category:draft.category}:decision==='post'?{category:draft.category,expense_source:draft.fundingSource,cash_payer_account_id:draft.payer}:decision==='link'?{resource:draft.line_id.split(':')[0],record_id:draft.line_id.split(':')[1]}:{})};
+   if(decision==='post'&&!payerReady)throw Error('Choose a verified payer for this expense.');
+   payload={decision,reason:draft.reason,...(decision==='approve_awaiting_funding'?{category:draft.category,...(knownSource?{expense_source:draft.fundingSource}:{})}:decision==='post'?{category:draft.category,expense_source:draft.fundingSource,cash_payer_account_id:draft.payer}:decision==='link'?{resource:draft.line_id.split(':')[0],record_id:draft.line_id.split(':')[1]}:{})};
   }
   else if(operation==='policy')payload={automatic_limit:draft.limit||null,require_quote:draft.quote};
   else payload={expected_revision:paymentId?order?.payments.find(p=>p.id===paymentId)?.revision:order?.revision,reason:draft.reason};
@@ -65,7 +75,7 @@ function PurchaseForm({operation,order,paymentId,exception,onSaved}:{operation:s
   }
   if(key)localStorage.removeItem(key);
   onSaved(item?.fundingReview?'Approved. Confirm the funding to add this expense to both histories.':result.status!=='sent'?'Saved on this device. It will send when connected.':
-   operation==='resolve_exception'?payload.decision==='approve_awaiting_funding'?'Approved. Funding still needs confirmation.':payload.decision==='decline'?'Expense report declined.':'Expense recorded in both histories.':'Entry recorded.');
+   operation==='resolve_exception'?payload.decision==='approve_awaiting_funding'?(knownSource?'Approved. Confirm who paid to add it to recorded expenses.':'Approved. Funding still needs confirmation.'):payload.decision==='decline'?'Expense report declined.':'Expense recorded in both histories.':'Entry recorded.');
  }catch(e){setError(e instanceof Error?e.message:'Entry retained. Please retry.');}finally{setBusy(false);}}
  return <form onSubmit={submit}>{restored.fault&&<p role="alert" className="mb-3 text-red-800">This saved draft could not be read. It is still on this device. Close this window and reopen it after checking the browser storage.</p>}<fieldset disabled={busy||isSyncing||photoBusy||restored.fault} className="space-y-4">
   {['request','payment','delivery','exception'].includes(operation)&&dateField}
@@ -80,7 +90,7 @@ function PurchaseForm({operation,order,paymentId,exception,onSaved}:{operation:s
   {operation==='resolve_exception'&&exception&&<>
    <div className="rounded-xl bg-emerald-50 p-3 text-sm"><strong>{exception.supplier} · {formatExactCurrency(exception.amount_exact,'NGN')}</strong><p>{expenseDate(exception.date)} · {exception.description}</p></div>
    <label className="block text-sm font-medium">Decision<select aria-label="Decision" className={input} value={draft.source==='owner_fund'?'link':draft.source} onChange={e=>update('source',e.target.value)}>
-    <option value="post">{exception.approval?'Confirm funding and record expense':'Approve and record expense'}</option>
+    <option value="post">{exception.approval?'Confirm funding and record expense':'Approve this expense'}</option>
     {exception.matching_costs.length>0&&<option value="link">Use an expense already recorded</option>}
     <option value="decline">Decline this report</option></select></label>
    {draft.source!=='post'&&draft.source!=='decline'&&<label className="block text-sm font-medium">Recorded expense<select aria-label="Recorded expense" className={input} required value={draft.line_id} onChange={e=>update('line_id',e.target.value)}>
@@ -89,14 +99,16 @@ function PurchaseForm({operation,order,paymentId,exception,onSaved}:{operation:s
     {exception.matching_costs.length>0&&<p className="rounded-xl bg-amber-50 p-3 text-sm">A cost with this date and amount already exists. Choose “Use an expense already recorded” if it is the same payment.</p>}
     <label className="block text-sm font-medium">Expense category<select aria-label="Expense category" required className={input} value={draft.category==='other'?'':draft.category} onChange={e=>update('category',e.target.value)}>
      <option value="" disabled>Choose a category</option>{Object.entries({labor:'Labour',utilities:'Utilities',veterinary:'Veterinary',transport:'Transport',equipment:'Equipment',produce:'Farm produce'}).map(([c,label])=><option key={c} value={c}>{label}</option>)}</select></label>
-    <label className="block text-sm font-medium">How was it paid?<select aria-label="How was it paid?" required className={input} value={draft.fundingSource||''} onChange={e=>{update('fundingSource',e.target.value);update('payer','');}}>
+    <label className="block text-sm font-medium">How was it paid?<select aria-label="How was it paid?" required={!!exception.approval} className={input} value={draft.fundingSource||''} onChange={e=>{const fundingSource=e.currentTarget.value;setVerifiedPayer('');setError('');setDraft(d=>({...d,fundingSource,payer:''}));}}>
      <option value="">Choose the funding source</option><option value="bimbo_transfer">Owner funds</option><option value="sales_cash">Sales money</option>{!exception.approval&&<option value="later">Confirm the funding later</option>}</select></label>
-    {draft.fundingSource==='later'?<p className="text-sm text-slate-700">Both of you will see the approval. The expense enters the totals when the funding is confirmed.</p>:draft.fundingSource&&<CashPayerSelect business="farm" currency="NGN" bucket={draft.fundingSource==='sales_cash'?'sales':'owner'} value={draft.payer} onChange={v=>update('payer',v)}/>}
+    {knownSource?<CashPayerSelect business="farm" currency="NGN" bucket={draft.fundingSource==='sales_cash'?'sales':'owner'} expenseDate={exception.date} approvalStage={exception.approval?'confirm':'approve'} value={draft.payer} onChange={v=>update('payer',v)} onVerified={setVerifiedPayer}/>
+     :!exception.approval&&<p className="text-sm text-slate-700">You can approve now and confirm the payment details later.</p>}
+    {exception.approval&&!payerReady&&<p className="text-sm text-slate-700">This expense is approved. Confirm the actual payer to include it in the totals. <Link className="font-semibold underline" href={'/dashboard/funds?business=farm&from='+exception.date+'&to='+exception.date+(exception.period_id?'&period_id='+encodeURIComponent(exception.period_id):'')}>Open Farm Funds</Link></p>}
    </>}
   </>}
   {['approve','decline','cancel','void_payment','resolve_exception'].includes(operation)&&text('reason','Reason for this decision')}
   {['request','payment','delivery','exception'].includes(operation)&&<FarmPhotoPicker date={draft.date} resource={resource} value={draft.mediaIds} onChange={v=>update('mediaIds',v)} onBusyChange={setPhotoBusy}/>}
-  {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}<button className={button+' w-full bg-emerald-900 text-white'} type="submit">{busy?'Saving…':operation!=='resolve_exception'?'Save entry':draft.source==='decline'?'Decline report':draft.source!=='post'?'Link recorded expense':draft.fundingSource==='later'?'Approve and confirm funding later':'Record approved expense'}</button>
+  {error&&<p role="alert" className="text-sm text-red-800">{error}</p>}<button className={button+' w-full bg-emerald-900 text-white'} disabled={payerRequired&&!payerReady} type="submit">{busy?'Saving…':operation==='resolve_exception'?decisionLabel:'Save entry'}</button>
  </fieldset></form>;
 }
 const expenseDate=(date:string)=>new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(date+'T00:00:00Z'));
@@ -110,6 +122,7 @@ export function ReportedExpenses({reports,admin=false,onDecision,periodId,compac
   {reports.map(e=><article id={compact?undefined:'expense-'+e.id} key={e.id} className="scroll-mt-24 rounded-2xl border border-emerald-100 bg-white p-4">
    <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words text-base font-bold">{e.supplier}</h3><p className="text-sm text-slate-600">{expenseDate(e.date)}{e.reported_by_name&&' · '+e.reported_by_name}</p></div><strong className="text-lg">{formatExactCurrency(e.amount_exact,'NGN')}</strong></div>
    <p className="my-2 break-words text-sm">{e.description}</p><p className={statusBadge(e.resolution?(e.resolution.decision==='link'?'approved':'declined'):'pending')+' mb-2'}>{reportedExpenseStatus(e)}</p>
+   {e.approval?.expense_source&&!e.resolution&&<p className="mb-2 text-sm">Funding source · {e.approval.expense_source==='bimbo_transfer'?'Owner funds':'Sales money'}</p>}
    {e.approval&&!e.resolution&&!compact&&<p className="mb-2 text-sm text-slate-600">{e.approval.reason}</p>}
    {e.resolution&&<p className="text-sm text-slate-600">{e.resolution.reason}</p>}
    {!e.resolution&&<div className="flex flex-wrap gap-2">

@@ -368,3 +368,11 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - Bimbo opens Farm → Expenses → Electrician → Approve and record expense. If the payer is unknown, approve and confirm funding later. Both parties can see that state. The confirmed expense posts once when the funding is established.
 - Supervisors open Today, choose the produce and location, and log observations. Daily Feed and Feed Inventory both offer the starting bag count. The Farm Overview identifies unknown counts, customer debt and outstanding decisions.
 - Production acceptance uses the GitHub commit, its promoted Vercel release ID on every live application domain and the private supervisor-feedback-2026-11-11 release receipt. A rollback after the first location log must keep the compatible Daily Reports API that can read both report formats.
+
+## Emergency expense approval with an empty payer list — 11 November 2026
+
+- [x] Reproduce Bimbo’s Owner funds selection with no payer and her saved decision note.
+- [x] Let Bimbo approve with the known funding source while the payer is unconfirmed. Keep posting guarded and preserve the original report and any existing draft.
+- [x] Check both histories, repeat approvals, final funding, source changes and dated or unavailable payer lists. Rehearse the migration on a fresh restore.
+- In the fresh private restore the 9 November report had no Owner funds payer. Two identical approvals produced one decision, retained the selected source and note for both roles, and made no cash or expense entry. Pre/post comparisons matched all 145 original tables.
+- Release evidence is stored with the private farm-expense-payer-2026-11-11 receipt after the exact GitHub commit, Vercel production domains and live decision form are checked.

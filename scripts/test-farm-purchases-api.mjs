@@ -18,4 +18,22 @@ const post={operation:'resolve_exception',id,payload:{decision:'post',category:'
 pending=true;assert.equal((await api.POST(request(post))).status,202);assert.equal((await api.POST(request({...post,payload:{...post.payload,cash_payer_account_id:undefined}}))).status,400);
 pending=false;const held={...post,payload:{decision:'approve_awaiting_funding',reason:'Confirmed emergency repair',category:'utilities'}};
 assert.equal((await api.POST(request(held))).status,201);
-assert.equal((await api.POST(request({...held,payload:{...held.payload,expense_source:'sales_cash'}}))).status,400);
+for(const expense_source of ['bimbo_transfer','sales_cash']){
+ const payload={...held.payload,expense_source};
+ assert.equal((await api.POST(request({...held,payload}))).status,201);
+ assert.deepEqual(calls.at(-1)[1].p_payload,payload);
+}
+for(const cash_payer_review of [true,false]){
+ const payload={...held.payload,cash_payer_review};
+ assert.equal((await api.POST(request({...held,payload}))).status,201);
+ assert.deepEqual(calls.at(-1)[1].p_payload,payload);
+}
+const successfulCalls=calls.length;
+for(const details of [{expense_source:'other'},{expense_source:null},{cash_payer_account_id:id},{expense_source:'bimbo_transfer',cash_payer_review:true},{expense_source:'bimbo_transfer',cash_payer_review:false},{record_id:id},{resource:'farm_expenses'}]){
+ assert.equal((await api.POST(request({...held,payload:{...held.payload,...details}}))).status,400);
+}
+assert.equal(calls.length,successfulCalls);
+const legacyPost={decision:'post',category:'utilities',cash_payer_account_id:id,reason:'Payment confirmed in the older app'};
+assert.equal((await api.POST(request({...post,payload:legacyPost}))).status,201);
+assert.deepEqual(calls.at(-1)[1].p_payload,legacyPost);
+console.log('PASS approval accepts known or unknown funding without attributing it to a payer; posting requires confirmed funding');

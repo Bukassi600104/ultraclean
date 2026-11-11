@@ -5,6 +5,12 @@ const actor='00000000-0000-4000-8000-000000000094';
 const call=(fn,who,op,payload,id=null,key=crypto.randomUUID())=>scalar(db,`select ${fn}($1,$2,$3::jsonb,$4,$5)`,[who,op,JSON.stringify(payload),id,key]);
 const credit=(...args)=>call('farm_credit_write',...args),purchase=(...args)=>call('farm_purchase_write',...args);
 const date='2026-11-01';
+async function emergencyReport(supplier,description,digest){
+ const key=crypto.randomUUID();
+ const proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:digest.repeat(64),bytes:100,mime:'image/jpeg',activity_date:date,target_resource:'farm_purchase_exceptions'}),key]);
+ await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:proof.id}),key]);
+ return purchase(actor,'exception',{date,supplier,amount:'4500',description,evidence_ids:[proof.id]});
+}
 try{
  await periodWrite(db,ids.admin,'activate');await db.exec('update operations_release_state set purchasing_enabled=true');
  await db.query('insert into auth.users(id) values($1)',[actor]);await db.query("insert into profiles(id,role,name) values($1,'manager','Remediation tester')",[actor]);
@@ -28,18 +34,21 @@ try{
  assert.equal(await scalar(db,'select count(*)::int from farm_purchase_deliveries where purchase_id=$1',[order.id]),1);assert.equal(await scalar(db,'select count(*)::int from farm_purchase_payments'),0);
  assert.equal(await scalar(db,'select status from farm_operational_requests where id=$1',[order.request_id]),'cancelled');
  await assert.rejects(()=>purchase(actor,'delivery',{date,line_id:line,quantity:'1'},order.id),e=>e.code==='23514');
- const proofKey=crypto.randomUUID(),proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'f'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:date,target_resource:'farm_purchase_exceptions'}),proofKey]);await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:proof.id}),proofKey]);
- const exception=await purchase(actor,'exception',{date,supplier:'Actual electrician',amount:'4500',description:'Actual repair',evidence_ids:[proof.id]});
- const held={decision:'approve_awaiting_funding',category:'utilities',reason:'Verified workmanship; waiting for the payer'},heldKey=crypto.randomUUID();
+ const exception=await emergencyReport('Actual electrician','Actual repair','f');
+ const held={decision:'approve_awaiting_funding',category:'utilities',expense_source:'bimbo_transfer',reason:'Verified workmanship; waiting for the payer'},heldKey=crypto.randomUUID();
  const beforeExpense=(await db.query('select to_jsonb(e) as original from farm_purchase_exceptions e where id=$1',[exception.id])).rows[0].original;
  await assert.rejects(()=>purchase(actor,'resolve_exception',held,exception.id),e=>e.code==='42501');
  await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{...held,manager_period_id:ids.farm},exception.id),e=>e.code==='42501');
+ for(const details of [{expense_source:'other'},{expense_source:null},{cash_payer_account_id:ids.admin},{cash_payer_review:true},{cash_payer_review:false},{record_id:ids.farm},{resource:'farm_expenses'}]){
+  await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{...held,...details},exception.id),e=>e.code==='22023');
+ }
  const approval=await purchase(ids.admin,'resolve_exception',held,exception.id,heldKey);
- assert.equal(approval.status,'approved_awaiting_funding');assert.deepEqual(await purchase(ids.admin,'resolve_exception',held,exception.id,heldKey),approval);
+ assert.equal(approval.status,'approved_awaiting_funding');assert.equal(approval.expense_source,'bimbo_transfer');assert.deepEqual(await purchase(ids.admin,'resolve_exception',held,exception.id,heldKey),approval);
+ await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{...held,expense_source:'sales_cash'},exception.id,heldKey),e=>e.code==='23514');
  await assert.rejects(()=>purchase(ids.admin,'resolve_exception',held,exception.id),e=>e.code==='40001');
  for(const [viewer,periodId] of [[ids.admin,null],[actor,period.id]]){
   const report=(await scalar(db,'select farm_purchase_read($1,$2)',[viewer,periodId])).exceptions.find(e=>e.id===exception.id);
-  assert.equal(report.approval.category,'utilities');assert.equal(report.resolution,null);assert.equal(report.reported_by_name,'Remediation tester');
+  assert.equal(report.approval.category,'utilities');assert.equal(report.approval.expense_source,'bimbo_transfer');assert.equal(report.resolution,null);assert.equal(report.reported_by_name,'Remediation tester');
  }
  assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),0);
  assert.equal(await scalar(db,"select count(*)::int from manager_pending_expenses"),0);
@@ -65,11 +74,26 @@ try{
  assert.equal((await scalar(db,"select manager_read_records($1,'farm','farm_expenses',null,'{\"personal_report\":true}')",[ids.farm])).data.some(e=>e.id===posted.data.id),false);
  assert.deepEqual(await scalar(db,'select to_jsonb(e) from farm_purchase_exceptions e where id=$1',[exception.id]),beforeExpense);
  const more=await cash(ids.admin,'fund',{date,amount:'4500',recipient:{type:'manager',period_id:period.id}});await cash(actor,'receive',{date,amount:'4500',event_id:more.data.id});
- const secondProofKey=crypto.randomUUID(),secondProof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'e'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:date,target_resource:'farm_purchase_exceptions'}),secondProofKey]);await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:secondProof.id}),secondProofKey]);
- const direct=await purchase(actor,'exception',{date,supplier:'Second actual supplier',amount:'4500',description:'Different confirmed expense',evidence_ids:[secondProof.id]});
- const directKey=crypto.randomUUID(),directDecision={...postPayload,reason:'Verified separate cost'};
+ const direct=await emergencyReport('Second actual supplier','Different confirmed expense','e');
+ const statedSales=await purchase(ids.admin,'resolve_exception',{...held,expense_source:'sales_cash'},direct.id);
+ assert.equal(statedSales.expense_source,'sales_cash');
+ const directKey=crypto.randomUUID(),directDecision={...postPayload,reason:'Receipt confirms owner funds paid this expense'};
  await purchase(ids.admin,'resolve_exception',directDecision,direct.id,directKey);await purchase(ids.admin,'resolve_exception',directDecision,direct.id,directKey);
+ const directReport=(await scalar(db,'select farm_purchase_read($1,$2)',[actor,period.id])).exceptions.find(e=>e.id===direct.id);
+ assert.equal(directReport.approval.expense_source,'sales_cash');assert.equal(directReport.resolution.reason,directDecision.reason);
+ assert.equal(await scalar(db,'select expense_source from farm_expenses where id=$1',[directReport.resolution.record_id]),'bimbo_transfer');
+ const unknown=await emergencyReport('Third actual supplier','Work confirmed, source unknown','a');
+ const sourceUnknown={decision:'approve_awaiting_funding',category:'utilities',cash_payer_review:false,reason:'The payer and funding source are unconfirmed'},unknownKey=crypto.randomUUID();
+ const unknownApproval=await purchase(ids.admin,'resolve_exception',sourceUnknown,unknown.id,unknownKey);
+ assert.equal(Object.hasOwn(unknownApproval,'expense_source'),false);assert.deepEqual(await purchase(ids.admin,'resolve_exception',sourceUnknown,unknown.id,unknownKey),unknownApproval);
  assert.equal(Number(await scalar(db,'select sum(amount)::text from farm_expenses')),9000);assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),2);
+ const legacyFunds=await cash(ids.admin,'fund',{date,amount:'4500',recipient:{type:'manager',period_id:period.id}});
+ await cash(actor,'receive',{date,amount:'4500',event_id:legacyFunds.data.id});
+ const legacyPost={decision:'post',category:'utilities',cash_payer_account_id:payer,reason:'Confirmed actual payer in older app'},legacyPostKey=crypto.randomUUID();
+ const legacyResult=await purchase(ids.admin,'resolve_exception',legacyPost,unknown.id,legacyPostKey);
+ assert.deepEqual(await purchase(ids.admin,'resolve_exception',legacyPost,unknown.id,legacyPostKey),legacyResult);
+ assert.equal(await scalar(db,'select expense_source from farm_expenses where id=$1',[legacyResult.record_id]),'bimbo_transfer');
+ assert.equal(await scalar(db,"select count(*)::int from farm_expenses where paid_to='Third actual supplier'"),1);
  const beforeInvalid=await scalar(db,'select count(*)::int from farm_sales');await assert.rejects(()=>credit(actor,'invoice',{...payload,cash_receiver:{type:'unknown'}}));assert.equal(await scalar(db,'select count(*)::int from farm_sales'),beforeInvalid,'Failed payment rolls back its invoice and sale');
  const legacyCustomer=await credit(ids.farm,'customer',{name:'Legacy manager actual customer'});await credit(ids.admin,'terms',{days:15,reason:'Approved actual customer terms'},legacyCustomer.id);
  const legacyInvoice=await credit(ids.farm,'invoice',{...payload,customer_id:legacyCustomer.id,amount_received:'0'});assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[legacyInvoice.id])),100000);

@@ -20,15 +20,16 @@ export const purchaseSchema=z.discriminatedUnion('operation',[
  const decision=value.payload;
  if(decision.decision==='link'&&(!decision.resource||!decision.record_id))context.addIssue({code:'custom',message:'Choose the verified posted cost'});
  if(decision.decision==='post'&&(!decision.category||!decision.cash_payer_account_id))context.addIssue({code:'custom',message:'Choose the expense category and actual payer'});
- if(decision.decision==='approve_awaiting_funding'&&(!decision.category||decision.cash_payer_account_id||decision.expense_source||decision.record_id||decision.resource))context.addIssue({code:'custom',message:'Choose the expense category. Funding can be confirmed later.'});
+ if(decision.decision==='approve_awaiting_funding'&&(!decision.category||decision.cash_payer_account_id!==undefined||(decision.expense_source!==undefined&&decision.cash_payer_review!==undefined)||decision.record_id!==undefined||decision.resource!==undefined))context.addIssue({code:'custom',message:'Choose the category and leave the payer and payment record open for confirmation.'});
 });
 export type PurchaseLine=z.infer<typeof purchaseLine>&{id:string;received_exact:string};
 export type PurchasePayment={id:string;date:string;amount_exact:string;recipient:string;revision:number;voided_at:string|null};
 export type FarmPurchase={id:string;date:string;supplier:string;description:string;category:string;total_exact:string;paid_exact:string;status:string;revision:number;decision_reason:string|null;decision_at:string|null;requested_by_name?:string|null;lines:PurchaseLine[];payments:PurchasePayment[];deliveries:{id:string;line_id:string;date:string;quantity:number;notes:string|null}[]};
-export type ReportedExpense={id:string;date:string;supplier:string;description:string;amount_exact:string;reported_by_name?:string|null;funding_status?:string|null;pending_funding_id?:string|null;matching_costs:{resource:string;id:string;label:string}[];approval?:{category:string;reason:string;approved_at:string}|null;resolution:{decision:string;reason:string;resolved_at:string}|null};
+export type ReportedExpense={id:string;date:string;period_id?:string|null;supplier:string;description:string;amount_exact:string;reported_by_name?:string|null;funding_status?:string|null;pending_funding_id?:string|null;matching_costs:{resource:string;id:string;label:string}[];approval?:{category:string;reason:string;approved_at:string;expense_source?:'bimbo_transfer'|'sales_cash'}|null;resolution:{decision:string;reason:string;resolved_at:string}|null};
 export type PurchaseData={purchases:FarmPurchase[];policy:{automatic_limit:string|null;require_quote:boolean}|null;exceptions:ReportedExpense[]};
 export function reportedExpenseStatus(report:ReportedExpense){
  if(report.resolution)return report.resolution.decision==='link'?'Expense recorded':'Declined';
+ if(report.approval?.expense_source&&report.funding_status!=='pending')return 'Approved · payer to confirm';
  if(report.funding_status==='pending'||report.approval)return 'Approved · funding to confirm';
  return 'Needs approval';
 }

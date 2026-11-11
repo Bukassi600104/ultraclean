@@ -42,10 +42,10 @@ try{
  const proofKey=crypto.randomUUID(),proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[ids.farm,JSON.stringify({sha256:'f'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:'2026-10-30',target_resource:'farm_purchase_exceptions'}),proofKey]);
  await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[ids.farm,JSON.stringify({id:proof.id}),proofKey]);
  const emergency=await scalar(db,"select farm_purchase_write($1,'exception',$2::jsonb,null,$3)",[ids.farm,JSON.stringify({date:'2026-10-30',supplier:'Isolated electrician',amount:'50',description:'Emergency repair',evidence_ids:[proof.id]}),crypto.randomUUID()]);
- const hold={decision:'approve_awaiting_funding',category:'utilities',reason:'Verified repair'},holdKey=crypto.randomUUID();
+ const hold={decision:'approve_awaiting_funding',category:'utilities',expense_source:'bimbo_transfer',reason:'Verified repair'},holdKey=crypto.randomUUID();
  await db.query('begin');const approval=await purchase(db,'resolve_exception',hold,emergency.id,holdKey);settled=false;
  const sameApproval=purchase(other,'resolve_exception',hold,emergency.id,holdKey).finally(()=>{settled=true;});
- await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.deepEqual(await sameApproval,approval);
+ await new Promise(r=>setTimeout(r,150));assert.equal(settled,false);await db.query('commit');assert.deepEqual(await sameApproval,approval);assert.equal(approval.expense_source,'bimbo_transfer');
  const post={decision:'post',category:'utilities',expense_source:'bimbo_transfer',cash_payer_account_id:funding.data.target_account_id,reason:'Original funding verified'};
  await db.query('begin');await purchase(db,'resolve_exception',post,emergency.id);settled=false;
  const duplicate=purchase(other,'resolve_exception',post,emergency.id).then(()=>null,e=>e).finally(()=>{settled=true;});
