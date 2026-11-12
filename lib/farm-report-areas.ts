@@ -35,21 +35,21 @@ const count=z.number().int().nonnegative().max(2147483647);
 const weight=z.number().finite().nonnegative().max(1000000);
 const observation=z.string().trim().max(2000);
 export const areaObservationsSchema=z.object({
-  feed_kg:weight.optional(),deaths:count.optional(),eggs:count.optional(),sample_count:count.positive().optional(),
+  animal_count:count.optional(),feed_kg:weight.optional(),deaths:count.optional(),eggs:count.optional(),sample_count:count.positive().optional(),
   sample_weight_kg:weight.positive().optional(),water_quality:observation.optional(),notes:observation.optional(),
 }).strict();
 export const areaFields={
-  feed_kg:'Feed used (kg)',deaths:'Deaths observed',eggs:'Eggs collected',sample_count:'Animals weighed',
+  animal_count:'Animals counted',feed_kg:'Feed used (kg)',deaths:'Deaths observed',eggs:'Eggs collected',sample_count:'Animals weighed',
   sample_weight_kg:'Total sample weight (kg)',water_quality:'Water quality',notes:'Notes',
 } as const;
 export type AreaField=keyof typeof areaFields;
 export function applicableAreaFields(area:ReportArea):AreaField[]{
   if(area.key==='crops')return ['notes'];
-  return ['feed_kg','deaths',...(area.group==='Poultry'?['eggs' as const]:[]),'sample_count','sample_weight_kg',...(area.group==='Catfish'?['water_quality' as const]:[]),'notes'];
+  return ['animal_count','feed_kg','deaths',...(area.group==='Poultry'?['eggs' as const]:[]),'sample_count','sample_weight_kg',...(area.group==='Catfish'?['water_quality' as const]:[]),'notes'];
 }
 const draftNumber=z.number().finite().optional();
 export const areaSectionsDraftSchema=z.object({template_version:z.literal(3),area:z.string().refine(key=>!!reportArea(key),'Choose a farm area'),
-  observations:areaObservationsSchema.extend({feed_kg:draftNumber,deaths:draftNumber,eggs:draftNumber,sample_count:draftNumber,sample_weight_kg:draftNumber}),
+  observations:areaObservationsSchema.extend({animal_count:draftNumber,feed_kg:draftNumber,deaths:draftNumber,eggs:draftNumber,sample_count:draftNumber,sample_weight_kg:draftNumber}),
 }).strict();
 export const areaSectionsSchema=areaSectionsDraftSchema.extend({observations:areaObservationsSchema}).superRefine((value,ctx)=>{
   const area=reportArea(value.area);
@@ -63,3 +63,5 @@ export type AreaSections=z.infer<typeof areaSectionsDraftSchema>;
 export function isAreaSections(value:unknown):value is AreaSections {
   return !!value && typeof value==='object' && 'template_version' in value && value.template_version===3;
 }
+
+export type PoultryObservation={id:string;date:string;area:string;actor_name:string|null;observations:Partial<Record<"animal_count"|"eggs"|"deaths"|"feed_kg"|"sample_count"|"sample_weight_kg",number>>};

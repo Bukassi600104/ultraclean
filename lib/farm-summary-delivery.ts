@@ -24,7 +24,7 @@ export async function verifySummarySender(channel:SummaryChannel):Promise<string
 }
 export async function deliverFarmSummary(setting:SummarySetting,job:{id:string;summary:string;report_date:string}):Promise<{status:'sent'|'failed'|'unknown';provider:string|null;error:string|null}>{
  try{
-  if(await verifySummarySender(setting.channel)!==setting.sender)return {status:'failed',provider:null,error:'Sender changed; Bimbo must approve the new connection'};
+  if(await verifySummarySender(setting.channel)!==setting.sender)return {status:'failed',provider:null,error:'Sender changed; the MD/Owner must approve the new connection'};
  }catch{return {status:'failed',provider:null,error:'Sender verification unavailable; no message sent'};}
  try{
   if(setting.channel==='email'){

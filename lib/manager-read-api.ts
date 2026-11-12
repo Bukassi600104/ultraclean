@@ -1,3 +1,4 @@
+import {displayRoleMessage} from "@/lib/record-display";
 import {NextResponse} from "next/server";
 import {requireAdmin,requireManager,requirePropertyManager,requireContentManager} from "@/lib/auth";
 import {resolveManagerScope,readManagerRecords,type Business,type ManagerScope,type RecordFilters} from "@/lib/manager-periods";
@@ -14,7 +15,7 @@ export function managerReadError(error:unknown) {
  const e=error as {code?:string;message?:string};
  const forbidden=e.code==="42501"||e.code==="401"||e.message?.startsWith("Unauthorized");
  const invalid=["22023","22P02","22007","22008"].includes(e.code||"");
- return NextResponse.json({error:forbidden?e.message||"Manager access required":invalid?"Check the selected dates and filters":"Records are unavailable. Please retry."},{status:e.code==="401"?401:forbidden?403:invalid?400:503});
+ return NextResponse.json({error:forbidden?displayRoleMessage(e.message||"Manager access required"):invalid?"Check the selected dates and filters":"Records are unavailable. Please retry."},{status:e.code==="401"?401:forbidden?403:invalid?400:503});
 }
 export async function allManagerRecords(scope:ManagerScope,resource:string,filters:RecordFilters={}) {
  const rows:Record<string,unknown>[]=[];

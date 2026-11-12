@@ -4,7 +4,7 @@ import {createServerClient} from "@/lib/supabase/server";
 import {sumMoney} from "./money";
 
 const eligibleManagers=new Set(["ca7d7137-72dc-4cbc-848d-beb56d951344","a1e4ad6e-a565-4330-ae4c-3a0bc92081d1"]);
-export type LegacyManagerSnapshot={target:{id:string;name:string|null};asOf:string;sheets:{name:string;rows:Record<string,unknown>[]}[];summary:Record<string,string|number|null>;attributionNotes:string[]};
+export type LegacyManagerSnapshot={target:{id:string;name:string|null}|{scope:string};asOf:string;sheets:{name:string;rows:Record<string,unknown>[]}[];summary:Record<string,string|number|null>;attributionNotes:string[]};
 export function canExportLegacyManager(actor:Profile|null,targetId:string):boolean{
  return !!actor&&!actor.suspended&&eligibleManagers.has(targetId)&&(actor.role==="admin"||actor.role==="manager"&&actor.id===targetId);
 }
@@ -30,7 +30,8 @@ function excelAmount(value:unknown):number|null{
 export async function buildLegacyManagerWorkbook(snapshot:LegacyManagerSnapshot):Promise<Uint8Array>{
  const {default:ExcelJS}=await import("exceljs"),workbook=new ExcelJS.Workbook();workbook.creator="Primefield Farm";workbook.created=new Date(snapshot.asOf);
  const summary=workbook.addWorksheet("Summary");summary.columns=[{header:"Item",width:44},{header:"Recorded value",width:60}];
- summary.addRows([["Manager",snapshot.target.name||"Name not recorded"],["Account ID",snapshot.target.id],["Snapshot recorded at",snapshot.asOf],...Object.entries(snapshot.summary).map(([name,value])=>[name,value??"Not verified"]),["Excel precision","Exact text preserves every saved digit. A blank number companion cell is not zero; Excel cannot safely represent that saved precision."],...snapshot.attributionNotes.map(note=>["Attribution note",note])]);
+ const targetRows="scope" in snapshot.target?[["Reporting scope",snapshot.target.scope]]:[["Manager",snapshot.target.name||"Name not recorded"],["Account ID",snapshot.target.id]];
+ summary.addRows([...targetRows,["Snapshot recorded at",snapshot.asOf],...Object.entries(snapshot.summary).map(([name,value])=>[name,value??"Not verified"]),["Excel precision","Exact text preserves every saved digit. A blank number companion cell is not zero; Excel cannot safely represent that saved precision."],...snapshot.attributionNotes.map(note=>["Attribution note",note])]);
  for(const source of snapshot.sheets){
   const name=source.name.replace(/[\\/?*\[\]:]/g," ").slice(0,31);if(!name||workbook.getWorksheet(name))throw Error("Historical source sheets must have distinct names");
   if(source.rows.length>1048575)throw Error("This history exceeds one Excel worksheet; no partial export was created");

@@ -5,11 +5,14 @@ import {requestManagerScope,managerReadError} from '@/lib/manager-read-api';
 import {withManagerWrite,managerRpc} from '@/lib/manager-write-api';
 import {farmErrorResponse} from '@/lib/farm-v2';
 import {farmDateToday} from '@/lib/farm-products';
+import {cashDate} from '@/lib/operations-cash-validation';
 import {creditSchema} from '@/lib/farm-credit';
 export const runtime='nodejs';
 export async function GET(request:Request){try{
  const scope=await requestManagerScope(request,'farm'),db=createServerClient();if(!db)return farmErrorResponse({code:'503',message:'Customer records unavailable'});
- const {data,error}=await db.rpc('farm_credit_read',{p_actor:scope.actorId,p_period:scope.periodId,p_date:farmDateToday()});if(error)return farmErrorResponse(error);return NextResponse.json(data,{headers:{'Cache-Control':'private, no-store'}});
+ const date=new URL(request.url).searchParams.get('as_of')??farmDateToday();
+ if(!cashDate.safeParse(date).success||date>farmDateToday())return NextResponse.json({error:'Choose a valid payment date'},{status:400});
+ const {data,error}=await db.rpc('farm_credit_read',{p_actor:scope.actorId,p_period:scope.periodId,p_date:date});if(error)return farmErrorResponse(error);return NextResponse.json(data,{headers:{'Cache-Control':'private, no-store'}});
 }catch(e){return managerReadError(e);}}
 export async function POST(request:Request){return withManagerWrite(request,'farm',async()=>{
  const profile=await requireManager(),parsed=creditSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return NextResponse.json({error:'Check the customer entry',details:parsed.error.flatten()},{status:400});

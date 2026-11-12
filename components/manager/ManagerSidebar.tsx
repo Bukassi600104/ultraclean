@@ -35,7 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/daily-report", label: "Daily Report", icon: ClipboardList },
       { href: "/operational-requests", label: "Operational Requests", icon: MessageSquare },
-      { href: "/purchases", label: "Purchases & deliveries", icon: Receipt },
+      { href: "/purchases", label: "Purchased Item Confirmation / Deliveries", icon: Receipt },
       { href: "/sales", label: "Sales", icon: TrendingUp },
       { href: "/credit", label: "Customers & payments", icon: Wallet },
       { href: "/expenses", label: "Expenses", icon: Receipt },

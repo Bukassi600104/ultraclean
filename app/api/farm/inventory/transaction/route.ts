@@ -88,7 +88,7 @@ async function legacyPOST(request: NextRequest) {
   }
 
   if (profile.role === "manager" && !["add", "mortality"].includes(parsed.data.action)) {
-    return NextResponse.json({ error: "Request an inventory correction through Bimbo" }, { status: 403 });
+    return NextResponse.json({ error: "Request an inventory correction through the MD/Owner" }, { status: 403 });
   }
   const { data, error } = await farmWrite(profile, "inventory_transaction", "create", parsed.data, { requestId: parsed.data.request_id });
 

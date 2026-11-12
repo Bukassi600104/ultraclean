@@ -2,6 +2,9 @@
 import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
 
+import Link from 'next/link';
+import {usePathname} from 'next/navigation';
+import {farmManagerPrefix} from '@/lib/dashboard-navigation';
 import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { useEffect, useState, useCallback } from "react";
 import { Package, RefreshCw } from "lucide-react";
@@ -28,7 +31,7 @@ interface SupplyItem {
 
 
 export default function InventoryPage() {
- const managerFetch=useManagerFetch();
+ const managerFetch=useManagerFetch(),base=farmManagerPrefix(usePathname());
   const [livestock, setLivestock] = useState<InventoryItem[]>([]);
   const [supplies, setSupplies] = useState<SupplyItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +61,7 @@ export default function InventoryPage() {
 
   return (
     <div className="space-y-5">
+      <Link className="inline-flex min-h-11 items-center rounded-xl bg-emerald-900 px-4 font-semibold text-white" href={base+'/stores?view=animals'}>Record animal count</Link>
       <LivestockInventoryBreakdown />
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">Inventory</h1>

@@ -1,5 +1,5 @@
 import {withManagerWrite,managerRpc} from "@/lib/manager-write-api";
-import {managerReadResponse,requestManagerScope,managerReadError} from "@/lib/manager-read-api";
+import {allManagerRecords,managerReadResponse,requestManagerScope,managerReadError} from "@/lib/manager-read-api";
 import { farmReadDates } from "@/lib/farm-read-filters";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
@@ -7,7 +7,7 @@ import { requireManager } from "@/lib/auth";
 import { z } from "zod";
 import { classificationFields } from "@/lib/farm-livestock-validation";
 import type {CreditData} from "@/lib/farm-credit";
-import { farmDateToday, FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
+import { farmDateToday, isRecordedEggSale, FARM_PRODUCT_KEYS, FARM_PRODUCTS } from "@/lib/farm-products";
 import { farmWrite, farmErrorResponse } from "@/lib/farm-v2";
 import {cashReceiver,cashDate} from "@/lib/operations-cash-validation";
 
@@ -21,7 +21,7 @@ const saleItemSchema = z.object({
     egg_batch_id: z.string().uuid().nullable().optional(),
   cash_receiver:cashReceiver.optional(),
   ...classificationFields,
-  product: z.enum(FARM_PRODUCT_KEYS),
+  product: z.enum([...FARM_PRODUCT_KEYS,"eggs"]),
   quantity: z.number().positive("Quantity must be positive"),
   unit_price: z.number().positive("Unit price must be positive"),
   pricing_basis: z.enum(["per_kg", "per_head", "per_unit"]).optional(),
@@ -36,7 +36,13 @@ const saleItemSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
 });
 
-const batchSaleSchema = z.array(saleItemSchema.refine(item => (item.pricing_basis ?? FARM_PRODUCTS.find(product => product.key === item.product)!.pricingBasis) !== "per_kg" || !!item.weight_kg, { message: "Weight is required for sales priced per kg", path: ["weight_kg"] })).min(1).max(50);
+const normalizedSale = saleItemSchema.superRefine((item,context)=>{
+  if(item.product!=="eggs"&&!item.egg_batch_id)return;
+  if(!item.egg_batch_id||!["eggs","other"].includes(item.product)||!Number.isSafeInteger(item.quantity)||item.batch_id||item.stock_group_id||item.weight_kg||item.pricing_basis&&item.pricing_basis!=="per_unit"){
+    context.addIssue({code:"custom",message:"Choose an egg group and enter whole eggs at the price per egg."});
+  }
+}).transform(item=>item.product==="eggs"?{...item,product:"other" as const,other_product_name:"Eggs",pricing_basis:"per_unit" as const}:item);
+const batchSaleSchema = z.array(normalizedSale.refine(item => (item.pricing_basis ?? FARM_PRODUCTS.find(product => product.key === item.product)!.pricingBasis) !== "per_kg" || !!item.weight_kg, { message: "Weight is required for sales priced per kg", path: ["weight_kg"] })).min(1).max(50);
 
 async function legacyGET(request: NextRequest) {
   let profile;
@@ -129,7 +135,20 @@ async function legacyPOST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
- const scoped=await managerReadResponse(request,"farm","farm_sales","list",false);
+ const query=new URL(request.url).searchParams;
+ const requestedProduct=query.get("product");
+ let scoped:NextResponse|null;
+ if(requestedProduct==="eggs"||requestedProduct==="other"){
+  try{
+   const scope=await requestManagerScope(request,"farm");let dates;
+   try{dates=farmReadDates(query);}catch{return NextResponse.json({error:"Choose valid report dates"},{status:400});}
+   const page=Number(query.get("page")||1),limit=Number(query.get("limit")||50);
+   if(!Number.isSafeInteger(page)||page<1||!Number.isInteger(limit)||limit<1||limit>500)return NextResponse.json({error:"Choose a valid page"},{status:400});
+   const rows=await allManagerRecords(scope,"farm_sales",{...(dates.date?{from:dates.date,to:dates.date}:{from:dates.from||undefined,to:dates.to||undefined}),product:"other",active:true});
+   const filtered=rows.filter(s=>s.product==="other"&&isRecordedEggSale(s)===(requestedProduct==="eggs"));
+   scoped=NextResponse.json({data:filtered.slice((page-1)*limit,page*limit),page,total:filtered.length},{headers:{"Cache-Control":"private, no-store"}});
+  }catch(error){return managerReadError(error);}
+ }else scoped=await managerReadResponse(request,"farm","farm_sales","list",false);
  const result=scoped ?? await legacyGET(request);
  if(!result.ok||new URL(request.url).searchParams.get("with_payment")!=="1")return result;
  const page=await result.json() as {data:{id:string;invoice_id?:string|null}[];total:number};

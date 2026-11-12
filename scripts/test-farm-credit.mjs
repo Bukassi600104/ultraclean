@@ -17,7 +17,10 @@ try{
  const receipt={date:'2026-10-30',customer_id:customer.id,amount:'40000',cash_receiver:{type:'self'}};
  const proofKey=crypto.randomUUID(),proof=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:'d'.repeat(64),bytes:100,mime:'image/jpeg',activity_date:'2026-10-30',target_resource:'farm_customer_receipts'}),proofKey]);
  await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:proof.id}),proofKey]);
- const r=await write(actor,'receipt',{...receipt,evidence_ids:[proof.id]});
+ await assert.rejects(()=>write(actor,'receipt',{...receipt,amount_owing:'50000'}),e=>e.code==='40001');
+ assert.equal(await scalar(db,"select count(*)::int from farm_customer_receipts"),0);
+ assert.equal(await scalar(db,"select count(*)::int from operations_cash_events where resource='farm_customer_receipts'"),0);
+ const r=await write(actor,'receipt',{...receipt,amount_owing:'60000.00',evidence_ids:[proof.id]});
  assert.equal((await scalar(db,"select farm_record_evidence_read($1,'farm_customer_receipts',$2,$3)",[actor,r.id,period.id])).length,1);
 
  await write(actor,'receipt',{...receipt,amount:'35000'});
@@ -25,7 +28,7 @@ try{
  assert.equal(Number(read.summary.revenue),100000);assert.equal(Number(read.summary.collected),75000);assert.equal(Number(read.summary.owed),25000);
  assert.equal(await scalar(db,'select sum(amount)::text from farm_receipt_allocations'),'75000');
  assert.equal(await scalar(db,"select sum(p.amount)::text from operations_cash_postings p join operations_cash_accounts a on a.id=p.account_id where a.holder_type='manager' and bucket='sales'"),'75000');
- await write(actor,'receipt',{...receipt,amount:'30000'});
+ await write(actor,'receipt',{...receipt,amount:'30000',amount_owing:'0'});
  read=await scalar(db,'select farm_credit_read($1,null,$2::date)',[ids.admin,'2026-10-30']);
  assert.equal(Number(read.summary.owed),0);assert.equal(Number(read.summary.unapplied),5000);
  const excess=await scalar(db,"select id from farm_customer_receipts where amount=30000");
@@ -51,7 +54,10 @@ try{
  const secondCustomer=await write(actor,'customer',{name:'Separate actual customer'});await write(ids.admin,'terms',{days:10,reason:'Actual terms'},secondCustomer.id);
  const firstEqual=await write(actor,'invoice',{...payload,customer_id:secondCustomer.id,sale:{...payload.sale,quantity:1,unit_price:100}});
  const nextEqual=await write(actor,'invoice',{...payload,customer_id:secondCustomer.id,sale:{...payload.sale,quantity:1,unit_price:100}});
- await write(actor,'receipt',{...receipt,customer_id:secondCustomer.id,amount:'150'});
+ const fifoPayload={...receipt,customer_id:secondCustomer.id,amount:'150',amount_owing:'50'};
+ const fifoKey=crypto.randomUUID(),fifoResult=await write(actor,'receipt',fifoPayload,null,fifoKey);
+ assert.deepEqual(await write(actor,'receipt',fifoPayload,null,fifoKey),fifoResult);
+ await assert.rejects(()=>write(actor,'receipt',{...fifoPayload,amount_owing:'75'},null,fifoKey),e=>e.code==='23514');
  assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[firstEqual.id])),0);assert.equal(Number(await scalar(db,'select operations_private.invoice_due($1)',[nextEqual.id])),50);
  await assert.rejects(()=>write(actor,'receipt',{...receipt,customer_id:secondCustomer.id,date:'2026-10-29',amount:'10'}),e=>['40001','42501'].includes(e.code));
  const returnCustomer=await write(actor,'customer',{name:'Paid invoice return customer'});await write(ids.admin,'terms',{days:10,reason:'Actual terms'},returnCustomer.id);

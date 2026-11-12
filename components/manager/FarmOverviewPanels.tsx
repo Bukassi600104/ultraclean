@@ -24,7 +24,7 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
   const counted = data.feed.filter(f => f.amount != null);
   const missing = data.feed.length - counted.length;
   const tiles = [
-    {label:'Farm produce', value:animals.length?count(animals.reduce((n,p)=>n+Number(p.amount),0))+' '+animalUnit:String(data.produce.length), note:animals.length?animals.map(a=>a.label+' '+count(a.amount!)).join(' · '):'Produce types recorded', href:'#produce-quantities'},
+    {label:'Farm produce', value:animals.length?count(animals.reduce((n,p)=>n+Number(p.amount),0))+' '+animalUnit:String(data.produce.length), note:animals.length?animals.map(a=>a.label+' '+count(a.amount!)).join(' · '):'Produce types recorded', href:link('stores?view=animals')},
     {label:'Feed in store', value:counted.length?count(counted.reduce((n,f)=>n+Number(f.amount),0)):missing?'Count needed':data.feedTypesComplete?'No feed recorded':'Unavailable', note:counted.length?(missing?'Bags counted · '+missing+(missing===1?' type needs':' types need')+' a count':'Unopened bags'):'Unopened bags', href:'#feed-quantities'},
     {label:'Mortality', value:count(data.mortality.total), note:'Recorded deaths in period', href:link(supervisor?'mortality':'inventory?tab=mortality')},
     {label:'Sales', value:money(data.sales), note:money(data.collected)+' received', href:link('sales')},
@@ -60,7 +60,7 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
     </div>
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <section id="produce-quantities" className={card+' scroll-mt-28'}>
-        <div className="flex items-center justify-between gap-2"><h3 className={heading}>Produce on hand</h3><Link className={action} href={link('inventory')}>Inventory</Link></div>
+        <div className="flex items-center justify-between gap-2"><h3 className={heading}>Produce on hand</h3><Link className={action} href={link('stores?view=animals')}>{supervisor?'Record animal count':'Review or correct counts'}</Link></div>
         <QuantityList rows={data.produce} empty="No produce inventory recorded in this view."/>
         {data.mortality.products.length>0&&<p className="mt-3 border-t pt-3 text-sm text-[#455749]"><strong>Mortality in period</strong> · {data.mortality.products.map(m=>farmProductLabel(m.product)+' '+count(m.quantity)).join(' · ')}</p>}
       </section>

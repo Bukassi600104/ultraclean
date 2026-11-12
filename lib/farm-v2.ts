@@ -2,7 +2,7 @@ import {managerRpc} from "@/lib/manager-write-api";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/auth";
-import { isTechnicalMessage } from "@/lib/record-display";
+import { isTechnicalMessage, displayRoleMessage } from "@/lib/record-display";
 
 type WriteOptions = { id?: string; reason?: string; requestId?: string };
 export type FarmWriteError = { message: string; code?: string };
@@ -30,10 +30,10 @@ export function farmErrorResponse(error: FarmWriteError) {
     "23502": "Complete the required fields before saving.",
     "23505": "This entry already exists. Refresh the records before trying again.",
   };
-  const fallback = status === 403 ? "You do not have permission to make this change. Please contact Bimbo."
+  const fallback = status === 403 ? "You do not have permission to make this change. Please contact the MD/Owner."
     : status === 409 ? "This entry could not be saved. Refresh the record, check its details and try again."
     : "We could not save this entry. Check the details and try again.";
   const message = status === 500 || status === 503 ? "Farm operation unavailable. Please try again."
     : nativeMessages[error.code || ""] || (isTechnicalMessage(error.message) ? fallback : error.message);
-  return NextResponse.json({ error: message, code: error.code }, { status });
+  return NextResponse.json({ error: displayRoleMessage(message), code: error.code }, { status });
 }

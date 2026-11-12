@@ -73,5 +73,13 @@ try{
  read=await scalar(db,'select farm_store_read($1,$2,$3::date)',[ids.farm,period,'2026-10-30']);
  assert.equal(read.assets.find(a=>a.id===stock).coverage.days_left,null,'Backdated bag changes cannot reinterpret the count');
  assert.match(read.assets.find(a=>a.id===stock).coverage.reason,/Bag weight changed/);
+ const customer=await scalar(db,"select farm_credit_write($1,'customer',$2::jsonb,null,$3)",[ids.farm,JSON.stringify({name:'Isolated egg customer'}),crypto.randomUUID()]);
+ const key=crypto.randomUUID(),eggInvoice={rows:[{...salePayload,quantity:3,customer_id:customer.id,credit:false,cash_receiver:{type:'ceo',profile_id:ids.admin}}]};
+ const create=()=>scalar(db,"select farm_credit_write($1,'invoice_batch',$2::jsonb,null,$3)",[ids.farm,JSON.stringify(eggInvoice),key]);
+ const saved=await create();assert.deepEqual(await create(),saved);
+ const row=saved.rows[0];assert.equal(row.egg_batch_id,batch.id);
+ assert.equal(await scalar(db,"select sum(quantity)::int from farm_egg_movements where sale_id=$1 and kind='sale'",[row.id]),-3);
+ assert.equal(await scalar(db,"select count(*)::int from farm_invoices where sale_id=$1",[row.id]),1);
+ assert.equal(await scalar(db,"select sum(amount)::int from farm_customer_receipts where customer_id=$1",[customer.id]),300);
  console.log('PASS egg collection/sale/loss retries, immutable counts, stale review and linked corrections');
 }catch(e){console.error(e.message,e.code,e.where);process.exitCode=1;}finally{await db.close();}

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, requireManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { farmErrorResponse } from "@/lib/farm-v2";
+import {requestDetails} from '@/lib/farm-purchases';
 
 export const REQUEST_CATEGORIES = ["purchase", "feed", "veterinary", "repair", "maintenance", "equipment", "staffing", "water", "pump", "emergency", "other"] as const;
 const text = z.string().trim().max(2000).default("");
@@ -33,7 +34,7 @@ const structuredSectionsSchema = z.object({
 export const sectionsSchema=z.union([areaSectionsSchema,structuredSectionsSchema,legacySectionsSchema]).refine(value=>new TextEncoder().encode(JSON.stringify(value)).length<=28000,"Report is too long. Shorten the section notes.");
 export type StructuredReportSections=z.infer<typeof structuredSectionsSchema>;
 export const reportSchema = z.object({report_date:date,sections:sectionsSchema,decision_required:z.boolean().default(false)}).strict().refine(value=>!value.decision_required || (!isAreaSections(value.sections)&&value.sections.problems.issues.length>0),{message:"Describe the issue requiring a decision in the whole-farm report",path:["sections","problems","issues"]});
-export const requestSchema = z.object({request_date:date,category:z.enum(REQUEST_CATEGORIES),description:z.string().trim().min(1).max(2000),evidence_ids:z.array(z.string().uuid()).max(6).optional(),request_id:z.string().uuid().optional()}).strict();
+export const requestSchema = z.object({request_date:date,category:z.enum(REQUEST_CATEGORIES),description:z.string().trim().min(1).max(2000),request_details:requestDetails.optional(),evidence_ids:z.array(z.string().uuid()).max(6).optional(),request_id:z.string().uuid().optional()}).strict();
 export type ReportSections = z.infer<typeof sectionsSchema>;
 export type DailyReport = z.infer<typeof reportSchema> & {id:string;manager_id:string;has_photos?:boolean;manager?:{id:string;name:string|null}|null;status:"draft"|"submitted";revision:number;created_at:string;submitted_at:string|null;reviewer?:{id:string;name:string|null}|null;reviewed_by:string|null;reviewed_at:string|null;review_note:string|null};
 export type OperationalRequest = z.infer<typeof requestSchema> & {id:string;report_id:string|null;action_taken?:string|null;requested_by:string;requester?:{id:string;name:string|null}|null;status:"pending"|"approved"|"declined"|"resolved"|"cancelled";cancel_reason?:string|null;revision:number;created_at:string;ceo_response:string|null;resolution:string|null;decider?:{id:string;name:string|null}|null;decision_by:string|null;decision_at:string|null;resolved_at:string|null;linked_purchase?:{id:string;total:string; supplier:string|null};feed_count_review?:boolean};

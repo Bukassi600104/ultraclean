@@ -1,6 +1,7 @@
 "use client";
 import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
 
+import Link from 'next/link';
 import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { useEffect, useState } from "react";
 import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
@@ -101,6 +102,7 @@ export default function FarmInventoryPage() {
     <>
       <DashboardHeader title="Farm Inventory" />
       <div className="mx-auto w-full p-4 lg:p-8 space-y-6 max-w-7xl">
+      <Link className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={'/dashboard/farm/stores?view=animals'+(periodId?'&period_id='+encodeURIComponent(periodId):'')}>Review physical animal counts</Link>
       {periodId!==null&&<LivestockInventoryBreakdown canManage={!periodId} refreshKey={refresh} periodId={periodId}/>}
         
 

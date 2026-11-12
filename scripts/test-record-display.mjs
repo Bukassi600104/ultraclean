@@ -4,6 +4,9 @@ const {displayFieldName,displayRecordValue,isInternalField,isTechnicalMessage}=l
 const {farmErrorResponse}=load('lib/farm-v2.ts');
 const {cashError}=load('lib/operations-cash.ts');
 const id='00000000-0000-4000-8000-000000000097';
+assert.equal(displayRecordValue('Bimbo signed for the pens'),'Bimbo signed for the pens');
+assert.equal((await farmErrorResponse({code:'42501',message:'Only Bimbo approves stock discrepancies'}).json()).error,'Only the MD/Owner approves stock discrepancies');
+assert.equal((await cashError({code:'42501',message:'Bimbo must confirm the actual payer'}).json()).error,'The MD/Owner must confirm the actual payer');
 assert.equal(displayRecordValue(id),'Linked record (name unavailable)');
 assert.equal(displayRecordValue(0),'0');
 assert.equal(displayRecordValue('250000.00'),'250000.00');
@@ -27,8 +30,9 @@ for(const [code,message,status] of [
  assert.doesNotMatch(body.error,/private provider|farm_sales|farm_request|manager_id/);
 }
 const businessMessage='This date is closed. Ask Bimbo to review the saved entry.';
-assert.equal((await farmErrorResponse({code:'23514',message:businessMessage}).json()).error,businessMessage);
-assert.equal((await cashError({code:'23514',message:businessMessage}).json()).error,businessMessage);
+const roleMessage='This date is closed. Ask the MD/Owner to review the saved entry.';
+assert.equal((await farmErrorResponse({code:'23514',message:businessMessage}).json()).error,roleMessage);
+assert.equal((await cashError({code:'23514',message:businessMessage}).json()).error,roleMessage);
 for(const code of ['22P02','23505','42501']){
  const response=cashError({code,message:`invalid input syntax for type uuid: "${id}"`});
  assert.equal(response.status,code==='42501'?403:code==='23505'?409:400);

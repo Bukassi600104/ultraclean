@@ -12,6 +12,14 @@ export const FARM_PRODUCTS: { key: FarmProduct; label: string; color: string; bg
   { key: "other", label: "Other", color: "#6b7280", bg: "#f3f4f6", pricingBasis: "per_unit" },
   { key: "crops", label: "Crops", color: "#10b981", bg: "#f0fdf4", pricingBasis: "per_unit" },
 ];
+export const EGG_SALE_PRODUCT = {key: "eggs", label: "Eggs", color: "#855f24", bg: "#faf5e7", pricingBasis: "per_unit"} as const;
+export function isRecordedEggSale(sale: {product?: unknown; egg_batch_id?: unknown; other_product_name?: unknown}) {
+  return typeof sale.egg_batch_id === "string" && sale.egg_batch_id.length > 0 || sale.product === "other" && typeof sale.other_product_name === "string" && /^eggs?$/i.test(sale.other_product_name.trim());
+}
+export function saleProductLabel(sale: {product: string; egg_batch_id?: string | null; other_product_name?: string | null}) {
+  if (isRecordedEggSale(sale)) return "Eggs";
+  return (sale.product === "other" || sale.product === "crops") && sale.other_product_name?.trim() ? sale.other_product_name.trim() : farmProductLabel(sale.product);
+}
 export const LIVESTOCK_PRODUCTS = FARM_PRODUCTS.filter((product) => product.key !== "other" && product.key !== "crops");
 export function farmProductLabel(product: string) {
   return FARM_PRODUCTS.find((item) => item.key === product)?.label ?? product.replace(/_/g, " ");

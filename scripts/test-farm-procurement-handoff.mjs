@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import {managerDatabase,ids,scalar,periodWrite} from '../tests/helpers/manager-db.mjs';
+const db=await managerDatabase(),supervisor=crypto.randomUUID(),buyer=crypto.randomUUID();
+const today=await scalar(db,"select (now() at time zone 'Africa/Lagos')::date::text");
+const purchase=(actor,op,body,id=null,key=crypto.randomUUID())=>scalar(db,'select farm_purchase_write($1,$2,$3::jsonb,$4,$5)',[actor,op,JSON.stringify(body),id,key]);
+const request=(actor,op,body,id=null,note=null,key=crypto.randomUUID())=>scalar(db,'select farm_operational_request_write($1,$2,$3::jsonb,$4,$5,$6)',[actor,op,JSON.stringify(body),id,note,key]);
+const read=(actor,period=null)=>scalar(db,'select farm_purchase_handoff_read($1,$2)',[actor,period]);
+async function provision(actor,name){
+ await db.query('insert into auth.users(id) values($1)',[actor]);await db.query("insert into profiles(id,role,name) values($1,'manager',$2)",[actor,name]);
+ const p=await periodWrite(db,ids.admin,'provision',{manager_id:actor,business:'farm',starts_on:today});await db.query("update manager_periods set status='active' where id=$1",[p.id]);return p.id;
+}
+async function photo(actor,target){
+ const key=crypto.randomUUID(),hash=crypto.randomUUID().replaceAll('-','').repeat(2);
+ const image=await scalar(db,"select farm_evidence_write($1,'reserve',$2::jsonb,$3)",[actor,JSON.stringify({sha256:hash,bytes:500,mime:'image/jpeg',activity_date:today,target_resource:target}),key]);
+ await scalar(db,"select farm_evidence_write($1,'uploaded',$2::jsonb,$3)",[actor,JSON.stringify({id:image.id}),key]);return image.id;
+}
+const count=table=>scalar(db,'select count(*)::int from '+table);
+try{
+ await periodWrite(db,ids.admin,'activate');await db.exec('update operations_release_state set purchasing_enabled=true');
+ const ownerPeriod=await provision(supervisor,'Supervisor'),buyerPeriod=await provision(buyer,'Assigned buyer');
+ await scalar(db,"select farm_feed_stock_write($1,'starting',$2::jsonb,null,null,$3)",[supervisor,JSON.stringify({date:today,feed_type:'fish',feed_source:'local',bags:0}),crypto.randomUUID()]);
+ const details={needed_on:today,why_needed:'Feed the assigned ponds',purchase_category:'feed',items:[{description:'Fish feed',quantity:'3',unit:'bags',destination:'feed',feed_type:'fish',feed_source:'local'}]};
+ const fields={request_date:today,category:'feed',description:'Feed bags',request_details:details},requestKey=crypto.randomUUID();
+ const q=await request(supervisor,'create',fields,null,null,requestKey);
+ assert.deepEqual(q.request_details,details);assert.deepEqual(await request(supervisor,'create',fields,null,null,requestKey),q);
+ assert.equal(await count('farm_purchases'),0);assert.equal(await count('farm_operational_requests'),1);
+ const act={date:today,supplier:'Actual supplier',prices:['30']};
+ await assert.rejects(()=>purchase(buyer,'procure',act,q.id),e=>e.code==='42501');
+ await request(ids.admin,'approve',{expected_revision:q.revision,ceo_response:'Approved for feed'},q.id,'Approved for feed');
+ assert.ok((await read(ids.admin)).procurement_tasks.some(t=>t.request_id===q.id));assert.equal((await read(buyer,buyerPeriod)).procurement_tasks.length,0);
+ await assert.rejects(()=>purchase(supervisor,'assign_procurement',{period_id:buyerPeriod,previous_id:null},q.id),e=>e.code==='42501');
+ const assign=await purchase(ids.admin,'assign_procurement',{period_id:buyerPeriod,previous_id:null},q.id);
+ await assert.rejects(()=>purchase(ids.admin,'assign_procurement',{period_id:null,previous_id:null},q.id),e=>e.code==='40001');
+ assert.equal((await read(buyer,buyerPeriod)).procurement_tasks[0].assignment.id,assign.id);
+ await assert.rejects(()=>purchase(supervisor,'procure',act,q.id),e=>e.code==='42501');
+ await purchase(ids.admin,'policy',{automatic_limit:null,require_quote:true});
+ await assert.rejects(()=>purchase(buyer,'procure',act,q.id),e=>e.code==='23514');assert.equal(await count('farm_purchases'),0);
+ const key=crypto.randomUUID(),quote=await photo(buyer,'farm_purchases'),actual={...act,evidence_ids:[quote]};
+ const order=await purchase(buyer,'procure',actual,q.id,key);
+ assert.deepEqual(await purchase(buyer,'procure',actual,q.id,key),order);
+ assert.equal(await count('farm_operational_requests'),1);assert.equal(await count('farm_purchases'),1);assert.equal(await count('farm_purchase_payments'),0);
+ assert.equal((await read(ids.admin)).procurement_tasks[0].order_id,order.id);assert.equal((await read(supervisor,ownerPeriod)).purchases[0].id,order.id);
+ const assigned=await read(buyer,buyerPeriod);assert.equal(assigned.purchases.length,0,'buying one order exposes no unrelated supervisor records');
+ const line=assigned.procurement_tasks[0].lines[0].id;
+ const dispatch={date:today,line_id:line,quantity:'2'},sentKey=crypto.randomUUID();
+ const shipment=await purchase(buyer,'dispatch',dispatch,q.id,sentKey);assert.deepEqual(await purchase(buyer,'dispatch',dispatch,q.id,sentKey),shipment);
+ await assert.rejects(()=>purchase(buyer,'dispatch',dispatch,q.id),e=>e.code==='23514');
+ const stock=()=>scalar(db,"select current_bags from farm_feed_stock where feed_type='fish' and feed_source='local'");
+ assert.equal(await stock(),0);
+ const confirm={date:today,line_id:line,quantity:'2',included_in_starting_count:false,delivered_by:'supplier'};
+ await assert.rejects(()=>purchase(supervisor,'delivery',confirm,order.id),e=>e.code==='23514');
+ await assert.rejects(()=>purchase(supervisor,'confirm_delivery',confirm,order.id),e=>e.code==='22023');
+ const proof=await photo(supervisor,'farm_purchase_deliveries'),delivery={...confirm,evidence_ids:[proof]};
+ await assert.rejects(()=>purchase(buyer,'confirm_delivery',delivery,order.id),e=>e.code==='42501');
+ await assert.rejects(()=>purchase(supervisor,'confirm_delivery',{...delivery,evidence_ids:[quote]},order.id));
+ assert.equal(await stock(),0);assert.equal(await count('farm_purchase_deliveries'),0);
+ const receiptKey=crypto.randomUUID(),receipt=await purchase(supervisor,'confirm_delivery',delivery,order.id,receiptKey);
+ assert.equal(receipt.delivered_by,'supplier');assert.deepEqual(await purchase(supervisor,'confirm_delivery',delivery,order.id,receiptKey),receipt);
+ assert.equal(await stock(),2);assert.equal(await count('farm_purchase_payments'),0);
+ assert.equal((await read(ids.admin)).procurement_tasks[0].lines[0].received,'2');
+ const fund=(who,op,v)=>scalar(db,'select operations_cash_write($1,$2,$3::jsonb,$4)',[who,op,JSON.stringify({business:'farm',currency:'NGN',date:today,...v}),crypto.randomUUID()]);
+ const funds=await fund(ids.admin,'fund',{amount:'90',recipient:{type:'manager',period_id:buyerPeriod}}),received=await fund(buyer,'receive',{amount:'90',event_id:funds.data.id});
+ const payment={date:today,recipient:'Actual supplier',amount:'90',expense_source:'owner_fund',cash_payer_account_id:received.data.target_account_id};
+ await assert.rejects(()=>purchase(supervisor,'payment',payment,order.id),e=>e.code==='42501');
+ const payKey=crypto.randomUUID(),paid=await purchase(buyer,'payment',payment,order.id,payKey);
+ assert.deepEqual(await purchase(buyer,'payment',payment,order.id,payKey),paid);
+ assert.equal(await count('farm_purchase_payments'),1);assert.equal(await stock(),2);
+ await purchase(supervisor,'confirm_delivery',{...delivery,quantity:'1',delivered_by:'sales_procurement',evidence_ids:[await photo(supervisor,'farm_purchase_deliveries')]},order.id);
+ assert.equal(await stock(),3);assert.equal(await scalar(db,'select status from farm_operational_requests where id=$1',[q.id]),'resolved');
+ await assert.rejects(()=>purchase(ids.admin,'cancel',{reason:'Already received',expected_revision:0},order.id),e=>e.code==='23514');
+ await purchase(ids.admin,'assign_procurement',{period_id:null,previous_id:assign.id},q.id);
+ assert.equal((await read(buyer,buyerPeriod)).procurement_tasks.length,0);
+ console.log('PASS single MD decision, scoped and revocable procurement, retained quote, actual payment, partial dispatch, required supervisor proof, exactly-once stock receipt and complete delivery.');
+}finally{await db.close();}

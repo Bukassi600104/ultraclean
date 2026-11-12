@@ -376,3 +376,16 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Check both histories, repeat approvals, final funding, source changes and dated or unavailable payer lists. Rehearse the migration on a fresh restore.
 - In the fresh private restore the 9 November report had no Owner funds payer. Two identical approvals produced one decision, retained the selected source and note for both roles, and made no cash or expense entry. Pre/post comparisons matched all 145 original tables.
 - Release evidence is stored with the private farm-expense-payer-2026-11-11 receipt after the exact GitHub commit, Vercel production domains and live decision form are checked.
+
+## Farm supervisor and MD feedback — 12 November 2026
+
+- [x] Trace Daily Report message dismissal and simplify its home, transfers, and MD/Owner role labels.
+- [x] Verify the 370 figure's real source, enable audited animal count corrections and reliable supervisor input. Reconcile physical count and egg displays, poultry performance, and health detail entry.
+- [x] Connect one supervisor request with when, why and optional unit price to MD approval, procurement and a photo-backed delivery confirmation. Keep existing reports, photos, emergency decisions and old submissions compatible.
+- [x] Cover egg sales and inventory, amount paid and optional balance owing, plus on-demand financial reports with dates and exact authoritative totals.
+- [x] Verify both roles, retries, historical data, permissions and mobile/desktop layouts on isolated data. Rehearse schema changes, compare original data, and record the verified release scope.
+
+- The reported 370 came from the underlying animal records. The MD can correct a species with a reason, and supervisors can enter dated counts by area. Pen egg observations and saleable egg stock each show their source.
+- Operational requests collect the date needed, reason and optional estimate. The MD assigns a buyer for each approved order. The supervisor confirms delivery with the actual sender, quantity and photo. Emergency funding decisions and historical requests retain their original handling.
+- A private PostgreSQL restore preserved all 145 original tables and 110 existing policies. Separate database connections tested cancelling and purchasing simultaneously in both orders. Browser tests exercised the receipt handoff, an interrupted Daily Report reply, animal and egg figures, customer credits, report downloads and responsive layouts.
+- Release acceptance requires matching the Git commit to the promoted Vercel release and checking both roles' read-only database views. The private farm-supervisor-2026-11-12 receipts hold the final deployment identifiers. Use an application rollback compatible with the three additive migrations and retain submitted deliveries, count decisions and health records.

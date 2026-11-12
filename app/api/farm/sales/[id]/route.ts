@@ -21,7 +21,7 @@ const schema = z.object({
 async function mutate(request: NextRequest, id: string, operation: "update" | "void") {
   let profile;
   try { profile = await requireManager(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
-  if (profile.role !== "admin") return NextResponse.json({ error: "Saved records require a correction request to Bimbo." }, { status: 403 });
+  if (profile.role !== "admin") return NextResponse.json({ error: "Saved records require a correction request to the MD/Owner." }, { status: 403 });
   const body = await request.json().catch(() => null);
   const parsed = (operation === "update" ? schema : schema.pick({ reason: true, expected_revision: true })).safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten().fieldErrors }, { status: 400 });

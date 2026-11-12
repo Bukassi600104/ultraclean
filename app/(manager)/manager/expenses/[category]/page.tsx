@@ -179,7 +179,7 @@ export default function ExpenseCategoryPage() {
       const response=await submission.send(endpoint,[payload],{form,feedSource,delivery,deliveryDate,deliveryId,included,payer:payerChoice,batchId},requestId.current),result=await response.json();
       if(!response.ok)throw Error(result.error||"Unable to confirm this saved expense");
       requestId.current=null;setDirty(false);
-      if(response.status===202){setFundingNotice("Saved for Bimbo’s funding review; not yet posted.");setShowSuccess(false);}
+      if(response.status===202){setFundingNotice("Saved for the MD/Owner to confirm funding.");setShowSuccess(false);}
       else{
         const saved=Array.isArray(result.data)?result.data[0]:result.data||result,actual=Number(categoryKey==="feed"?saved?.cost:saved?.amount);
         if(!Number.isFinite(actual))throw Error("The saved response did not include the persisted cost. Check records before entering it again.");
@@ -437,9 +437,9 @@ export default function ExpenseCategoryPage() {
         {categoryKey !== "feed" ? <div className="space-y-2">
           <label htmlFor="expense-source" className="text-xs font-bold uppercase text-gray-500">Paid From</label>
           <select id="expense-source" value={form.expense_source} onChange={(event) => updateField("expense_source", event.target.value)} className="w-full rounded-xl border p-3">
-            <option value="bimbo_transfer">Bimbo’s funds</option><option value="sales_cash">Farm sales proceeds</option>
+            <option value="bimbo_transfer">Owner funds</option><option value="sales_cash">Farm sales proceeds</option>
           </select>
-        </div> : <p className="text-sm text-gray-500">Feed purchases are paid from Bimbo’s funds.</p>}
+        </div> : <p className="text-sm text-gray-500">Feed purchases are paid from Owner funds.</p>}
         {categoryKey!=="feed"&&<FarmBatchPicker product="all" value={batchId} onChange={setBatchId}/>}
         {personal&&<CashPayerSelect business="farm" currency="NGN" bucket={categoryKey!=="feed"&&form.expense_source==="sales_cash"?"sales":"owner"} value={payerChoice} onChange={setPayerChoice} disabled={saving||!!submission.pending}/>}
         {/* Payment method */}

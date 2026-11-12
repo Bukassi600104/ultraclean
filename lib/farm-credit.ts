@@ -7,7 +7,7 @@ export const creditSchema=z.discriminatedUnion('operation',[
  z.object({...request,operation:z.literal('customer'),payload:z.object({name:z.string().trim().min(1).max(200),phone:z.string().max(100).optional(),notes:z.string().max(2000).optional()}).strict()}),
  z.object({...request,...id,operation:z.literal('terms'),payload:z.object({days:z.number().int().min(0).max(3650),reason}).strict()}),
  z.object({...request,...id,operation:z.literal('assign'),payload:z.object({period_id:z.string().uuid(),reason}).strict()}),
- z.object({...request,operation:z.literal('receipt'),payload:z.object({...evidence,date:cashDate,customer_id:z.string().uuid(),amount,cash_receiver:cashReceiver,notes:z.string().max(2000).optional()}).strict()}),
+ z.object({...request,operation:z.literal('receipt'),payload:z.object({...evidence,date:cashDate,customer_id:z.string().uuid(),amount,amount_owing:z.string().regex(/^(?:0|[1-9]\d{0,29})(?:\.\d{1,2})?$/,'Enter the balance owing with up to two decimal places').optional(),cash_receiver:cashReceiver,notes:z.string().max(2000).optional()}).strict()}),
  z.object({...request,...id,operation:z.literal('void_receipt'),payload:z.object({reason}).strict()}),
  z.object({...request,...id,operation:z.literal('credit_note'),payload:z.object({date:cashDate,amount,reason}).strict()}),
  z.object({...request,...id,operation:z.literal('refund'),payload:z.object({...evidence,date:cashDate,amount,reason}).strict()}),

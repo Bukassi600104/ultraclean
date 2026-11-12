@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import {saleProductLabel} from "@/lib/farm-products";
 import {SalePaymentDetails} from "@/components/manager/SalePaymentDetails";
 import { formatCurrency } from "@/lib/utils";
 import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
@@ -87,6 +88,7 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
               <SelectItem value="catfish">Catfish</SelectItem>
               <SelectItem value="goat">Goat</SelectItem>
               <SelectItem value="chicken">Chicken</SelectItem>
+              <SelectItem value="eggs">Eggs</SelectItem>
               <SelectItem value="pig">Pig</SelectItem>
               <SelectItem value="turkey">Turkey</SelectItem>
               <SelectItem value="cattle">Cattle</SelectItem>
@@ -124,7 +126,7 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
                         {format(new Date(s.date+"T12:00:00"), "d MMM yyyy")}
                       </TableCell>
                       <TableCell>{s.customer_name}</TableCell>
-                      <TableCell className="capitalize">{s.product}{s.stock_group&&<span className="block text-xs normal-case text-gray-600">{livestockGroupLabel(s.stock_group)}</span>}</TableCell>
+                      <TableCell className="capitalize">{saleProductLabel(s)}{s.stock_group&&<span className="block text-xs normal-case text-gray-600">{livestockGroupLabel(s.stock_group)}</span>}</TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {s.quantity}
                       </TableCell>

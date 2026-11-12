@@ -16,11 +16,11 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 console.log('UI bundle ready');
 const browser=await chromium.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(15000);const errors=[],posts=[];let counts=[];
 page.on('pageerror',e=>errors.push(e.message));
-let tasks=[],performanceBatches=[],photoUploads=0;const evidenceId='00000000-0000-4000-8000-000000000002';
+let tasks=[],healthNotes=[],performanceBatches=[],photoUploads=0;const evidenceId='00000000-0000-4000-8000-000000000002';
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[]};
  if(url.pathname==='/api/farm/health'){
- if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);if(p.operation==='complete'){assert.equal(photoUploads,1);assert.deepEqual(p.payload.evidence_ids,[evidenceId]);tasks=tasks.map(task=>({...task,status:'completed'}));}else tasks=[{id,...p.payload,batch_name:'Actual flock',manager_name:'Assigned manager',status:'scheduled',revision:0}];body={data:{id}};}
- else body={tasks,completions:[],batches:[{id,name:'Actual flock'}],managers:[{id,name:'Assigned manager',batch_ids:[id]}]};
+ if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);if(p.operation==='complete'){assert.equal(photoUploads,1);assert.deepEqual(p.payload.evidence_ids,[evidenceId]);tasks=tasks.map(task=>({...task,status:'completed'}));}else if(p.operation==='note'){healthNotes.push({id,...p.payload,actor_name:'Supervisor',manager_name:'Supervisor'});}else tasks=[{id,...p.payload,batch_name:'Actual flock',manager_name:'Assigned manager',status:'scheduled',revision:0}];body={data:{id}};}
+ else body={tasks,notes:healthNotes,completions:[],batches:[{id,name:'Actual flock'}],managers:[{id,name:'Assigned manager',batch_ids:[id]}]};
  }else if(url.pathname==='/api/farm/evidence'&&req.method()==='POST'){photoUploads++;body={data:{id:evidenceId,status:'uploaded'}};}
  else if(url.pathname==='/api/farm/performance')body={from:'2026-10-01',to:'2026-10-30',batches:performanceBatches,pool:{revenue:'0',expenses:'0',allocated_revenue:'0',allocated_expenses:'0',unallocated_revenue:'0',unallocated_expenses:'0'},cost_basis:'No recorded costs'};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
 });
@@ -48,7 +48,15 @@ try{
  await page.evaluate(()=>{Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>true});window.dispatchEvent(new Event('online'));});
  await page.waitForFunction(()=>!Object.keys(localStorage).some(key=>key.startsWith('farm_pending_')));
  assert.equal(posts.length,2);assert.equal(posts[1].request_id,queued.requestId);assert.equal(posts[1].operation,'complete');assert.deepEqual(posts[1].payload.evidence_ids,[evidenceId]);assert.equal(photoUploads,1);assert.deepEqual(errors,[]);
- console.log('Health screenshot artifacts: '+folder);
+ await page.getByRole('button',{name:'Record health details',exact:true}).click();
+ await page.getByLabel('Task name',{exact:true}).fill('Pen inspection');
+ await page.getByLabel('Animal or area (optional)',{exact:true}).fill('Pen A');
+ await page.getByLabel('What was observed or done?',{exact:true}).fill('Pen checked by supervisor');
+ await page.getByRole('button',{name:'Save entry',exact:true}).click();
+ await page.getByText('Pen checked by supervisor',{exact:true}).waitFor();assert.equal(posts.at(-1).operation,'note');
+ await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
+ await page.getByText('Pen checked by supervisor',{exact:true}).waitFor();
+ assert.equal(healthNotes.length,1);console.log('Health screenshot artifacts: '+folder);
  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByText('All groups: recorded money').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  performanceBatches=['11111111-0000-4000-8000-000000000001','22222222-0000-4000-8000-000000000002'].map((site_id,i)=>({id:site_id,site_id,site_name:'Same site name',name:'Flock '+i,product:'chicken',head_count:'0',recorded_days:0,expected_days:30,egg_days:0,deaths:'0',eggs:'0',feed_kg:null,sample_average_kg:null,feed_conversion_estimate:null,feed_cost_estimate:null,revenue:i?'200':'100',paid_expenses:i?'20':'10',recorded_result:i?'180':'90',trend:[],completeness:'Measurements unavailable'}));await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByRole('button',{name:'View Flock 1',exact:true}).filter({visible:true}).waitFor();await page.getByLabel('Site',{exact:true}).selectOption(performanceBatches[0].site_id);assert.equal(await page.getByRole('button',{name:'View Flock 0',exact:true}).filter({visible:true}).count(),1);assert.equal(await page.getByRole('button',{name:'View Flock 1',exact:true}).count(),0);assert.equal(await page.getByLabel('Site',{exact:true}).locator('option').count(),3);await page.getByRole('heading',{name:'Selected groups: recorded money'}).waitFor();assert.equal(await page.getByLabel('Batch',{exact:true}).locator('option').count(),2);assert.match(await page.locator('section').filter({has:page.getByRole('heading',{name:'Selected groups: recorded money'})}).innerText(),/100.00/);assert.deepEqual(errors,[]);
  performanceBatches[0]={...performanceBatches[0],recorded_days:1,expected_days:1,head_count:'10',trend:[{date:'2026-10-29',eggs:null,deaths:0,feed_kg:5,lay_rate:null,sample_average_kg:2}]};

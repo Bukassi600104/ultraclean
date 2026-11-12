@@ -48,7 +48,7 @@ export async function syncManagerPending(identity:QueueIdentity,{send=fetch,isCu
    if(response.redirected||!response.headers.get('content-type')?.includes('application/json')){
     continue;
    }
-   if(response.status===202){updatePending({...item,fundingReview:true,conflict:"Saved for Bimbo's funding review; not yet posted"},identity);}
+   if(response.status===202){updatePending({...item,fundingReview:true,conflict:"Saved for the MD/Owner to confirm funding"},identity);}
    else if(response.ok){
     const result=await response.json().catch(()=>null);if(!isCurrent()||signal?.aborted)break;
     if(!result||typeof result!=='object')continue;

@@ -121,7 +121,7 @@ export default function PropertyWorkspace({section}: {section: PropertySection |
       }
       if(response.status===202&&pendingKey){setUncertain(true);localStorage.setItem(`${pendingKey}:funding-review:${retry.current.id}`,JSON.stringify({values,editing,reason,retry:retry.current,outcome:result}));}
       if (pendingKey) {try {localStorage.removeItem(pendingKey);} catch {/* The server receipt confirms this submission. */}}
-      setShowForm(false);setEditing(null);setUncertain(false);retry.current = null;setNotice(response.status===202?"Saved for Bimbo’s funding review; not yet posted.":"Saved. The record and activity history have been updated.");window.dispatchEvent(new Event("operations-cash-updated"));await load();
+      setShowForm(false);setEditing(null);setUncertain(false);retry.current = null;setNotice(response.status===202?"Saved for the MD/Owner to confirm funding.":"Saved. The record and activity history have been updated.");window.dispatchEvent(new Event("operations-cash-updated"));await load();
     } catch (failure) {
       const unconfirmed = failure instanceof TypeError || failure instanceof SyntaxError;
       if (unconfirmed) setUncertain(true);

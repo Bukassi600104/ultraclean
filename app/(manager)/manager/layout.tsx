@@ -3,7 +3,7 @@
 import {ManagerHandoverGate} from "@/components/manager/ManagerHandover";
 import {ManagerPeriodProvider} from "@/contexts/ManagerPeriodContext";
 import { useEffect, useState } from "react";
-import {isTechnicalMessage,displayRecordValue} from "@/lib/record-display";
+import {isTechnicalMessage,displayRecordValue,displayRoleMessage} from "@/lib/record-display";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {operationalBackLink,farmPerformanceBackLink} from "@/lib/dashboard-navigation";
@@ -25,7 +25,7 @@ const queuedEntryNames:Record<string,string>={"/api/farm/sales":"Sale","/api/far
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/today": "Today",
-  "/purchases": "Purchases & Deliveries",
+  "/purchases": "Purchased Item Confirmation / Deliveries",
   "/credit": "Customers and payments",
   "/stores": "Physical Counts & Eggs",
   "/health": "Health & vaccination",
@@ -134,8 +134,8 @@ function ManagerShell({
         />
         {conflicts.length > 0 && <details className="mx-4 my-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm">
           <summary className="cursor-pointer font-semibold">{conflicts.length} saved {conflicts.length === 1 ? "entry needs" : "entries need"} review</summary>
-          <p className="mt-2">These entries remain on this device. Their dates have not been changed. Ask Bimbo to resolve closed-day or record conflicts before resubmitting.</p>
-          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{queuedEntryNames[item.endpoint]||"Saved farm entry"} · {String(item.data.date ?? item.data.report_date ?? item.data.request_date ?? item.createdAt)}</p><p className="text-amber-900">{isTechnicalMessage(item.conflict||"")?"This entry needs review before it can be sent. Ask Bimbo to check the original entry, then retry after the issue is resolved.":item.conflict}</p><button disabled={isSyncing} className="mt-1 min-h-11 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-50" onClick={()=>void retryEntry(item.id)}>Retry original entry after resolution</button><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => key in queuedFieldLabels && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline">{queuedFieldLabels[key]}: </dt><dd className="inline">{displayRecordValue(value)}</dd></div>)}</dl></div>)}
+          <p className="mt-2">These entries remain on this device. Their dates have not been changed. Ask the MD/Owner to resolve closed-day or record conflicts before resubmitting.</p>
+          {conflicts.map(item => <div key={item.id} className="mt-3 border-t pt-2"><p className="capitalize">{queuedEntryNames[item.endpoint]||"Saved farm entry"} · {String(item.data.date ?? item.data.report_date ?? item.data.request_date ?? item.createdAt)}</p><p className="text-amber-900">{isTechnicalMessage(item.conflict||"")?"This entry needs review before it can be sent. Ask the MD/Owner to check the original entry, then retry after the issue is resolved.":displayRoleMessage(item.conflict||"")}</p><button disabled={isSyncing} className="mt-1 min-h-11 rounded-lg border border-amber-400 px-3 font-semibold disabled:opacity-50" onClick={()=>void retryEntry(item.id)}>Retry original entry after resolution</button><dl className="text-xs mt-1">{Object.entries(item.data).filter(([key,value]) => key in queuedFieldLabels && value !== null && typeof value !== "object").map(([key,value]) => <div key={key}><dt className="inline">{queuedFieldLabels[key]}: </dt><dd className="inline">{displayRecordValue(value)}</dd></div>)}</dl></div>)}
         </details>}
 
         {/* Page content */}

@@ -146,7 +146,7 @@ function ActionSheet({
       const res = await managerFetch("/api/farm/corrections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ record_type: "supply", record_id: item.id, requested_change: view === "remove" ? { action: "archive" } : { description: requestedChange }, reason: correctionReason }) });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed to request correction");
-      toast.success("Request sent to Bimbo for review"); onClose();
+      toast.success("Request sent to the MD/Owner for review"); onClose();
     } catch (err) { toast.error(err instanceof Error ? err.message : "Failed"); }
     finally { setIsSubmitting(false); }
   }
@@ -249,7 +249,7 @@ function ActionSheet({
 
         {(view === "correction" || view === "remove") && (
           <div className="px-5 pb-8 space-y-4">
-            <p className="text-sm text-gray-600">Bimbo reviews saved-record corrections. Existing quantities and history remain intact until approved.</p>
+            <p className="text-sm text-gray-600">the MD/Owner reviews saved-record corrections. Existing quantities and history remain intact until approved.</p>
             {view === "correction" && <div><label className="block text-sm font-semibold">Requested change</label><textarea className="w-full border rounded-xl p-3" value={requestedChange} onChange={(e) => setRequestedChange(e.target.value)} placeholder="Explain the correct details or quantity" /></div>}
             <div><label className="block text-sm font-semibold">Reason</label><textarea className="w-full border rounded-xl p-3" value={correctionReason} onChange={(e) => setCorrectionReason(e.target.value)} /></div>
             <button className="w-full rounded-xl p-4 font-bold bg-green-400 disabled:opacity-50" onClick={submitCorrection} disabled={isSubmitting || !correctionReason.trim() || (view === "correction" && !requestedChange.trim())}>{isSubmitting ? "Sending..." : "Send Request"}</button>

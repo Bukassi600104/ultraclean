@@ -29,8 +29,10 @@ const fields: Record<string, Field[]> = {
 function label(value: string) { return displayFieldName(value); }
 function timestamp(value: string) { return new Date(value).toLocaleString("en-GB",{timeZone:"Africa/Lagos",hour12:false})+" (Lagos)"; }
 
-export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recordType:string;record:object;onSaved?:()=>void;requestId?:string}) {
+export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonLabel}:{buttonLabel?:string;recordType:string;record:object;onSaved?:()=>void;requestId?:string}) {
   const row=record as FarmRecord;
+  const animalCount=recordType==='inventory'&&['catfish','chicken','turkey','pig','goat','ram','cattle'].includes(String(row.product));
+  const [expectedStock,setExpectedStock]=useState<number>();
   const [open,setOpen]=useState(false);const [saving,setSaving]=useState(false);
   const [stockGroup,setStockGroup]=useState("");const [categoryEdited,setCategoryEdited]=useState(false);
   const chooseCategory=useCallback((id:string)=>{setStockGroup(id);setCategoryEdited(true);setRetryId(crypto.randomUUID());},[]);
@@ -41,14 +43,16 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
     ? [...fields.sale.filter(f=>f.key!=="pricing_basis"),{key:"total_amount",label:"Historical recorded amount (₦)",numeric:true}]
     : fields[recordType]??[];
   function start() {
+    if(recordType==='inventory')setExpectedStock(Number(row.current_stock));
     setCashReceiver("");setCashPayer("");setStockGroup(String(row.stock_group_id??""));setCategoryEdited(false);
     setValues(Object.fromEntries(editFields.map(f=>[f.key,String(f.key==='target_quantity'?row.current_stock??0:f.key==='quantity_change'&&recordType==='supply'?0:row[f.key]??"")])));
     setReason("");setOperation("update");setRetryId(crypto.randomUUID());setOpen(true);
   }
   async function save() {
     if(!reason.trim())return toast.error("Enter a correction reason");
+    if(animalCount&&(!/^\d+$/.test(values.target_quantity||'')||!Number.isSafeInteger(Number(values.target_quantity))))return toast.error("Enter a whole animal count, including zero.");
     const changes:FarmRecord={expected_revision:row.revision??0};
-    if(recordType==='inventory')changes.expected_current_stock=Number(row.current_stock);
+    if(recordType==='inventory')changes.expected_current_stock=expectedStock;
     if(operation==='update')for(const field of editFields){
       const value=values[field.key]??"";
       if(value==="") { if(["notes","customer_name","gender","other_product_name","paid_to","item_name","weight_kg","restock_threshold"].includes(field.key))changes[field.key]=null; continue; }
@@ -71,12 +75,12 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId}:{recor
   }
   if(row.voided_at||row.archived_at)return null;
   const discussion=({sale:"farm_sales",expense:"farm_expenses",feed:"farm_feed_purchases",daily_feed:"farm_daily_feed",inventory_transaction:"farm_inventory_transactions"} as Record<string,string>)[recordType];
-  return <>{discussion&&<FarmRecordDiscussion resource={discussion} recordId={String(row.id)}/>}<Button variant="outline" size="sm" onClick={start}>{requestId?"Review and apply":"Correct"}</Button>
-    <Dialog open={open} onOpenChange={value=>{if(!saving)setOpen(value);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Correct {label(recordType)}</DialogTitle></DialogHeader>
+  return <>{discussion&&<FarmRecordDiscussion resource={discussion} recordId={String(row.id)}/>}<Button variant="outline" size="sm" onClick={start}>{buttonLabel||(requestId?"Review and apply":"Correct")}</Button>
+    <Dialog open={open} onOpenChange={value=>{if(!saving)setOpen(value);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{animalCount?'Correct '+label(String(row.product))+' count':'Correct '+label(recordType)}</DialogTitle></DialogHeader>
       <p className="text-sm text-gray-500">The change and its original values will remain in activity history.</p>
       {recordType==='sale'&&!row.pricing_basis&&<p className="text-sm text-gray-500">This is a legacy sale. Its historical amount and stock movements are preserved unless you explicitly correct the amount.</p>}
       <Label>Action<select className="block border rounded p-2 w-full mt-1" value={operation} onChange={e=>{setOperation(e.target.value);setRetryId(crypto.randomUUID());}}><option value="update">Correct details</option>{['sale','expense','fund'].includes(recordType)&&<option value="void">Void record</option>}{recordType==='supply'&&<option value="archive">Remove from active supplies</option>}</select></Label>
-      {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} step={field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
+      {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} inputMode={animalCount?"numeric":undefined} min={animalCount?0:undefined} step={animalCount?1:field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
       {operation==="update"&&(["inventory","inventory_transaction"].includes(recordType)||(recordType==="sale"&&!!row.pricing_basis))&&<LivestockGroupPicker product={values.product||String(row.product)} value={stockGroup} onChange={chooseCategory}/>}
       {operation==="update"&&recordType==="sale"&&<CashReceiverSelect business="farm" value={cashReceiver} onChange={value=>{setCashReceiver(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["expense","feed"].includes(recordType)&&<CashPayerSelect business="farm" currency="NGN" bucket={recordType==="expense"&&values.expense_source==="sales_cash"?"sales":"owner"} value={cashPayer} onChange={value=>{setCashPayer(value);setRetryId(crypto.randomUUID());}} keepExisting/>}

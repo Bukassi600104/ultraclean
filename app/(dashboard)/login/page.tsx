@@ -60,7 +60,7 @@ export default function LoginPage() {
     const identity=await loadAuthIdentity(supabase);
     if(identity.error||!identity.user||!identity.profile)throw Error('Your sign-in could not be verified. Please retry.');
     const {profile}=identity;
-    if(profile.suspended)throw Error('This account is unavailable. Contact Bimbo.');
+    if(profile.suspended)throw Error('This account is unavailable. Contact the MD/Owner.');
     {
       if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){
         router.push('/farm-support');

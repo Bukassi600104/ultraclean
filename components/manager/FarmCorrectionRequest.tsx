@@ -24,7 +24,7 @@ export function FarmCorrectionRequest({ recordType, recordId, label = "Request c
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to send correction request");
-      toast.success("Correction requested. Bimbo will review it.");
+      toast.success("Correction requested. The MD/Owner will review it.");
       setOpen(false); setChange(""); setReason("");
     } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to send request"); }
     finally { setSaving(false); }
@@ -35,7 +35,7 @@ export function FarmCorrectionRequest({ recordType, recordId, label = "Request c
       <div className="absolute inset-0 bg-black/50" />
       <div className="relative bg-white rounded-2xl p-5 w-full max-w-sm space-y-3 text-left">
         <h2 className="font-bold text-gray-900">Request correction</h2>
-        <p className="text-sm text-gray-600">Saved records stay unchanged until Bimbo reviews and applies the correction.</p>
+        <p className="text-sm text-gray-600">Saved records stay unchanged until the MD/Owner reviews and applies the correction.</p>
         <label className="block text-sm">What should change?
           <textarea value={change} onChange={(event) => {setChange(event.target.value);setRequestId(crypto.randomUUID());}} maxLength={2000} className="mt-1 w-full border rounded-xl p-3" />
         </label>

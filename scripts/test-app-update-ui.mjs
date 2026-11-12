@@ -8,7 +8,7 @@ await context.route('**/api/test-submit',async route=>{await new Promise(r=>rele
 try{
  await page.goto(url);await page.getByRole('button',{name:'Update now'}).waitFor();checks++;
  await page.getByRole('button',{name:'What’s new'}).click();await page.getByText('New report photos',{exact:true}).waitFor();checks++;
- const contact=page.getByRole('link',{name:'Message Bimbo on WhatsApp'});assert.equal(await contact.getAttribute('href'),'https://wa.me/16478238262');assert.equal(await contact.getAttribute('target'),'_blank');checks++;
+ const contact=page.getByRole('link',{name:'Message the MD/Owner on WhatsApp'});assert.equal(await contact.getAttribute('href'),'https://wa.me/16478238262');assert.equal(await contact.getAttribute('target'),'_blank');checks++;
  await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{throw Error('blocked')}}}));await page.getByRole('button',{name:'Copy number'}).click();await page.getByText('Copy this number: +1 647 823 8262',{exact:true}).waitFor();checks++;
  await page.getByLabel('Draft').fill('Do not discard');await page.getByRole('button',{name:'Update now'}).click();await page.getByRole('alert').filter({hasText:'Save your work'}).waitFor();assert.equal(await page.getByLabel('Draft').inputValue(),'Do not discard');checks++;
  await page.reload();await page.getByRole('button',{name:'Update now'}).waitFor();const submitted=page.waitForRequest('**/api/test-submit');await page.getByRole('button',{name:'Submit work',exact:true}).click();await submitted;

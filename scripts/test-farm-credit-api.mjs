@@ -21,13 +21,24 @@ const saleRequest=row=>new Request('http://localhost/api/farm/sales',{method:'PO
 assert.equal((await sales.POST(saleRequest(partial))).status,201);assert.equal(calls.at(-1)[1].p_payload.rows[0].amount_received,'40000.50');assert.equal(calls.at(-1)[1].p_payload.rows[0].payment_date,'2026-10-30');
 for(const row of [{...partial,amount_received:'1.001'},{...partial,amount_received:'-1'},{...partial,payment_date:'2026-02-30'},{...partial,customer_id:undefined}])assert.equal((await sales.POST(saleRequest(row))).status,400);
 
+const eggs={...partial,product:'eggs',egg_batch_id:id,quantity:3};
+assert.equal((await sales.POST(saleRequest(eggs))).status,201);
+const eggCall=calls.at(-1)[1];assert.equal(eggCall.p_operation,'invoice_batch');assert.equal(eggCall.p_payload.rows[0].product,'other');assert.equal(eggCall.p_payload.rows[0].egg_batch_id,id);assert.equal(eggCall.p_payload.rows[0].pricing_basis,'per_unit');
+for(const row of [{...eggs,quantity:1.2},{...eggs,egg_batch_id:undefined},{...eggs,batch_id:id},{...eggs,pricing_basis:'per_head'}])assert.equal((await sales.POST(saleRequest(row))).status,400);
+assert.equal((await api.POST(request({...body,payload:{...body.payload,amount_owing:'0'}}))).status,201);
+assert.equal(calls.at(-1)[1].p_payload.amount_owing,'0');
+for(const amount_owing of ['-1','1.001','no'])assert.equal((await api.POST(request({...body,payload:{...body.payload,amount_owing}}))).status,400);
 const visibleSale = {id, invoice_id:id, total_amount:100000, payment_method:'transfer'};
 const earlySale = {id:'legacy-sale',invoice_id:null,total_amount:1000,payment_method:'cash'};
+const activeSales=[{product:'other',id:'custom'},{product:'other',id:'egga',egg_batch_id:id},{product:'other',id:'eggb',egg_batch_id:id},{product:'other',id:'recorded-eggs',other_product_name:'Eggs'}];
 const invoice = {id, sale_id:id, number:'PF-EXAMPLE',credit_days:30,owed:'25000',collected:'75000',total:'100000',overdue_days:0,voided_at:null};
 const scopedSales=typescriptLoader({
- '@/lib/manager-read-api':{managerReadResponse:async()=>Response.json({data:[visibleSale,earlySale],total:2}),requestManagerScope:async()=>({actorId:id,periodId:id}),managerReadError:()=>Response.json({error:'Unavailable'},{status:503})},
+ '@/lib/manager-read-api':{managerReadResponse:async()=>Response.json({data:[visibleSale,earlySale],total:2}),requestManagerScope:async()=>({actorId:id,periodId:id}),allManagerRecords:async(scope,table,filters)=>{assert.equal(scope.actorId,id);assert.equal(scope.periodId,id);assert.equal(table,'farm_sales');assert.equal(filters.active,true);assert.equal(filters.product,'other');return activeSales;},managerReadError:()=>Response.json({error:'Unavailable'},{status:503})},
  '@/lib/supabase/server':{createServerClient:()=>({rpc:async(name,args)=>{assert.equal(name,'farm_credit_read');assert.equal(args.p_period,id);return {data:{invoices:[invoice]}};}})}
 })('app/api/farm/sales/route.ts');
+const eggPage=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?product=eggs&page=2&limit=1'))).json();
+assert.equal(eggPage.total,3);assert.equal(eggPage.data[0].id,'eggb');
+const otherPage=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?product=other'))).json();assert.deepEqual(otherPage.data.map(r=>r.id),['custom']);
 const ledger=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?with_payment=1'))).json();
 assert.equal(ledger.data[0].invoice.owed,'25000');assert.equal(ledger.data[1].invoice,null);
 const {invoiceStatus}=load('lib/farm-credit.ts');

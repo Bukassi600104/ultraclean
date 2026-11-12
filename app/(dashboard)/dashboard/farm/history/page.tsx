@@ -190,7 +190,7 @@ export default function FarmOverviewPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Farm Funds</CardTitle>
             <Button size="sm" asChild className="gap-2">
-              <Link href="/dashboard/funds?business=farm"><SendHorizontal className="h-4 w-4" />Send money to a person</Link>
+              <Link href="/dashboard/funds?business=farm&action=transfer"><SendHorizontal className="h-4 w-4" />Record a transfer</Link>
             </Button>
           </CardHeader>
           <CardContent>
@@ -216,7 +216,7 @@ export default function FarmOverviewPage() {
               </div>
             </div>
 
-            <p className="text-xs text-muted-foreground mb-2">Farm-wide totals include previous and current managers. Choose a person in Funds to see their own balance and receipt confirmations.</p>
+            <p className="text-xs text-muted-foreground mb-2">Farm totals include all managers. Each recorded recipient appears below.</p>
             {/* Transfer history */}
             {transfersLoading ? (
               <div className="space-y-2">

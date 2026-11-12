@@ -10,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FARM_PRODUCTS, farmDateToday } from "@/lib/farm-products";
+import { EGG_SALE_PRODUCT, FARM_PRODUCTS, farmDateToday, saleProductLabel } from "@/lib/farm-products";
 import {FarmRecordDiscussion} from '@/components/manager/FarmRecordThread';
 import { FarmCorrectionRequest } from "@/components/manager/FarmCorrectionRequest";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -24,6 +24,8 @@ interface Sale {
   date: string;
   customer_name?: string;
   product: string;
+  egg_batch_id?: string | null;
+  other_product_name?: string | null;
   quantity: number;
   unit_price: number;
   total_amount: number;
@@ -64,7 +66,7 @@ function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => voi
           </div>
         </div>
         <DialogDescription className="text-sm text-gray-600 mb-5">
-          Once closed, managers cannot add or change records for this date. Bimbo can review correction requests.
+          Once closed, managers cannot add or change records for this date. The MD/Owner can review correction requests.
         </DialogDescription>
         <div className="flex gap-2">
           <button onClick={onCancel} disabled={loading} className="min-h-11 flex-1 rounded-xl py-2.5 text-sm font-semibold border border-gray-200 text-gray-700">
@@ -123,7 +125,7 @@ export default function SalesPage() {
   const isDayClosed = dayRecord?.status === "closed";
   const totalSales = summary?.revenue ?? 0;
 
-  const chartData = PRODUCTS.map((p) => ({
+  const chartData = [...PRODUCTS,EGG_SALE_PRODUCT].map((p) => ({
     name: p.label,
     total: summary?.sales_by_product.find(row => row.name === p.key)?.value ?? 0,
     color: p.color,
@@ -187,7 +189,7 @@ export default function SalesPage() {
         <p className="mb-4 text-sm text-slate-600">Latest 10 in your permitted scope. Historical sales without invoices remain unchanged below.</p>
         {creditData?.invoices.length===0?<p>No invoices recorded in this scope.</p>:creditData?<table className="block w-full text-left text-sm md:table"><thead className="sr-only md:not-sr-only md:table-header-group"><tr>{['Invoice / customer','Date / status','Sale value','Paid','Still owed'].map(label=><th key={label} className="border-b p-3 font-semibold text-slate-600">{label}</th>)}</tr></thead><tbody className="block md:table-row-group">{[...creditData.invoices].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10).map(invoice=><tr key={invoice.id} className="mb-3 grid grid-cols-2 gap-3 rounded-xl border p-3 last:mb-0 md:table-row md:rounded-none md:border-0 md:p-0"><td className="col-span-2 min-w-0 break-words md:border-b md:p-3"><p className="font-bold">{invoice.number}</p><p>{invoice.customer_name}</p></td><td className="col-span-2 md:border-b md:p-3"><p>{invoice.date} / Due {invoice.due_date}</p><p className="mt-1 font-semibold text-emerald-900">{invoiceStatus(invoice)}</p></td>{[['Sale value',invoice.total],['Paid',invoice.collected],['Still owed',invoice.owed]].map(([label,value])=><td key={label} className="min-w-0 md:border-b md:p-3"><span className="block text-slate-600 md:hidden">{label}</span><strong className="break-words tabular-nums">{value!==undefined?formatExactCurrency(value,'NGN'):'Unavailable'}</strong></td>)}</tr>)}</tbody></table>:<p>{creditError?'Invoices unavailable.':'Loading invoices…'}</p>}
       </section>
-      <Dialog open={showProducts} onOpenChange={setShowProducts}><DialogContent><DialogTitle className="pr-10 text-2xl font-bold">Record a sale</DialogTitle><DialogDescription>Choose what was sold. The next form keeps the correct units, customer and stock details.</DialogDescription><div className="grid grid-cols-2 gap-3">{PRODUCTS.map(product=><button key={product.key} className="flex min-h-14 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left font-semibold text-slate-950" onClick={()=>router.push(`/sales/${product.key}`)}>{product.label}<ChevronRight className="h-4 w-4 shrink-0"/></button>)}</div><Link href="/stores" className="min-h-11 py-2 text-sm font-semibold text-emerald-900 underline">Selling eggs? Choose the recorded egg batch in Physical Counts &amp; Eggs.</Link></DialogContent></Dialog>
+      <Dialog open={showProducts} onOpenChange={setShowProducts}><DialogContent><DialogTitle className="pr-10 text-2xl font-bold">Record a sale</DialogTitle><DialogDescription>Choose what was sold. The next form keeps the correct units, customer and stock details.</DialogDescription><div className="grid grid-cols-2 gap-3">{[...PRODUCTS,EGG_SALE_PRODUCT].map(product=><button key={product.key} className="flex min-h-14 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left font-semibold text-slate-950" onClick={()=>router.push((window.location.pathname.startsWith('/manager/')?'/manager':'')+`/sales/${product.key}`)}>{product.label}<ChevronRight className="h-4 w-4 shrink-0"/></button>)}</div></DialogContent></Dialog>
 
       {/* Chart */}
       {chartData.length > 0 && (
@@ -230,7 +232,7 @@ export default function SalesPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
                           style={{ backgroundColor: (p?.color ?? "#6b7280") + "20", color: p?.color ?? "#6b7280" }}>
-                          {p?.label ?? sale.product}{sale.stock_group&&<span className="block text-xs font-normal text-gray-600">{livestockGroupLabel(sale.stock_group)}</span>}
+                          {saleProductLabel(sale)}{sale.stock_group&&<span className="block text-xs font-normal text-gray-600">{livestockGroupLabel(sale.stock_group)}</span>}
                         </span>
                         {sale.is_edited && (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Edited</span>

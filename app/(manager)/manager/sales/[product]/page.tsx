@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import {FarmCustomerPicker} from '@/components/manager/FarmCustomerPicker';
 import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
@@ -9,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
+import { EGG_SALE_PRODUCT, FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
 
@@ -51,7 +52,7 @@ function ConfirmDialog({
         <div className="flex items-center justify-between mb-4">
           <DialogTitle className="pr-10">Confirm Sale — {config.label}</DialogTitle>
         </div>
-        <DialogDescription>Check the actual sale details before saving.</DialogDescription>
+        <DialogDescription>Customer payments go to their oldest unpaid invoices first. Check the final balance in Customers &amp; payments after saving.</DialogDescription>
         <div className="rounded-xl overflow-hidden border border-gray-100 mb-4">
           {summary.map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center px-4 py-2.5 even:bg-gray-50">
@@ -84,8 +85,9 @@ export default function SaleProductPage() {
  const managerFetch=useManagerFetch();
   const { product } = useParams<{ product: string }>();
   const router = useRouter();
-  const selectedProduct = FARM_PRODUCTS.find((item) => item.key === product);
-  const productKey: Product = selectedProduct?.key ?? "crops";
+  const eggsOnly = product === 'eggs';
+  const selectedProduct = eggsOnly ? EGG_SALE_PRODUCT : FARM_PRODUCTS.find((item) => item.key === product);
+  const productKey: Product = selectedProduct?.key === "eggs" ? "other" : selectedProduct?.key ?? "crops";
   const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
 
@@ -93,7 +95,7 @@ export default function SaleProductPage() {
   const [amountReceived,setAmountReceived]=useState(''),[paymentDate,setPaymentDate]=useState('');
   const [batchId,setBatchId]=useState('');
   const [eggBatchId,setEggBatchId]=useState('');
-  useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey]);
+  useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey,eggsOnly]);
   const [stockGroup,setStockGroup] = useState("");
   const [form, setForm] = useState<FormValues>({
     date: "",
@@ -153,7 +155,8 @@ export default function SaleProductPage() {
     if((!credit||Number(amountReceived)>0)&&customerId&&!receiver)return "Choose who actually received the payment";
     if(credit&&(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amountReceived)||Number(amountReceived)>=computedTotal))return "Enter the payment received, from zero to less than the sale total";
     if(Number(amountReceived)>0&&paymentDate&&paymentDate<form.date)return "Payment date cannot be before this sale";
-    if ((productKey === "crops" || (productKey === "other"&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
+    if ((productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
+    if(eggsOnly&&!eggBatchId)return "Choose the poultry group that supplied the eggs";
     if(eggBatchId&&!Number.isInteger(Number(form.quantity)))return "Enter a whole egg count";
     if (productKey === "catfish") {
       if (!form.quantity || Number(form.quantity) <= 0) return "Enter number of fish";
@@ -183,14 +186,14 @@ export default function SaleProductPage() {
       rows.push({ label: "Weight (kg)", value: form.kg + " kg" });
       rows.push({ label: "Price per kg", value: fmt(Number(form.amount_per_kg)) });
     } else {
-      const qtyLabel = productKey === "cattle" ? "No. of Cattle" : productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : productKey === "pig" ? "No. of Pigs" : productKey === "turkey" ? "No. of Turkeys" : "Quantity";
+      const qtyLabel = eggBatchId ? "Whole eggs" : productKey === "cattle" ? "No. of Cattle" : productKey === "goat" ? "No. of Goats" : productKey === "chicken" ? "No. of Birds" : productKey === "pig" ? "No. of Pigs" : productKey === "turkey" ? "No. of Turkeys" : "Quantity";
       rows.push({ label: qtyLabel, value: form.quantity });
       rows.push({ label: "Price per unit", value: fmt(Number(form.unit_price)) });
     }
     rows.push({ label: "Total", value: fmt(computedTotal) });
-    rows.push({label:"Payment",value:credit?Number(amountReceived)>0?"Credit sale · Part paid":"On credit · Unpaid":"Paid in full"});
-    rows.push({label:"Received now",value:fmt(credit?Number(amountReceived):computedTotal)});
-    rows.push({label:"Balance to collect",value:fmt(credit?computedTotal-Number(amountReceived):0)});
+    const received = credit ? Number(amountReceived) : computedTotal;
+    rows.push({label:"Amount received with this sale",value:fmt(received)});
+    if(received>0) rows.push({label:"Payment date",value:paymentDate||form.date});
     if (form.customer_name) rows.push({ label: "Customer", value: form.customer_name });
     return rows;
   })();
@@ -200,14 +203,14 @@ export default function SaleProductPage() {
     try {
       const payload: Record<string, unknown> = {
         date: form.date,
-        product: productKey,
-        ...(batchId?{batch_id:batchId}:{stock_group_id:stockGroup||null}),
+        product: eggsOnly?'eggs':productKey,
+        ...(eggBatchId?{}:batchId?{batch_id:batchId}:{stock_group_id:stockGroup||null}),
         pricing_basis: config.pricingBasis,
         ...(productKey==='other'&&eggBatchId?{egg_batch_id:eggBatchId,other_product_name:'Eggs'}:{}),
         request_id: requestId,
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
-        customer_name: form.customer_name.trim() || undefined,
+        customer_name: customerId ? undefined : form.customer_name.trim() || undefined,
         ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),payment_date:paymentDate||form.date}:{}),
         ...((!credit||Number(amountReceived)>0)&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
@@ -219,7 +222,7 @@ export default function SaleProductPage() {
       } else {
         payload.quantity = Number(form.quantity);
         payload.unit_price = Number(form.unit_price);
-        if (productKey === "crops" || (productKey === "other"&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
+        if (productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
       }
 
       const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate},requestId);
@@ -252,6 +255,7 @@ export default function SaleProductPage() {
     }
   }
 
+  if(eggsOnly&&submission.pending&&!submission.pending.draft.eggBatchId)return <section className="rounded-xl border bg-white p-4"><h2 className="font-bold">Previous sale awaiting confirmation</h2><p className="mt-1 text-sm">Open the saved Other sale before starting another entry.</p><Link className="mt-2 inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={typeof window!=="undefined"&&window.location.pathname.startsWith("/manager/")?"/manager/sales/other":"/sales/other"}>Open saved sale</Link></section>;
   if (!selectedProduct) return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
 
   if (isDayClosed&&!submission.pending) {
@@ -291,7 +295,7 @@ export default function SaleProductPage() {
       {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">This sale is awaiting confirmation. Its original date and values are retained. Retry this saved sale before entering another here.</p>}
       <fieldset disabled={saving||!!submission.pending} className="min-w-0 space-y-4">
       {/* Form */}
-      {productKey==='other'&&<FarmEggPicker value={eggBatchId} onChange={setEggBatchId}/>}
+      {productKey==='other'&&<FarmEggPicker value={eggBatchId} onChange={setEggBatchId} eggsOnly={eggsOnly} quantity={form.quantity}/>}
       <FarmBatchPicker product={productKey} value={batchId} onChange={setBatchId} refreshKey={requestId}/>
       {!batchId&&<LivestockGroupPicker product={productKey} value={stockGroup} onChange={setStockGroup} refreshKey={requestId} />}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
@@ -304,7 +308,7 @@ export default function SaleProductPage() {
         </div>
 
         {/* 2. Crops: crop type */}
-        {(productKey === "crops" || (productKey === "other"&&!eggBatchId)) && (
+        {(productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) && (
           <div>
             <label htmlFor="sale-crop" className="text-sm font-semibold text-slate-700">{productKey === "other" ? "Item name *" : "Crop Type *"}</label>
             <input id="sale-crop" className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
@@ -318,7 +322,7 @@ export default function SaleProductPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="sale-quantity" className="text-sm font-semibold text-slate-700">No. of Fish *</label>
-                <input id="sale-quantity" type="number" inputMode="numeric"
+                <input id="sale-quantity" min={eggsOnly||eggBatchId?1:undefined} step={eggsOnly||eggBatchId?1:undefined} type="number" inputMode="numeric"
                   className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                   placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
               </div>
@@ -343,15 +347,15 @@ export default function SaleProductPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="sale-quantity" className="text-sm font-semibold text-slate-700">
-                {productKey === "cattle" ? "No. of Cattle *" : productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
+                {eggsOnly||eggBatchId ? "Whole eggs sold *" : productKey === "cattle" ? "No. of Cattle *" : productKey === "goat" ? "No. of Goats *" : productKey === "chicken" ? "No. of Birds *" : productKey === "pig" ? "No. of Pigs *" : productKey === "turkey" ? "No. of Turkeys *" : "Quantity *"}
               </label>
-              <input id="sale-quantity" type="number" inputMode="numeric"
+              <input id="sale-quantity" min={eggsOnly||eggBatchId?1:undefined} step={eggsOnly||eggBatchId?1:undefined} type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
                 placeholder="0" value={form.quantity} onChange={(e) => updateField("quantity", e.target.value)} />
             </div>
             <div>
               <label htmlFor="sale-price" className="text-sm font-semibold text-slate-700">
-                {productKey === "cattle" ? "Price per Head (₦) *" : productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
+                {eggsOnly||eggBatchId ? "Price per egg (₦) *" : productKey === "cattle" ? "Price per Head (₦) *" : productKey === "goat" ? "Price per Goat (₦) *" : productKey === "chicken" ? "Price per Bird (₦) *" : productKey === "pig" ? "Price per Pig (₦) *" : productKey === "turkey" ? "Price per Turkey (₦) *" : "Price per Unit (₦) *"}
               </label>
               <input id="sale-price" type="number" inputMode="numeric"
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-base focus:outline-none focus:border-gray-400"
@@ -369,7 +373,7 @@ export default function SaleProductPage() {
           </div>
         )}
 
-        <FarmCustomerPicker value={customerId} credit={credit} onChange={setCustomerId} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
+        <FarmCustomerPicker value={customerId} credit={credit} onChange={(id,name)=>{setCustomerId(id);updateField('customer_name',name);}} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
         {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
         {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {(!credit||Number(amountReceived)>0)&&<div>
