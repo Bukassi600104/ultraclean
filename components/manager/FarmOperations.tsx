@@ -133,6 +133,14 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
   const [mediaIds,setMediaIds]=useState<string[]>([]),[photoBusy,setPhotoBusy]=useState(false),[queueBusy,setQueueBusy]=useState(false),[queuedRequest,setQueuedRequest]=useState(''),[requestId,setRequestId]=useState(()=>crypto.randomUUID());
   const detailRef=useRef<HTMLElement>(null);
   const [discussion,setDiscussion]=useState<DailyReport|null>(null);
+  const [discussionMessage,setDiscussionMessage]=useState<string|null>(null);
+  function closeDiscussion(){
+    setDiscussion(null);setDiscussionMessage(null);
+    const url=new URL(window.location.href);
+    if(!url.searchParams.has("message_id"))return;
+    url.searchParams.delete("message_id");
+    window.history.replaceState(window.history.state,"",url);
+  }
   function questions(row:DailyReport){
     return <button type="button" className="min-h-11 rounded-lg border px-3 text-sm font-medium" onClick={()=>setDiscussion(row)}>Questions</button>;
   }
@@ -140,6 +148,7 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
     const url=new URL(window.location.href);
     if(url.searchParams.has("report_id")){
       url.searchParams.delete("report_id");
+      url.searchParams.delete("message_id");
       window.history.replaceState(window.history.state,"",url);
       loadedDetail.current="";
       void records.load();
@@ -156,7 +165,15 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
   useEffect(()=>{restoredKey.current=null;setRestored(false);setDraftFault(false);if(!storageKey||admin||historyOnly)return;try{const saved=localStorage.getItem(storageKey);if(saved!==null){const draft=JSON.parse(saved);if(!validReportDraft(draft)||(area&&(!isAreaSections(draft.form.sections)||draft.form.sections.area!==area.key||draft.form.report_date!==activityDate)))throw Error();setForm(draft.form);setSelected(draft.selected??null);setMediaIds(draft.mediaIds??[]);setQueuedRequest(draft.queuedRequest??'');setRequestId(draft.requestId||(draft.queuedRequest||crypto.randomUUID()));setMessage("Local draft restored. Save it when connected.");}else {setForm(initialReport(area,activityDate));setSelected(null);setMediaIds([]);setQueuedRequest('');setRequestId(crypto.randomUUID());setMessage('');}restoredKey.current=storageKey;setRestored(true);}catch{setDraftFault(true);setDraftError(recoveryMessage);}},[storageKey,admin,historyOnly,area,activityDate]);
   useEffect(()=>{if(!storageKey||restoredKey.current!==storageKey||!restored||draftFault||admin||historyOnly||selected?.status==="submitted")return;try{localStorage.setItem(storageKey,JSON.stringify({...JSON.parse(localStorage.getItem(storageKey)||"{}"),form,selected,mediaIds,queuedRequest,requestId}));setDraftError("");}catch{setDraftError("This draft could not be saved on the device. Keep the page open and restore storage access before leaving.");}},[form,selected,mediaIds,queuedRequest,requestId,storageKey,restored,draftFault,admin,historyOnly]);
   const loadedDetail=useRef("");
-  useEffect(()=>{const target=new URL(window.location.href).searchParams.get("report_id");if(target){const row=records.rows.find(row=>row.id===target) as DailyReport|undefined;if(row&&loadedDetail.current!==row.id){loadedDetail.current=row.id;setSelected(row);setForm({report_date:row.report_date,sections:row.sections,decision_required:row.decision_required});setReview(row.review_note??"");}}},[records.rows]);
+  useEffect(()=>{
+    const params=new URL(window.location.href).searchParams,target=params.get("report_id");
+    if(!target||loadedDetail.current===target)return;
+    const row=records.rows.find(item=>item.id===target) as DailyReport|undefined;
+    if(!row)return;
+    loadedDetail.current=row.id;setSelected(row);setForm({report_date:row.report_date,sections:row.sections,decision_required:row.decision_required});setReview(row.review_note??"");
+    const messageId=params.get("message_id");
+    if(uuid(messageId)){setDiscussionMessage(messageId);setDiscussion(row);}
+  },[records.rows]);
   const existingArea=area?(records.rows as DailyReport[]).find(r=>r.status==='submitted'&&r.report_date===activityDate&&isAreaSections(r.sections)&&r.sections.area===area.key):undefined;
   const queueStatus=identity&&queuedRequest?getSubmissionStatus(identity,queuedRequest):undefined;
   const unresolved=!!queuedRequest&&queueStatus!=="sent";
@@ -237,7 +254,7 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
           {admin&&row.status==="submitted"&&<>{row.has_photos!==false&&<FarmRecordEvidence thumbnail resource="farm_daily_reports" recordId={row.id}/>}<div className="flex flex-wrap gap-2">{questions(row)}{!row.reviewed_at&&<button className={button} disabled={busy||uncertain} onClick={async()=>{if(await quickReview(row)){setMessage("Review saved.");await records.load();}}}>Mark reviewed</button>}</div></>}
         </article>;
       })}</div>}{(records.total>50||records.page>1)&&<Pagination {...records}/>}</section>}
-    <FarmDiscussionDialog resource="farm_daily_reports" recordId={discussion?.id??null} description={discussion?`${discussion.manager?.name||"Farm supervisor"} · ${discussion.report_date}`:undefined} onClose={()=>setDiscussion(null)}/>
+    <FarmDiscussionDialog resource="farm_daily_reports" recordId={discussion?.id??null} description={discussion?`${discussion.manager?.name||"Farm supervisor"} · ${discussion.report_date}`:undefined} messageId={discussionMessage} onClose={closeDiscussion}/>
     <Dialog open={reviewSelection.length>0} onOpenChange={open=>{if(!open&&!reviewingPage)setReviewSelection([]);}}><DialogContent><DialogTitle>Mark {reviewSelection.length} reports as reviewed?</DialogTitle><DialogDescription>This records your review of the reports shown on this page.</DialogDescription><div className="flex flex-wrap gap-2"><button className="min-h-11 rounded-lg border px-4" disabled={reviewingPage} onClick={()=>setReviewSelection([])}>Cancel</button><button className={button} disabled={reviewingPage||uncertain} onClick={()=>void reviewShown()}>{reviewingPage?"Saving reviews…":"Confirm reviews"}</button></div></DialogContent></Dialog>
   </div>;
 }

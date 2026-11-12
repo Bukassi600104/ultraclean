@@ -12,6 +12,7 @@ import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { OfflineBanner } from "@/components/manager/OfflineBanner";
 import { ManagerSidebar } from "@/components/manager/ManagerSidebar";
 import {FarmMobileNav} from '@/components/manager/FarmMobileNav';
+import {FarmLogFollowups} from '@/components/manager/FarmLogFollowups';
 import {PrepareFarmOfflineWorkspace} from '@/components/offline/PrepareFarmOfflineWorkspace';
 import { ArrowLeft, Menu } from "lucide-react";
 
@@ -140,6 +141,7 @@ function ManagerShell({
 
         {/* Page content */}
         <main className="mx-auto w-full max-w-7xl flex-1 overflow-y-auto p-4 pb-24 lg:p-6">
+          <FarmLogFollowups pathname={pathname} online={isOnline}/>
           {children}
         </main>
         <FarmMobileNav onMore={()=>setSidebarOpen(true)}/>

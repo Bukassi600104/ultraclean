@@ -72,3 +72,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Exercise the actual choice shown in the customer's screenshot. For emergency approvals, ‘Owner funds’ identifies the source, not the person who paid. The empty-payer and failed-load paths must still make the safe approval visible while keeping the chosen source and note.
 
 - Keep the Daily Report message editor mounted during background refresh. Exercise a lost server reply and retry with the same message identifier. For customer payments, display the saved receipt separately from invoice balances allocated oldest first.
+
+- For Daily Log instructions, verify discovery in a separate supervisor session and open the exact source message. Similar text on two reports must lead to two separate conversations.

@@ -389,3 +389,12 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - Operational requests collect the date needed, reason and optional estimate. The MD assigns a buyer for each approved order. The supervisor confirms delivery with the actual sender, quantity and photo. Emergency funding decisions and historical requests retain their original handling.
 - A private PostgreSQL restore preserved all 145 original tables and 110 existing policies. Separate database connections tested cancelling and purchasing simultaneously in both orders. Browser tests exercised the receipt handoff, an interrupted Daily Report reply, animal and egg figures, customer credits, report downloads and responsive layouts.
 - Release acceptance requires matching the Git commit to the promoted Vercel release and checking both roles' read-only database views. The private farm-supervisor-2026-11-12 receipts hold the final deployment identifiers. Use an application rollback compatible with the three additive migrations and retain submitted deliveries, count decisions and health records.
+
+## Daily Log follow-ups - 12 November 2026
+
+- [x] Confirm each of the four existing MD messages belongs to the right source report and supervisor.
+- [x] Display existing and new instructions to the responsible supervisor. Link to the exact message and show completion in both views.
+- [x] Verify separate managers and periods, duplicate taps, foreground refresh, reconnection and browser layouts at 375, 390, 768 and 1440 pixels.
+- [x] Rehearse the migration. All 149 original tables, eight accounts and password hashes, 110 access policies and 464 application-role privileges matched. Two concurrent clients produced one completion for the same message.
+
+The private farm-log-followups-2026-11-12 release receipts record the production preflight, migration, exact Git and Vercel deployment, and read-only verification of the original messages.

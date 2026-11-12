@@ -183,5 +183,33 @@ try{
   assert.equal(thread.length,1);assert.equal(thread[0].record_id,threadId);
   await discussion.getByRole('button',{name:'Close',exact:true}).click();
   checks+=6;
+  // The existing MD instruction can be opened and answered from a different app session.
+  const task=thread[0];
+  Object.assign(task,{is_followup:true,can_complete:true,completed_at:null});
+  await page.unroute('**/api/farm/daily-reports**');
+  await page.route('**/api/farm/daily-reports**',r=>r.fulfill({json:{data:shown.filter(row=>row.id===threadId),total:1}}));
+  const completions=[];
+  await page.route('**/api/farm/log-followups',route=>{
+    const payload=route.request().postDataJSON();completions.push(payload);
+    assert.equal(payload.message_id,task.id);
+    Object.assign(task,{can_complete:false,completed_at:'2026-11-12T14:00:00Z'});
+    return route.fulfill({json:{data:{message_id:task.id,completed_at:task.completed_at}}});
+  });
+  await page.goto(origin+'/daily-report/history?report_id='+threadId+'&message_id='+task.id);
+  await discussion.getByText('Supervisor to do',{exact:true}).waitFor();
+  assert.equal(await discussion.locator('article:focus').innerText().then(t=>t.includes(text)),true);
+  await discussion.getByLabel('Message',{exact:true}).fill('Checked at the original location.');
+  await discussion.getByRole('button',{name:'Send message',exact:true}).click();
+  await discussion.getByText('Checked at the original location.',{exact:true}).waitFor();
+  assert.equal(thread.at(-1).reply_to,task.id);assert.equal(thread.at(-1).record_id,threadId);
+  assert.equal(completions.length,0);
+  await discussion.getByRole('button',{name:'Mark done',exact:true}).click();
+  await discussion.getByText(/^Marked done /).waitFor();assert.equal(completions.length,1);
+  await discussion.getByRole('button',{name:'Close',exact:true}).click();
+  assert.equal(new URL(page.url()).searchParams.has('message_id'),false);
+  const fresh=page.waitForResponse(r=>r.url().includes('/api/farm/daily-reports'));
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await fresh;
+  assert.equal(await discussion.count(),0);
+  checks+=8;
   assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual farm React/browser checks with project Tailwind CSS: report fields, per-location logging, scoped drafts, photos, confirmed reviews, retry safety and responsive layouts. Screenshots: ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator("body").innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
