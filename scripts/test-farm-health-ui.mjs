@@ -14,13 +14,16 @@ const folder=mkdtempSync(path.join(os.tmpdir(),'farm-today-ui-')),css=path.join(
 const server=http.createServer((req,res)=>{if(req.url==='/bundle.js'){res.setHeader('Content-Type','text/javascript');res.end(bundle.outputFiles[0].text);}else if(req.url==='/style.css'){res.setHeader('Content-Type','text/css');res.end(readFileSync(css));}else res.end('<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root" class="p-4"></div><script src="/bundle.js"></script></body></html>');});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 console.log('UI bundle ready');
-const browser=await chromium.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(15000);const errors=[],posts=[];let counts=[];
+const browser=await chromium.launch({headless:true}),page=await browser.newPage();page.setDefaultTimeout(30000);const errors=[],posts=[];let counts=[];
 page.on('pageerror',e=>errors.push(e.message));
-let tasks=[],healthNotes=[],performanceBatches=[],photoUploads=0;const evidenceId='00000000-0000-4000-8000-000000000002';
+await page.route('https://fonts.googleapis.com/**',route=>route.abort());
+await page.route('https://fonts.gstatic.com/**',route=>route.abort());
+let tasks=[],healthNotes=[],completions=[],performanceBatches=[],photoUploads=0;const evidenceId='00000000-0000-4000-8000-000000000002';
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[]};
  if(url.pathname==='/api/farm/health'){
- if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);if(p.operation==='complete'){assert.equal(photoUploads,1);assert.deepEqual(p.payload.evidence_ids,[evidenceId]);tasks=tasks.map(task=>({...task,status:'completed'}));}else if(p.operation==='note'){healthNotes.push({id,...p.payload,actor_name:'Supervisor',manager_name:'Supervisor'});}else tasks=[{id,...p.payload,batch_name:'Actual flock',manager_name:'Assigned manager',status:'scheduled',revision:0}];body={data:{id}};}
- else body={tasks,notes:healthNotes,completions:[],batches:[{id,name:'Actual flock'}],managers:[{id,name:'Assigned manager',batch_ids:[id]}]};
+ if(req.method()==='POST'){const p=req.postDataJSON();posts.push(p);if(p.operation==='complete'){assert.equal(photoUploads,1);assert.deepEqual(p.payload.evidence_ids,[evidenceId]);const completion={id:'00000000-0000-4000-8000-000000000003',task_id:p.id,batch_id:id,date:p.payload.date,notes:p.payload.notes,actor_name:'Supervisor',state:'completed',created_at:new Date().toISOString(),supersedes_id:null};
+ completions.push(completion);tasks=tasks.map(task=>task.id===p.id?{...task,status:'completed',completion_id:completion.id}:task);}else if(p.operation==='note'){healthNotes.push({id,...p.payload,actor_name:'Supervisor',manager_name:'Supervisor'});}else tasks=[{id,...p.payload,batch_name:'Actual flock',manager_name:'Assigned manager',status:'scheduled',revision:0}];body={data:{id}};}
+ else body={tasks,notes:healthNotes,completions,recommendations:[{id:evidenceId,task_id:id,body:'Review the recorded observation.',actor_name:'Assigned vet',created_at:'2026-11-01T09:00:00Z'}],batches:[{id,name:'Actual flock'}],managers:[{id,name:'Assigned manager',batch_ids:[id]}]};
  }else if(url.pathname==='/api/farm/evidence'&&req.method()==='POST'){photoUploads++;body={data:{id:evidenceId,status:'uploaded'}};}
  else if(url.pathname==='/api/farm/performance')body={from:'2026-10-01',to:'2026-10-30',batches:performanceBatches,pool:{revenue:'0',expenses:'0',allocated_revenue:'0',allocated_expenses:'0',unallocated_revenue:'0',unallocated_expenses:'0'},cost_basis:'No recorded costs'};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
 });
@@ -32,7 +35,23 @@ try{
  assert.equal(await page.getByLabel('Task title',{exact:true}).inputValue(),'');await page.getByRole('button',{name:'Close',exact:true}).click();
  }
  await page.getByRole('button',{name:'Add to schedule',exact:true}).click();await page.getByLabel('Named batch',{exact:true}).selectOption(id);await page.getByLabel('Responsible manager',{exact:true}).selectOption(id);await page.getByLabel('Task title',{exact:true}).fill('Actual vet schedule');await page.getByLabel('Approved instructions',{exact:true}).fill('Use the actual veterinary instruction');await page.getByLabel('Due date',{exact:true}).fill('2026-11-02');await page.getByRole('button',{name:'Save entry',exact:true}).click();await page.getByRole('heading',{name:'Actual vet schedule'}).waitFor();assert.equal(posts[0].payload.period_id,id);assert.deepEqual(errors,[]);
- for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');await page.getByRole('heading',{name:'Actual vet schedule',exact:true}).waitFor();assert.ok(await page.getByRole('table',{name:'Farm health schedule'}).isVisible());await page.getByText('Task details',{exact:true}).click();assert.equal(await page.getByRole('button',{name:'Correct schedule',exact:true}).count(),1);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(folder,`health-${width}.png`),fullPage:true});}
+ for(const width of [375,390,768,1440]){
+  await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
+  const schedule=page.getByRole('table',{name:'Farm health schedule'});
+  await schedule.getByText('Actual vet schedule',{exact:true}).waitFor();
+  assert.equal(await schedule.getByRole('columnheader',{name:'Due',exact:true}).count(),1,'The schedule must have visible column headings at '+width+'px');
+  assert.equal(await schedule.locator('tbody tr').first().evaluate(el=>getComputedStyle(el).display),'table-row');
+  assert.equal(await schedule.getByRole('button',{name:'Mark done',exact:true}).count(),0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.screenshot({path:path.join(folder,'health-'+width+'.png'),fullPage:true});
+  await schedule.getByText('Task details',{exact:true}).click();
+  const dialog=page.getByRole('dialog');await dialog.getByText('Use the actual veterinary instruction').waitFor();
+  await dialog.getByText(/Vet recommendation .* Review the recorded observation/).waitFor();
+  assert.equal(await dialog.getByRole('button',{name:'Correct schedule',exact:true}).isVisible(),true);
+  await dialog.getByRole('button',{name:'Questions & replies',exact:true}).click();
+  await dialog.getByRole('heading',{name:'Questions and replies',exact:true}).waitFor();
+  await dialog.getByRole('button',{name:'Close',exact:true}).click();
+ }
  await page.goto('http://127.0.0.1:'+server.address().port+'/?manager=1');await page.getByRole('button',{name:'Mark done',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Confirm done',exact:true}).click();await page.getByRole('alert').filter({hasText:'Add a photo to confirm this task'}).waitFor();assert.equal(posts.length,1,'No completion without a photo reaches the API');await page.getByRole('button',{name:'Close',exact:true}).click();
  // Select a real file through the picker, retain its scoped local ID offline, then upload and complete.
  await page.getByRole('button',{name:'Mark done',exact:true}).filter({visible:true}).click();
@@ -56,7 +75,46 @@ try{
  await page.getByText('Pen checked by supervisor',{exact:true}).waitFor();assert.equal(posts.at(-1).operation,'note');
  await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
  await page.getByText('Pen checked by supervisor',{exact:true}).waitFor();
- assert.equal(healthNotes.length,1);console.log('Health screenshot artifacts: '+folder);
+ assert.equal(healthNotes.length,1);
+ for(const role of ['manager','admin'])for(const width of [375,390,768,1440]){
+  await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?'+role+'=1');
+  const details=page.getByRole('table',{name:'Recorded health details',exact:true});
+  const history=page.getByRole('table',{name:'Completion history',exact:true});
+  await details.getByText('Pen checked by supervisor',{exact:true}).waitFor();
+  assert.equal(await details.getByRole('columnheader',{name:'Observation',exact:true}).isVisible(),true);
+  assert.equal(await details.getByRole('rowheader').count(),1);
+  await page.locator('summary',{hasText:'Completion history'}).click();
+  await history.getByRole('rowheader',{name:/Actual vet schedule/}).waitFor();
+  assert.equal(await history.getByRole('columnheader',{name:'Status',exact:true}).isVisible(),true);
+  assert.equal(await history.getByText('Completed',{exact:true}).isVisible(),true);
+  await history.getByText('Entry details',{exact:true}).click();
+  assert.equal(await history.getByRole('button',{name:'Retract incorrect completion'}).count(),role==='admin'?1:0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  const proof=history.getByRole('button',{name:'View proof',exact:true});
+  await proof.click();await page.getByRole('dialog').getByRole('heading',{name:'Questions and replies',exact:true}).waitFor();
+  await page.getByRole('button',{name:'Close',exact:true}).click();
+ }
+ // A correction keeps both history entries readable and the original evidence accessible.
+ const prior=completions[0],withdrawn={...prior,id:'00000000-0000-4000-8000-000000000004',state:'retracted',supersedes_id:prior.id,notes:null,reason:'The original completion was entered for the wrong batch.'};
+ completions=[withdrawn,prior];tasks=[{...tasks[0],status:'overdue',completion_id:withdrawn.id}];
+ await page.goto('http://127.0.0.1:'+server.address().port+'/?manager=1');
+ const schedule=page.getByRole('table',{name:'Farm health schedule'});
+ await schedule.getByRole('button',{name:'Mark done',exact:true}).waitFor();
+ await schedule.getByRole('button',{name:'View entry',exact:true}).click();
+ await page.getByRole('dialog',{name:'Completion entry'}).waitFor();await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.locator('summary',{hasText:'Completion history'}).click();
+ const changedHistory=page.getByRole('table',{name:'Completion history',exact:true});
+ assert.equal(await changedHistory.getByRole('rowheader').count(),2);
+ await changedHistory.getByRole('row').filter({hasText:'Retracted'}).getByText('Entry details',{exact:true}).click();
+ await changedHistory.getByText(withdrawn.reason,{exact:true}).waitFor();
+ assert.equal(await changedHistory.getByRole('button',{name:'View proof',exact:true}).count(),1);
+ // Farms with only free-form health observations must still see a populated table.
+ tasks=[];completions=[];
+ await page.setViewportSize({width:375,height:700});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
+ await page.getByRole('table',{name:'Recorded health details'}).getByText('Pen checked by supervisor').waitFor();
+ assert.equal(await page.getByRole('table',{name:'Farm health schedule'}).count(),0);
+ await page.getByText('No health tasks scheduled yet.').waitFor();
+ console.log('Health screenshot artifacts: '+folder);
  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByText('All groups: recorded money').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  performanceBatches=['11111111-0000-4000-8000-000000000001','22222222-0000-4000-8000-000000000002'].map((site_id,i)=>({id:site_id,site_id,site_name:'Same site name',name:'Flock '+i,product:'chicken',head_count:'0',recorded_days:0,expected_days:30,egg_days:0,deaths:'0',eggs:'0',feed_kg:null,sample_average_kg:null,feed_conversion_estimate:null,feed_cost_estimate:null,revenue:i?'200':'100',paid_expenses:i?'20':'10',recorded_result:i?'180':'90',trend:[],completeness:'Measurements unavailable'}));await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByRole('button',{name:'View Flock 1',exact:true}).filter({visible:true}).waitFor();await page.getByLabel('Site',{exact:true}).selectOption(performanceBatches[0].site_id);assert.equal(await page.getByRole('button',{name:'View Flock 0',exact:true}).filter({visible:true}).count(),1);assert.equal(await page.getByRole('button',{name:'View Flock 1',exact:true}).count(),0);assert.equal(await page.getByLabel('Site',{exact:true}).locator('option').count(),3);await page.getByRole('heading',{name:'Selected groups: recorded money'}).waitFor();assert.equal(await page.getByLabel('Batch',{exact:true}).locator('option').count(),2);assert.match(await page.locator('section').filter({has:page.getByRole('heading',{name:'Selected groups: recorded money'})}).innerText(),/100.00/);assert.deepEqual(errors,[]);
  performanceBatches[0]={...performanceBatches[0],recorded_days:1,expected_days:1,head_count:'10',trend:[{date:'2026-10-29',eggs:null,deaths:0,feed_kg:5,lay_rate:null,sample_average_kg:2}]};

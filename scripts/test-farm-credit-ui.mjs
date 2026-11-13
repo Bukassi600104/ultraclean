@@ -48,6 +48,7 @@ try{
  readStatus=503;await focus();await page.getByText(/Connection interrupted/).waitFor({state:'attached'});
  assert.equal(await typed.inputValue(),'1200');assert.equal(posts.length,1);
  readStatus=403;await focus();await page.getByText(/Access ended/).waitFor();
- assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByText('Another recorded payment',{exact:true}).count(),0);
+ assert.equal(await typed.count(),0);assert.equal(await page.getByText('Another recorded payment',{exact:true}).count(),0);
+ await page.getByRole('dialog').waitFor({state:'detached'});
  console.log('PASS actual customer UI at four widths: centred forms, actual recipient, dated exact receipt and visible saved result');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

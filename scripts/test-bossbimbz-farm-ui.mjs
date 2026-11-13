@@ -211,5 +211,23 @@ try{
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await fresh;
   assert.equal(await discussion.count(),0);
   checks+=8;
+  const creditId='00000000-0000-4000-8000-000000001033';
+  const creditRequest={id:creditId,request_date:'2026-11-12',category:'other',description:'Approve credit terms for the recorded customer',requested_by:id,status:'pending',revision:0,request_details:{needed_on:'2026-11-12',why_needed:'Part payment',items:[],credit_customer_id:id}};
+  let decisionBody;
+  await page.route('**/api/farm/operational-requests**',r=>{
+    if(r.request().method()==='GET')return r.fulfill({json:{data:[creditRequest],total:1}});
+    decisionBody=r.request().postDataJSON();Object.assign(creditRequest,{status:'approved',revision:1,ceo_response:decisionBody.ceo_response});
+    return r.fulfill({json:{data:creditRequest}});
+  });
+  await page.goto(origin+'/?screen=requests&admin=yes');
+  await page.getByRole('button',{name:/Approve credit terms for the recorded customer/}).click();
+  await page.getByRole('button',{name:'Approve',exact:true}).click();
+  const approval=page.getByRole('dialog');
+  await approval.getByLabel('Decision note',{exact:true}).fill('Approved for the agreed payment period');
+  assert.equal(await approval.getByRole('button',{name:'Confirm decision'}).isDisabled(),true);
+  await approval.getByLabel('Approved credit terms (days)',{exact:true}).fill('14');
+  await approval.getByRole('button',{name:'Confirm decision'}).click();
+  await page.getByText('Decision saved. The manager can see your response.',{exact:true}).waitFor();
+  assert.equal(decisionBody.credit_days,14);assert.equal(decisionBody.operation,'approve');checks+=3;
   assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual farm React/browser checks with project Tailwind CSS: report fields, per-location logging, scoped drafts, photos, confirmed reviews, retry safety and responsive layouts. Screenshots: ${artifacts}`);
 }catch(error){console.error({faults,body:await page.locator("body").innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -5,6 +5,11 @@ const {sumMoney,subtractMoney,multiplyMoney,moneyNumber,formatExactCurrency}=loa
 assert.equal(multiplyMoney('3','0.10'),'0.30');assert.equal(multiplyMoney('0.25','150.99'),'37.7475');
 assert.equal(formatExactCurrency('9999999999999999.99','NGN'),'NGN 9,999,999,999,999,999.99');assert.equal(formatExactCurrency('-12.3','GBP'),'GBP -12.30');
 assert.equal(sumMoney(['999999999999999999.01','0.09']),'999999999999999999.10');
+for(const [raw,expected] of [
+ ['2716231.9999999','2,716,232.00'],['3803000.0000001','3,803,000.00'],['-0.004','0.00'],
+ ['-0.005','-0.01'],['0.005','0.01'],['9999999999999999.995','10,000,000,000,000,000.00']
+])assert.equal(formatExactCurrency(raw,'NGN'),'NGN '+expected);
+assert.equal(formatExactCurrency(sumMoney(['0.004','0.004']),'NGN'),'NGN 0.01');
 assert.equal(subtractMoney('+1','+0.1'),'0.9');
 assert.equal(moneyNumber('-0.005'),-0.01);assert.equal(moneyNumber('1e-7'),0);
 const date='2026-10-27',blank={transfers:[],expenses:[],feed:[],sales:[]};

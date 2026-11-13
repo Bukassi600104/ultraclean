@@ -27,18 +27,25 @@ export function multiplyMoney(left:MoneyInput,right:MoneyInput):string {
 export function subtractMoney(value: MoneyInput, ...costs: MoneyInput[]): string {
   return sumMoney([value, ...costs.map(cost => {const normalized=sumMoney([cost]);return normalized.startsWith("-")?normalized.slice(1):"-"+normalized;})]);
 }
-export function formatExactCurrency(value:MoneyInput,currency:string):string{
- const exact=sumMoney([value]),negative=exact.startsWith("-"),[whole,fraction=""]=exact.replace(/^-/,"").split(".");
- return `${currency} ${negative?"-":""}${BigInt(whole).toLocaleString("en-NG")}.${fraction.padEnd(2,"0")}`;
+// Ledger arithmetic retains its full precision. Round once when presenting a currency amount.
+function moneyCents(value:MoneyInput):bigint {
+ const {units,scale}=decimal(value);
+ if(scale<=2)return units*powerOfTen(2-scale);
+ const divisor=powerOfTen(scale-2),absolute=units<BigInt(0)?-units:units;
+ const rounded=(absolute+divisor/BigInt(2))/divisor;
+ return units<BigInt(0)?-rounded:rounded;
 }
 
-/** Round ties away from zero; reject numbers whose cents cannot survive JSON transport. */
-export function moneyNumber(value: MoneyInput): number {
-  const {units, scale} = decimal(value), negative = units < BigInt(0), absolute = negative ? -units : units;
-  const divisor = powerOfTen(Math.max(0,scale - 2));
-  const cents = scale <= 2 ? absolute * powerOfTen(2-scale) : absolute / divisor + (absolute % divisor * BigInt(2) >= divisor ? BigInt(1) : BigInt(0));
-  if (cents > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Financial amount exceeds the supported display range");
-  const digits = cents.toString().padStart(3,"0"), text = (negative && cents ? "-" : "") + digits.slice(0,-2) + "." + digits.slice(-2), result = Number(text);
-  if (result.toFixed(2) !== text) throw new Error("Financial amount exceeds supported cent precision");
-  return result;
+export function formatExactCurrency(value:MoneyInput,currency:string):string{
+ const text=decimalText(moneyCents(value),2),[whole,fraction]=text.replace(/^-/,"").split(".");
+ return `${currency} ${text.startsWith("-")?"-":""}${BigInt(whole).toLocaleString("en-NG")}.${fraction}`;
+}
+
+/** Reject numbers whose cents cannot survive JSON transport. */
+export function moneyNumber(value:MoneyInput):number {
+ const cents=moneyCents(value);
+ if(cents>BigInt(Number.MAX_SAFE_INTEGER)||cents<-BigInt(Number.MAX_SAFE_INTEGER))throw new Error("Financial amount exceeds the supported display range");
+ const text=decimalText(cents,2),result=Number(text);
+ if(result.toFixed(2)!==text)throw new Error("Financial amount exceeds supported cent precision");
+ return result;
 }

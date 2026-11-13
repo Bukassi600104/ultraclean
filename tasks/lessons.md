@@ -74,3 +74,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Keep the Daily Report message editor mounted during background refresh. Exercise a lost server reply and retry with the same message identifier. For customer payments, display the saved receipt separately from invoice balances allocated oldest first.
 
 - For Daily Log instructions, verify discovery in a separate supervisor session and open the exact source message. Similar text on two reports must lead to two separate conversations.
+
+- Exercise credit selection for a customer with no approved terms, and funding review for the reported expense type on its original date with no eligible payer. Keep saved source amounts exact and round only the amount shown on screen.

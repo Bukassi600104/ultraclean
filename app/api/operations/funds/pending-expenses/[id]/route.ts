@@ -4,7 +4,7 @@ import {businessSchema} from "@/lib/operations-cash-validation";
 import {cashError,resolvePendingExpense} from "@/lib/operations-cash";
 import {requestManagerScope} from "@/lib/manager-read-api";
 import {withManagerWrite} from "@/lib/manager-write-api";
-const schema=z.object({action:z.enum(["post","decline"]),business:businessSchema,payer_account_id:z.string().uuid().optional(),reason:z.string().trim().min(1).max(1000),expected_revision:z.number().int().nonnegative(),request_id:z.string().uuid()}).strict();
+const schema=z.object({action:z.enum(["post","decline"]),business:businessSchema,payer_account_id:z.string().uuid().optional(),funding_source:z.enum(["owner","sales"]).optional(),reason:z.string().trim().min(1).max(1000),expected_revision:z.number().int().nonnegative(),request_id:z.string().uuid()}).strict();
 export const runtime="nodejs";
 export async function POST(request:Request,{params}:{params:{id:string}}){
  const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success||!z.string().uuid().safeParse(params.id).success)return NextResponse.json({error:"Check the pending record, decision and reason"},{status:400});

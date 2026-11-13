@@ -107,10 +107,11 @@ async function legacyWriteFarmOperation(request:NextRequest,kind:"report"|"reque
     try{profile=await requireAdmin();}catch{return farmErrorResponse({code:"42501",message:"Admin access required"});}
   }
   const reason=z.string().trim().min(1).max(2000);
-  const mutation=z.object({operation:z.string(),revision:z.number().int().nonnegative(),reason:reason.optional(),review_note:z.string().trim().min(1).max(2000).optional(),ceo_response:z.string().trim().min(1).max(2000).optional(),resolution:z.string().trim().min(1).max(2000).optional(),report_date:date.optional(),sections:sectionsSchema.optional(),decision_required:z.boolean().optional()}).strict();
+  const mutation=z.object({operation:z.string(),credit_days:z.number().int().min(1).max(3650).optional(),revision:z.number().int().nonnegative(),reason:reason.optional(),review_note:z.string().trim().min(1).max(2000).optional(),ceo_response:z.string().trim().min(1).max(2000).optional(),resolution:z.string().trim().min(1).max(2000).optional(),report_date:date.optional(),sections:sectionsSchema.optional(),decision_required:z.boolean().optional()}).strict();
   const parsed=(id?mutation:kind==="report"?reportSchema:requestSchema).safeParse(body);
   if(!parsed.success)return NextResponse.json({error:"Validation failed",details:parsed.error.flatten()},{status:400});
   const fields=parsed.data as Record<string,unknown>;
+  if(fields.credit_days!==undefined&&(kind!=="request"||operation!=="approve"))return NextResponse.json({error:"Choose a credit terms approval"},{status:400});
   if(id&&operation!=="submit"&&!fields.reason)return NextResponse.json({error:"A reason is required"},{status:400});
   if(operation==="review"&&!fields.review_note||["respond","approve","decline","resolve"].includes(operation)&&!fields.ceo_response||operation==="resolve"&&!fields.resolution)return NextResponse.json({error:"A review, response or resolution is required"},{status:400});
   if(operation==="update"&&!fields.sections)return NextResponse.json({error:"Report sections are required"},{status:400});

@@ -1,18 +1,19 @@
 "use client";
 import Link from 'next/link';
 import {FarmCustomerPicker} from '@/components/manager/FarmCustomerPicker';
-import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
+import {useManagerFetch,useManagerPeriod,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
 import {CashReceiverSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
 
 import { formatCurrency } from "@/lib/utils";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EGG_SALE_PRODUCT, FARM_PRODUCTS, FarmProduct, farmDateToday } from "@/lib/farm-products";
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
 import { AlertTriangle } from "lucide-react";
+import {z} from "zod";
 
 import {FarmEggPicker} from '@/components/manager/FarmEggPicker';
 import {FarmBatchPicker} from '@/components/manager/FarmBatchPicker';
@@ -79,11 +80,22 @@ function ConfirmDialog({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const formDraft=z.object({date:z.string(),quantity:z.string(),kg:z.string(),amount_per_kg:z.string(),unit_price:z.string(),crop_type:z.string(),payment_method:z.string(),customer_name:z.string(),notes:z.string()});
+const creditRequestSchema=z.object({customerId:z.string().uuid(),key:z.string().uuid(),date:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),id:z.string().uuid().optional()});
+type CreditRequest=z.infer<typeof creditRequestSchema>;
+const storedSale=z.object({
+ requestId:z.string().uuid(),request:creditRequestSchema.nullable(),
+ draft:z.object({form:formDraft,stockGroup:z.string(),receiver:z.string(),batchId:z.string(),eggBatchId:z.string(),customerId:z.string(),credit:z.boolean(),amountReceived:z.string(),paymentDate:z.string()})
+});
 type SaleDraft={amountReceived?:string;paymentDate?:string;customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
 
 export default function SaleProductPage() {
+ const {product}=useParams<{product:string}>(),scope=useManagerPeriod();
+ return <SaleForm key={[scope?.actorId,scope?.periodId,scope?.mode,product].join(':')} product={product}/>;
+}
+
+function SaleForm({product}:{product:string}) {
  const managerFetch=useManagerFetch();
-  const { product } = useParams<{ product: string }>();
   const router = useRouter();
   const eggsOnly = product === 'eggs';
   const selectedProduct = eggsOnly ? EGG_SALE_PRODUCT : FARM_PRODUCTS.find((item) => item.key === product);
@@ -95,7 +107,7 @@ export default function SaleProductPage() {
   const [amountReceived,setAmountReceived]=useState(''),[paymentDate,setPaymentDate]=useState('');
   const [batchId,setBatchId]=useState('');
   const [eggBatchId,setEggBatchId]=useState('');
-  useEffect(()=>{if(productKey==='other')setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');},[productKey,eggsOnly]);
+
   const [stockGroup,setStockGroup] = useState("");
   const [form, setForm] = useState<FormValues>({
     date: "",
@@ -116,21 +128,71 @@ export default function SaleProductPage() {
   const [dirty, setDirty] = useState(false);
   const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
   const [receiver,setReceiver]=useState("");
+  const [terms,setTerms]=useState<{customerId:string;days:number|null}>({customerId:'',days:null});
+  const [creditRequest,setCreditRequest]=useState<CreditRequest|null>(null),[asking,setAsking]=useState(false),askLock=useRef(false);
+  const [draftProblem,setDraftProblem]=useState(''),[restored,setRestored]=useState(false),draftFault=useRef(false);
+  const draftKey=useManagerStorageKey(scope?.actorId?`farm-sale-draft:${scope.actorId}:${product}`:null);
+  const approved=terms.customerId===customerId&&terms.days!==null&&terms.days>0;
+  const emptyDay=getTodayStr();
+  useEffect(()=>{
+    setToday(emptyDay);
+    setForm(prev=>prev.date?prev:{...prev,date:emptyDay});
+  },[emptyDay]);
+
+  useEffect(()=>{
+    setRestored(false);draftFault.current=false;setDraftProblem('');
+    if(!draftKey)return;
+    try{
+      const raw=localStorage.getItem(draftKey);
+      if(raw){
+        const stored=storedSale.parse(JSON.parse(raw)),d=stored.draft;
+        setForm(d.form);setStockGroup(d.stockGroup);setBatchId(d.batchId||'');setEggBatchId(d.eggBatchId||'');
+        setReceiver(d.receiver);setCustomerId(d.customerId);setCredit(d.credit);setAmountReceived(d.amountReceived);
+        setPaymentDate(d.paymentDate);setRequestId(stored.requestId);setCreditRequest(stored.request);setDirty(true);
+      }else if(productKey==='other'){setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');}
+      setRestored(true);
+    }catch{draftFault.current=true;setDraftProblem('Your device could not open the saved sale. Restore access to device storage before saving.');}
+  },[draftKey,productKey]);
+  const waitingDraft=useMemo(()=>({form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate}),[form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate]);
+  const persistDraft=useCallback((request:CreditRequest|null)=>{
+    if(!draftKey||!restored||draftFault.current)throw Error('Wait for your saved sale to load before continuing.');
+    localStorage.setItem(draftKey,JSON.stringify({requestId,request,draft:waitingDraft}));
+  },[draftKey,restored,requestId,waitingDraft]);
+  useEffect(()=>{
+    if(!dirty||!draftKey||!restored||draftFault.current||submission.pending)return;
+    try{persistDraft(creditRequest);setDraftProblem('');}
+    catch{setDraftProblem('The sale could not be saved on this device. Keep this page open and check storage.');}
+  },[draftKey,restored,dirty,submission.pending,creditRequest,persistDraft]);
+  async function askForTerms(){
+    if(askLock.current||!customerId||!credit||approved)return;
+    const request=creditRequest?.customerId===customerId?creditRequest:{key:crypto.randomUUID(),customerId,date:farmDateToday()};
+    askLock.current=true;setAsking(true);setDraftProblem('');
+    try{
+      persistDraft(request);setCreditRequest(request);
+      const response=await managerFetch('/api/farm/operational-requests',{method:'POST',headers:{'Content-Type':'application/json','X-Request-ID':request.key},body:JSON.stringify({
+        request_date:request.date,category:'other',description:'Approve customer credit terms',request_id:request.key,
+        request_details:{needed_on:request.date,why_needed:'The customer is buying on credit or paying part now.',items:[],credit_customer_id:customerId}
+      })});
+      const result=await response.json().catch(()=>null);
+      if(!response.ok||!z.string().uuid().safeParse(result?.data?.id).success||result.data.request_details?.credit_customer_id!==customerId)throw Error(result?.error||'Request was not confirmed. Try again.');
+      const saved={...request,id:result.data.id};setCreditRequest(saved);persistDraft(saved);
+      window.dispatchEvent(new Event('farm-records-synced'));
+    }catch(e){
+      setDraftProblem(e instanceof DOMException?'The request could not be confirmed. Check your connection and device storage, then try again.':e instanceof TypeError?'The request could not be sent. Check your connection and try again.':e instanceof Error?e.message:'Request was not confirmed. Try again.');
+    }
+    finally{askLock.current=false;setAsking(false);}
+  }
   useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setAmountReceived(submission.pending.draft.amountReceived??'');setPaymentDate(submission.pending.draft.paymentDate||'');setRequestId(submission.pending.id);},[submission.pending]);
-
-
-  useEffect(() => {
-    const t = getTodayStr();
-    setToday(t);
-    setForm((prev) => ({ ...prev, date: t }));
-  }, []);
 
   useEffect(() => {
     if (!form.date) return;
-    managerFetch(`/api/farm/daily-record?date=${form.date}`)
+    const controller=new AbortController();
+    setIsDayClosed(false);
+    managerFetch(`/api/farm/daily-record?date=${form.date}`,{signal:controller.signal})
       .then((r) => r.json())
-      .then((d) => { setIsDayClosed(d.record?.status === "closed"); })
+      .then((d) => { if(!controller.signal.aborted)setIsDayClosed(d.record?.status === "closed"); })
       .catch(() => {});
+    return()=>controller.abort();
   }, [form.date,managerFetch]);
 
   function updateField(field: keyof FormValues, value: string) {
@@ -151,6 +213,9 @@ export default function SaleProductPage() {
 
   function validate(): string | null {
     if (!form.date) return "Select a date";
+    if(draftFault.current)return "Restore access to your saved sale before continuing";
+    if(credit&&!approved)return "Request or check the approved credit terms before saving this sale";
+    if(customerId&&terms.customerId!==customerId)return "Choose an available customer before saving";
     if(!customerId&&!submission.pending)return "Choose a customer for this invoice";
     if((!credit||Number(amountReceived)>0)&&customerId&&!receiver)return "Choose who actually received the payment";
     if(credit&&(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amountReceived)||Number(amountReceived)>=computedTotal))return "Enter the payment received, from zero to less than the sale total";
@@ -235,8 +300,10 @@ export default function SaleProductPage() {
       const result = await res.json();
       const persistedSale = Array.isArray(result.data) ? result.data[0] : result.data;
       if (!persistedSale || !Number.isFinite(Number(persistedSale.total_amount))) throw new Error("Sale response did not include saved total");
+      if(draftKey)localStorage.removeItem(draftKey);
+      setCreditRequest(null);
       setSavedItems((prev) => [...prev, { label: config.label, total: Number(persistedSale.total_amount) }]);
-      setDirty(false);
+      setDirty(false);setDraftProblem('');
       setRequestId(crypto.randomUUID());
       setForm((prev) => ({
         date: prev.date,
@@ -265,7 +332,7 @@ export default function SaleProductPage() {
           <AlertTriangle className="h-7 w-7 text-amber-500" />
         </div>
         <p className="text-lg font-bold text-gray-900 mb-1">Day is Closed</p>
-        <p className="text-sm text-gray-500 mb-4">Records are locked for today.</p>
+        <p className="text-sm text-gray-500 mb-4">{form.date} is closed. {dirty?"Your sale draft stays on this device. Ask the MD/Owner to review the original sale date.":"Ask the MD/Owner if a dated entry needs review."}</p>
         <button onClick={() => router.push("/sales")} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: "#1b4332" }}>
           Back to Sales
         </button>
@@ -291,9 +358,10 @@ export default function SaleProductPage() {
         </div>
       )}
 
+      {draftProblem&&<p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{draftProblem}</p>}
       {submission.error&&<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900">{submission.error}</p>}
       {submission.pending&&<p className="rounded-xl bg-amber-50 p-4 text-sm">This sale is awaiting confirmation. Its original date and values are retained. Retry this saved sale before entering another here.</p>}
-      <fieldset disabled={saving||!!submission.pending} className="min-w-0 space-y-4">
+      <fieldset disabled={saving||asking||draftFault.current||!!submission.pending} className="min-w-0 space-y-4">
       {/* Form */}
       {productKey==='other'&&<FarmEggPicker value={eggBatchId} onChange={setEggBatchId} eggsOnly={eggsOnly} quantity={form.quantity}/>}
       <FarmBatchPicker product={productKey} value={batchId} onChange={setBatchId} refreshKey={requestId}/>
@@ -373,7 +441,7 @@ export default function SaleProductPage() {
           </div>
         )}
 
-        <FarmCustomerPicker value={customerId} credit={credit} onChange={(id,name)=>{setCustomerId(id);updateField('customer_name',name);}} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}}/>
+        <FarmCustomerPicker value={customerId} credit={credit} onChange={(id,name)=>{setCustomerId(id);setCreditRequest(null);updateField('customer_name',name);}} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}} onTerms={setTerms} onRequest={()=>void askForTerms()} requestBusy={asking} requestId={creditRequest?.id} draftSaved={dirty&&restored&&!draftProblem}/>
         {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
         {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {(!credit||Number(amountReceived)>0)&&<div>
@@ -404,8 +472,8 @@ export default function SaleProductPage() {
       </fieldset>
       {/* Buttons */}
       <div className="flex gap-2">
-        <button onClick={handleSavePress}
-          className="flex-1 rounded-2xl py-4 font-bold text-sm text-white transition-all active:scale-[0.98]"
+        <button disabled={!submission.pending&&(asking||(credit&&!approved)||draftFault.current)} onClick={handleSavePress}
+          className="flex-1 rounded-2xl py-4 font-bold text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50"
           style={{ backgroundColor: config.color }}>
           {submission.pending?"Retry saved sale":"Save Sale"}
         </button>

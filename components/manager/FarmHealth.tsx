@@ -1,11 +1,13 @@
 "use client";
 import {farmTimestamp} from "@/lib/farm-products";
+import {Table} from '@/components/ui/table';
 import {useEffect,useState} from 'react';import Link from 'next/link';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {useManagerFetch,useQueueIdentity} from '@/contexts/ManagerPeriodContext';import {useOfflineSync} from '@/hooks/useOfflineSync';import {queueIdentityKey,getPendingItems} from '@/lib/offline-storage';
 import {useFarmRecordRefresh} from '@/hooks/useFarmRecordRefresh';
 import {farmDateToday} from '@/lib/farm-products';import {healthSchema,healthLocalCompletionSchema,healthValidationMessage,type HealthData,type HealthTask} from '@/lib/farm-health';import {FarmPhotoPicker} from './FarmPhotoPicker';import {FarmRecordThread} from './FarmRecordThread';
 const field='mt-1 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm',button='inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-800 px-4 py-2 text-sm font-semibold text-emerald-950 disabled:opacity-50';
+const healthTable='table-fixed text-left text-sm [&_tr]:align-top [&_th]:px-1.5 [&_td]:px-1.5 [&_th]:py-2.5 [&_td]:py-2.5 sm:[&_th]:px-3 sm:[&_td]:px-3 [&_thead]:text-xs [&_thead]:font-semibold [&_thead]:text-slate-600 [&_tbody_tr]:border-t [&_tbody_th]:break-words [&_td]:break-words';
 function HealthForm({operation,id,task,data,onSaved,onCancel,admin}:{admin:boolean;onCancel:()=>void;operation:string;id?:string;task?:HealthTask;data:HealthData;onSaved:()=>void}){
  const identity=useQueueIdentity(),{submitOrQueue,isSyncing}=useOfflineSync(),key=identity?`farm-health-draft:${queueIdentityKey(identity)}:${operation}:${id||''}`:'';
  const [draft,setDraft]=useState(()=>{try{const saved=key&&localStorage.getItem(key);if(saved)return JSON.parse(saved) as {date:string;due_date:string;title:string;instructions:string;notes:string;area?:string;follow_up?:string;reason:string;batch_id:string;period_id:string;mediaIds:string[];request_id:string};}catch{}return {date:farmDateToday(),due_date:task?.due_date||'',title:task?.title||'',instructions:task?.instructions||'',notes:'',area:'',follow_up:'',reason:'',batch_id:task?.batch_id||'',period_id:task?.period_id||'',mediaIds:[],request_id:crypto.randomUUID()};}),[error,setError]=useState(''),[busy,setBusy]=useState(false),[photoBusy,setPhotoBusy]=useState(false);
@@ -41,23 +43,42 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
  const send=useManagerFetch(),identity=useQueueIdentity(),[data,setData]=useState<HealthData|null>(null),[error,setError]=useState(''),[version,setVersion]=useState(0),[filter,setFilter]=useState('all'),[action,setAction]=useState<{operation:string;id?:string;task?:HealthTask}|null>(null);
  useEffect(()=>{const refresh=()=>setVersion(v=>v+1);window.addEventListener('farm-records-synced',refresh);window.addEventListener('farm-pending-changed',refresh);return()=>{window.removeEventListener('farm-records-synced',refresh);window.removeEventListener('farm-pending-changed',refresh);};},[]);
  useEffect(()=>{const c=new AbortController();setError('');send('/api/farm/health',{signal:c.signal}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||'Health tasks unavailable');setData(b);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[send,version,refresh]);
- const pending=identity?getPendingItems(identity).filter(i=>i.endpoint==='/api/farm/health'):[],labels:Record<string,string>={note:'Record health details',schedule:'Schedule health task',amend:'Correct health schedule',cancel:'Cancel health schedule',complete:'Record completed task',retract:'Retract incorrect completion',task_notes:'Task discussion',proof:'Completion proof'};
+ const pending=identity?getPendingItems(identity).filter(i=>i.endpoint==='/api/farm/health'):[],labels:Record<string,string>={note:'Record health details',schedule:'Schedule health task',amend:'Correct health schedule',cancel:'Cancel health schedule',complete:'Record completed task',retract:'Retract incorrect completion',details:'Task details',task_notes:'Task discussion',proof:'Completion proof'};
  const tasks=data?.tasks.filter(t=>filter==='all'||t.status===filter)||[];
  const today=farmDateToday();
  function badge(t:HealthTask){
   const days=Math.round((Date.parse(t.due_date)-Date.parse(today))/86400000);
   const label=t.status==='completed'?'Done':t.status==='cancelled'?'Cancelled':days<0?'Overdue '+Math.abs(days)+'d':days===0?'Due today':'In '+days+'d';
   const color=t.status==='completed'?'bg-emerald-100 text-emerald-950':t.status==='cancelled'?'bg-slate-100 text-slate-700':days<0?'bg-red-100 text-red-900':days<=3?'bg-amber-100 text-amber-950':'bg-slate-100 text-slate-800';
-  const done=data?.completions.find(c=>c.id===t.completion_id);
-  return <><span className={'inline-block rounded-full px-2.5 py-1 text-xs font-bold '+color}>{label}</span>{done&&<span className="mt-1 block text-xs">{displayDate(done.date)}</span>}</>;
+  const done=data?.completions.find(c=>c.id===t.completion_id&&c.state==='completed');
+  return <><span className={'inline-block rounded-full px-2 py-1 text-xs font-bold '+color}>{label}</span>{done&&<span className="mt-1 block text-xs">{displayDate(done.date)}</span>}</>;
  }
- function taskActions(t:HealthTask){return <div className="flex flex-wrap gap-2">
-  {!admin&&!['cancelled','completed'].includes(t.status)&&<button className={button+' bg-emerald-900 text-white'} onClick={()=>setAction({operation:'complete',id:t.id,task:t})}>Mark done</button>}
-  {t.completion_id&&<button className={button} onClick={()=>setAction({operation:'proof',id:t.completion_id!})}>View proof</button>}
- </div>;}
- function details(t:HealthTask){return <details className="mt-1 text-sm"><summary className="inline-flex min-h-11 cursor-pointer items-center text-emerald-900 underline">Task details</summary><p className="mb-2 whitespace-pre-wrap break-words">{t.instructions}</p>
- {(data?.recommendations||[]).filter(r=>r.task_id===t.id).map(r=><p key={r.id} className="my-2 whitespace-pre-wrap">Vet recommendation · {r.body} · {r.actor_name} · {farmTimestamp(r.created_at)}</p>)}
- <div className="flex flex-wrap gap-2"><button className={button} onClick={()=>setAction({operation:'note',id:t.id,task:t})}>Add details to task</button>{admin&&t.status!=='cancelled'&&<><button className={button} onClick={()=>setAction({operation:'amend',id:t.id,task:t})}>Correct schedule</button><button className={button} onClick={()=>setAction({operation:'cancel',id:t.id,task:t})}>Cancel schedule</button></>}<button className={button} onClick={()=>setAction({operation:'task_notes',id:t.id,task:t})}>Questions &amp; replies</button></div></details>;}
+ function taskActions(t:HealthTask){
+  return <>
+   {!admin&&!['cancelled','completed'].includes(t.status)&&<button type="button" className="min-h-11 rounded-lg bg-emerald-900 px-2 text-sm font-semibold text-white sm:px-4" onClick={()=>setAction({operation:'complete',id:t.id,task:t})}>Mark done</button>}
+   {t.completion_id&&<button type="button" className="block min-h-11 text-sm font-semibold text-emerald-900 underline" onClick={()=>setAction({operation:'proof',id:t.completion_id!})}>{t.status==='completed'?'View proof':'View entry'}</button>}
+  </>;
+ }
+ function taskDetails(t:HealthTask){
+  return <>
+   <dl className="grid grid-cols-2 gap-3 text-sm">
+    <div><dt className="text-slate-600">Batch</dt><dd className="break-words font-semibold">{t.batch_name}</dd></div>
+    <div><dt className="text-slate-600">Supervisor</dt><dd className="break-words">{t.manager_name}</dd></div>
+    <div><dt className="text-slate-600">Due</dt><dd>{displayDate(t.due_date)}</dd></div>
+    <div><dt className="text-slate-600">Status</dt><dd>{badge(t)}</dd></div>
+   </dl>
+   <p className="whitespace-pre-wrap break-words text-sm">{t.instructions}</p>
+   {(data?.recommendations||[]).filter(r=>r.task_id===t.id).map(r=><p key={r.id} className="whitespace-pre-wrap break-words text-sm">Vet recommendation · {r.body} · {r.actor_name} · {farmTimestamp(r.created_at)}</p>)}
+   <div className="flex flex-wrap gap-2">
+    <button type="button" className={button} onClick={()=>setAction({operation:'note',id:t.id,task:t})}>Add details to task</button>
+    {admin&&t.status!=='cancelled'&&<>
+     <button type="button" className={button} onClick={()=>setAction({operation:'amend',id:t.id,task:t})}>Correct schedule</button>
+     <button type="button" className={button} onClick={()=>setAction({operation:'cancel',id:t.id,task:t})}>Cancel schedule</button>
+    </>}
+    <button type="button" className={button} onClick={()=>setAction({operation:'task_notes',id:t.id,task:t})}>Questions &amp; replies</button>
+   </div>
+  </>;
+ }
  return <div className="mx-auto max-w-6xl space-y-4 rounded-2xl bg-[#edf2ec] p-3 text-[#18271f] sm:p-5">
  <header className="flex flex-wrap items-center justify-between gap-3"><p className="max-w-xl text-sm">Scheduled vaccines, treatments and checkups. Each completed task has a date and photo.</p>
  <div className="flex flex-wrap gap-2"><button className={button+' bg-emerald-900 text-white'} onClick={()=>setAction({operation:'note'})}>Record health details</button>{admin&&<button className={button+' bg-white'} onClick={()=>setAction({operation:'schedule'})}>Add to schedule</button>}</div></header>
@@ -67,11 +88,62 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
  {data.tasks.length>0&&<label className="mb-3 flex flex-wrap items-center gap-3 text-sm font-semibold">Show<select aria-label="Show health tasks" value={filter} onChange={e=>setFilter(e.target.value)} className="min-h-11 rounded-lg border bg-white px-3">{[['all','All tasks'],['overdue','Overdue'],['due_today','Due today'],['scheduled','Upcoming'],['completed','Completed'],['cancelled','Cancelled']].map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>}
  {!tasks.length&&<p className="py-3">{data.tasks.length?'No tasks match this status.':'No health tasks scheduled yet.'}</p>}
  {!data.tasks.length&&admin&&<div className="flex flex-wrap gap-3 text-sm"><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/farm/batches">Check farm groups</Link><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/managers">Check manager assignments</Link></div>}
- {tasks.length>0&&<table className="block w-full text-left text-sm lg:table"><caption className="sr-only">Farm health schedule</caption><thead className="hidden text-xs uppercase tracking-wide text-slate-600 lg:table-header-group"><tr>{['Task','Batch','Due','Status',...(!admin?['Action']:[])].map(h=><th key={h} className="px-3 py-2.5">{h}</th>)}</tr></thead><tbody className="block lg:table-row-group">{tasks.map(t=><tr key={t.id} className="grid grid-cols-2 items-start gap-2 border-t py-3 lg:table-row">
- <td className="col-span-2 break-words lg:w-[36%] lg:p-3"><h2 className="font-bold">{t.title}</h2>{details(t)}</td>
- <td className="break-words lg:p-3">{t.batch_name}<span className="block text-xs text-slate-600">{t.manager_name}</span></td><td className="lg:p-3"><span className="lg:hidden">Due </span>{displayDate(t.due_date)}</td><td className="lg:p-3">{badge(t)}{admin&&taskActions(t)}</td>{!admin&&<td className="lg:p-3">{taskActions(t)}</td>}
- </tr>)}</tbody></table>}</section>
- {(data.notes||[]).length>0&&<section className="rounded-xl border bg-white p-5"><h2 className="text-lg font-bold">Recorded health details</h2><ul className="divide-y">{data.notes!.map(note=><li key={note.id} className="space-y-1 py-3 text-sm"><strong>{note.title}</strong>{note.area&&<span> · {note.area}</span>}<p>{displayDate(note.date)} · {note.actor_name}{admin&&note.manager_name!==note.actor_name?' · For '+note.manager_name:''}</p><p className="whitespace-pre-wrap break-words">{note.details}</p>{note.follow_up&&<p className="font-medium">Follow up {displayDate(note.follow_up)}</p>}</li>)}</ul></section>}
- <details className="rounded-xl border bg-white p-5"><summary className="min-h-11 cursor-pointer font-semibold">Completion history</summary>{!data.completions.length&&<p className="text-sm">No completed work recorded.</p>}{data.completions.map(x=><article key={x.id} className="space-y-2 border-t py-3 text-sm"><p className="font-medium">{data.tasks.find(t=>t.id===x.task_id)?.title||'Recorded task'} · {x.date} · {x.state}</p><p>{x.actor_name||'Name not recorded'} · Entered {new Date(x.created_at).toLocaleString()}</p><p>{x.notes||x.reason}</p>{x.state==='completed'&&<div className="flex flex-wrap gap-2"><button className={button} onClick={()=>setAction({operation:'proof',id:x.id})}>View proof</button>{admin&&!data.completions.some(n=>n.supersedes_id===x.id)&&<button className={button} onClick={()=>setAction({operation:'retract',id:x.id})}>Retract incorrect completion</button>}</div>}</article>)}</details></>}
- <Dialog open={!!action} onOpenChange={open=>{if(!open)setAction(null);}}><DialogContent><DialogTitle className="pr-10">{action?.operation==="complete"?"Mark done · "+action.task?.title:action&&labels[action.operation]}</DialogTitle><DialogDescription>{action?.operation==='complete'?'Record when the work was done.':'Farm health schedule'}</DialogDescription>{action?.id&&['proof','task_notes'].includes(action.operation)?<FarmRecordThread resource={action.operation==='proof'?'farm_health_completions':'farm_health_tasks'} recordId={action.id}/>:action?.operation==='schedule'&&data&&!data.batches.some(b=>data.managers.some(m=>m.batch_ids.includes(b.id)))?<div className="space-y-3"><p>Choose a real farm group and assign its supervisor before scheduling work.</p><Link className={button} href="/dashboard/farm/batches">Set up farm groups</Link> <Link className={button} href="/dashboard/managers">Assign a supervisor</Link></div>:action&&data&&<HealthForm key={action.operation+action.id} {...action} admin={admin} data={data} onCancel={()=>setAction(null)} onSaved={()=>{setAction(null);setVersion(v=>v+1);}}/>}</DialogContent></Dialog></div>;
+ {tasks.length>0&&<Table className={healthTable}>
+  <caption className="sr-only">Farm health schedule</caption>
+  <thead><tr>
+   <th scope="col">Task<span className="sm:hidden"> / batch</span></th>
+   <th scope="col" className="hidden w-[22%] sm:table-cell">Batch</th>
+   <th scope="col" className="w-[23%] sm:w-[15%]">Due</th>
+   <th scope="col" className="w-[31%] sm:w-[17%]">Status{!admin&&<span className="sm:hidden"> / action</span>}</th>
+   {!admin&&<th scope="col" className="hidden w-[19%] sm:table-cell">Action</th>}
+  </tr></thead>
+  <tbody>{tasks.map(t=><tr key={t.id}>
+   <th scope="row" className="font-normal"><h2 className="font-bold">{t.title}</h2><span className="block text-xs text-slate-600 sm:hidden">{t.batch_name}</span>
+    <button type="button" className="min-h-11 text-sm font-medium text-emerald-900 underline" onClick={()=>setAction({operation:'details',id:t.id,task:t})}>Task details</button>
+   </th>
+   <td className="hidden sm:table-cell">{t.batch_name}<span className="block text-xs text-slate-600">{t.manager_name}</span></td>
+   <td><time dateTime={t.due_date}>{displayDate(t.due_date)}</time></td>
+   <td>{badge(t)}<div className={admin?'mt-1':'mt-1 sm:hidden'}>{taskActions(t)}</div></td>
+   {!admin&&<td className="hidden sm:table-cell">{taskActions(t)}</td>}
+  </tr>)}</tbody>
+ </Table>}</section>
+ {Boolean(data.notes?.length)&&<section className="rounded-xl border bg-white p-3 sm:p-4"><h2 className="mb-2 text-lg font-bold">Recorded health details</h2>
+  <Table className={healthTable}><caption className="sr-only">Recorded health details</caption>
+   <thead><tr><th scope="col" className="w-[24%] sm:w-[16%]">Date</th><th scope="col" className="w-[32%] sm:w-[24%]">Task / area</th><th scope="col">Observation</th><th scope="col" className="hidden w-[17%] sm:table-cell">Recorded by</th><th scope="col" className="hidden w-[15%] sm:table-cell">Follow up</th></tr></thead>
+   <tbody>{data.notes?.map(note=><tr key={note.id}>
+    <td><time dateTime={note.date}>{displayDate(note.date)}</time></td>
+    <th scope="row" className="font-normal"><strong>{note.title}</strong>{note.area&&<span className="block text-xs text-slate-600">{note.area}</span>}</th>
+    <td><p className="whitespace-pre-wrap">{note.details}</p>
+     <p className="mt-1 text-xs text-slate-600 sm:hidden">{note.actor_name}{admin&&note.manager_name!==note.actor_name&&<span className="block">For {note.manager_name}</span>}</p>
+     {note.follow_up&&<p className="mt-1 text-xs font-semibold sm:hidden">Follow up {displayDate(note.follow_up)}</p>}
+    </td>
+    <td className="hidden sm:table-cell">{note.actor_name}{admin&&note.manager_name!==note.actor_name&&<span className="block text-xs text-slate-600">For {note.manager_name}</span>}</td>
+    <td className="hidden sm:table-cell">{note.follow_up&&<time dateTime={note.follow_up}>{displayDate(note.follow_up)}</time>}</td>
+   </tr>)}</tbody>
+  </Table>
+ </section>}
+ <details className="rounded-xl border bg-white p-3 sm:p-4"><summary className="min-h-11 cursor-pointer font-semibold">Completion history</summary>
+  {!data.completions.length?<p className="text-sm">No completed work recorded.</p>:<Table className={healthTable}><caption className="sr-only">Completion history</caption>
+   <thead><tr><th scope="col">Task / batch</th><th scope="col" className="w-[23%] sm:w-[16%]">Date</th><th scope="col" className="hidden w-[21%] sm:table-cell">Recorded by</th><th scope="col" className="w-[29%] sm:w-[16%]">Status</th></tr></thead>
+   <tbody>{data.completions.map(x=>{
+    const task=data.tasks.find(t=>t.id===x.task_id);
+    const recordedBy=x.actor_name||'Name not recorded';
+    return <tr key={x.id}>
+     <th scope="row" className="font-normal"><strong>{task?.title||'Recorded task'}</strong>{task?.batch_name&&<span className="block text-xs text-slate-600">{task.batch_name}</span>}
+      <details className="mt-1"><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-emerald-900 underline">Entry details</summary>
+       <p className="text-xs text-slate-600">Entered {farmTimestamp(x.created_at)}</p>
+       {(x.notes||x.reason)&&<p className="mt-1 whitespace-pre-wrap">{x.notes||x.reason}</p>}
+       {admin&&x.state==='completed'&&!data.completions.some(n=>n.supersedes_id===x.id)&&<button type="button" className="mt-1 min-h-11 text-left text-sm font-semibold text-emerald-900 underline" onClick={()=>setAction({operation:'retract',id:x.id})}>Retract incorrect completion</button>}
+      </details>
+     </th>
+     <td><time dateTime={x.date}>{displayDate(x.date)}</time><span className="mt-1 block text-xs text-slate-600 sm:hidden">{recordedBy}</span></td>
+     <td className="hidden sm:table-cell">{recordedBy}</td>
+     <td><span className="font-medium">{x.state==='completed'?'Completed':'Retracted'}</span>
+      {x.state==='completed'&&<button type="button" className="block min-h-11 text-left text-sm font-semibold text-emerald-900 underline" onClick={()=>setAction({operation:'proof',id:x.id})}>View proof</button>}
+     </td>
+    </tr>;
+   })}</tbody>
+  </Table>}
+ </details></>}
+ <Dialog open={!!action} onOpenChange={open=>{if(!open)setAction(null);}}><DialogContent><DialogTitle className="pr-10">{action?.operation==='details'?action.task?.title:action?.operation==='proof'&&data?.completions.find(c=>c.id===action.id)?.state==='retracted'?'Completion entry':action?.operation==="complete"?"Mark done · "+action.task?.title:action&&labels[action.operation]}</DialogTitle><DialogDescription>{action?.operation==='complete'?'Record when the work was done.':'Farm health schedule'}</DialogDescription>{action?.operation==='details'&&action.task?taskDetails(action.task):action?.id&&['proof','task_notes'].includes(action.operation)?<FarmRecordThread resource={action.operation==='proof'?'farm_health_completions':'farm_health_tasks'} recordId={action.id}/>:action?.operation==='schedule'&&data&&!data.batches.some(b=>data.managers.some(m=>m.batch_ids.includes(b.id)))?<div className="space-y-3"><p>Choose a real farm group and assign its supervisor before scheduling work.</p><Link className={button} href="/dashboard/farm/batches">Set up farm groups</Link> <Link className={button} href="/dashboard/managers">Assign a supervisor</Link></div>:action&&data&&<HealthForm key={action.operation+action.id} {...action} admin={admin} data={data} onCancel={()=>setAction(null)} onSaved={()=>{setAction(null);setVersion(v=>v+1);}}/>}</DialogContent></Dialog></div>;
 }

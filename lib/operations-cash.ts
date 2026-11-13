@@ -27,6 +27,6 @@ export async function postCash(request:Request,receiptsOnly=false){
  },["fund","correct","void"].includes(operation));
 }
 export function financialResponse(data:unknown,status=201,envelope=true){return isPendingFunding(data)?NextResponse.json(data.message?{...data,message:displayRoleMessage(data.message)}:data,{status:202,headers:{"Cache-Control":"private, no-store"}}):NextResponse.json(envelope?{data}:data,{status});}
-export async function resolvePendingExpense(actor:Pick<Profile,"id">,id:string,decision:{action:"post"|"decline";payer_account_id?:string;reason:string;expected_revision:number;business:string},requestId:string):Promise<WriteOutcome<Record<string,unknown>>>{
+export async function resolvePendingExpense(actor:Pick<Profile,"id">,id:string,decision:{action:"post"|"decline";payer_account_id?:string;funding_source?:"owner"|"sales";reason:string;expected_revision:number;business:string},requestId:string):Promise<WriteOutcome<Record<string,unknown>>>{
  const db=createServerClient();if(!db)throw Error("Database unavailable");const {data,error}=await managerRpc(db,"operations_pending_expense_write",{p_actor:actor.id,p_id:id,p_payload:decision,p_request_id:requestId});if(error)throw error;return data;
 }

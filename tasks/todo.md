@@ -398,3 +398,14 @@ Implementation is local on codex/primefield-pulse. Production settings, records,
 - [x] Rehearse the migration. All 149 original tables, eight accounts and password hashes, 110 access policies and 464 application-role privileges matched. Two concurrent clients produced one completion for the same message.
 
 The private farm-log-followups-2026-11-12 release receipts record the production preflight, migration, exact Git and Vercel deployment, and read-only verification of the original messages.
+
+## Farm credit sales, funding review and Health Tasks - 13 November 2026
+
+- [x] Reproduce the blocked credit choice and payer review against the deployed workflows. Identify the saved sources of the displayed amounts with read-only checks.
+- [x] Make the credit and part-paid flow actionable with the existing credit controls, actual collections and stock safeguards.
+- [x] Provide an actionable funding review for the reported payment, including unresolved funding, real payer confirmation and safe retries.
+- [x] Explain how recorded cash is accounted for and show currency to its proper precision. Preserve the exact source and all historical amounts.
+- [x] Present Health Tasks as readable tables for both roles, keeping scheduling, evidence, completion and history available.
+- [x] Exercise both role interfaces on phones and desktops and reproduce the blocked choices with isolated test data.
+
+Release verification compares the original data, privileges and application versions. The private farm-credit-funding-2026-11-13 release folder holds the restore, database and live deployment receipts.
