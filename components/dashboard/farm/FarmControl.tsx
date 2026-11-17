@@ -10,7 +10,8 @@ import { BusinessFinancialCharts } from '../BusinessFinancialCharts';
 import { useFarmRecordRefresh } from '@/hooks/useFarmRecordRefresh';
 
 const field = 'min-h-11 w-full rounded-lg border border-[#cbd7c9] bg-white px-3 py-2 text-sm';
-const button = 'inline-flex min-h-11 items-center justify-center rounded-lg border border-[#bdcdbd] bg-white px-4 py-2 text-sm font-semibold text-[#24583f] hover:bg-[#f2f6f0] disabled:opacity-50';
+const buttonLayout = 'inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2 text-sm font-semibold';
+const button = buttonLayout + ' border-[#bdcdbd] bg-white text-[#24583f] hover:bg-[#f2f6f0] disabled:opacity-50';
 const card = 'rounded-xl border border-[#d5ded3] bg-white p-4 sm:p-5';
 const pages = [['batches','Sites and named batches'],['today','Batch daily logs'],['daily-reports','Daily reports'],['purchases','Purchases and deliveries'],['stores','Stores and counts'],['credit','Customers and payments'],['health','Health tasks'],['performance','Batch performance'],['inventory','Livestock inventory'],['sales','Sales records'],['expenses','Expense records'],['feed-stock','Feed inventory'],['supplies','Supplies'],['operational-requests','Requests']] as const;
 
@@ -81,7 +82,13 @@ export function FarmControl({compact=false,range,name}:{compact?:boolean;range?:
         <Link className={button} href={'/dashboard/farm/control?'+query}>Open farm reports and controls</Link>
       </>:<>
         <FarmOverviewPanels data={data.overview} alerts={data.alerts} link={reportLink}/>
-        <section className={card}><h3 className="text-lg font-bold">Farm finances</h3><dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">{[['Paid operating expenses',money(finance.total_expenses)],['Recorded operating result',money(finance.operational_net)],['Tracked money held',money(funds)]].map(([label,value])=><div key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="break-words text-xl font-bold tabular-nums">{value}</dd></div>)}</dl><div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2"><Link className={button} href={reportLink('/dashboard/funds?action=transfer')}>Record a transfer</Link><Link href={reportLink('/dashboard/funds')} className="inline-flex min-h-11 items-center font-semibold text-emerald-900">Funds and reconciliation</Link></div>
+        <section className={card}><h3 className="text-lg font-bold">Farm finances</h3><dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">{[['Paid operating expenses',money(finance.total_expenses)],['Recorded operating result',money(finance.operational_net)],['Tracked money held',money(funds)]].map(([label,value])=><div key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="break-words text-xl font-bold tabular-nums">{value}</dd></div>)}</dl>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <Link href={reportLink('/dashboard/funds?action=transfer')} className={buttonLayout + ' border-emerald-800 bg-emerald-800 text-white hover:bg-emerald-900 active:bg-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800'}>
+              Record a transfer
+            </Link>
+            <Link href={reportLink('/dashboard/funds')} className="inline-flex min-h-11 items-center font-semibold text-emerald-900">Funds and reconciliation</Link>
+          </div>
           <details className="text-sm text-slate-600"><summary className="min-h-11 cursor-pointer content-center font-semibold">How these figures work</summary><p>Sales include invoiced sales and established historical sales. Collections include recorded payments and historical cash sales. Customer debt is the unpaid invoice balance at the end date. Tracked money shows recorded custody. Stock quantities show current inventory.</p></details>
           {data.config?.display_currency&&<p className="mt-2 text-sm">Sales: {displayConversion(String(finance.revenue),data.config,data.today)}</p>}
         </section>

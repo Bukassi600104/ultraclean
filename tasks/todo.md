@@ -419,3 +419,10 @@ Release verification compares the original data, privileges and application vers
 - [x] Test both role interfaces and the original cases in an isolated restore, including retries and preservation of recorded history.
 
 The private farm-overview-actions-2026-11-17 release folder holds the restore and workflow checks. The production migration and live version checks write their receipts there.
+
+## Farm overview transfer button
+
+- [x] Highlight Record a transfer in deep green on the Farm finances panel.
+- [x] Check its appearance and open the transfer form on phone and desktop.
+
+At 375px and 1440px, the button showed white text, a darker hover colour and a visible keyboard outline. Selecting it opened the farm transfer form.
