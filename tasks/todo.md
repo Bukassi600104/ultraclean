@@ -426,3 +426,11 @@ The private farm-overview-actions-2026-11-17 release folder holds the restore an
 - [x] Check its appearance and open the transfer form on phone and desktop.
 
 At 375px and 1440px, the button showed white text, a darker hover colour and a visible keyboard outline. Selecting it opened the farm transfer form.
+
+## Farm payment recipients and credit owing
+
+- [x] Use the three requested farm payment destinations and retain the actual recipient on sales, receipts and retries.
+- [x] Give both roles a clear way to record unpaid sales, earlier balances and later payments, with accurate debt, cash and sales figures.
+- [x] Test the forms, allocation, duplicates, corrections and permissions with isolated records.
+
+The private farm-receivers-credit-2026-11-17 release folder holds the restore checks, comparison of customer balances and verification from both production apps.

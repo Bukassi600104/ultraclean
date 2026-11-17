@@ -23,4 +23,14 @@ assert.equal(store.getPendingItems(a).length,1,'Lost/stale response must retain 
 sent=[];await syncManagerPending(b,{isCurrent:()=>true,send:async()=>{sent.push(1);return Response.json({},{status:201})}});assert.equal(sent.length,0);checks++;
 assert.ok(map.has('farm_pending_legacy'));checks++;
 await syncManagerPending(a,{isCurrent:()=>true,send:async()=>Response.json({data:[{id:crypto.randomUUID()}]},{status:201})});assert.equal(store.getPendingItems(a).length,0);checks++;
+const oldAdmin={actorId:'MD',business:'farm',periodId:'legacy'},targetPeriod=crypto.randomUUID(),otherPeriod=crypto.randomUUID();
+const credit={operation:'opening_balance',request_id:crypto.randomUUID(),payload:{amount:'30.25'}};
+store.savePending('/api/farm/credit',credit,oldAdmin,{targetPeriodId:targetPeriod});
+assert.throws(()=>store.savePending('/api/farm/credit',credit,oldAdmin,{targetPeriodId:otherPeriod}));checks++;
+let creditPosts=0;
+const deliver=async(url,opts)=>{creditPosts++;assert.equal(url,'/api/farm/credit');assert.deepEqual(JSON.parse(opts.body),credit);return Response.json({data:{id:crypto.randomUUID()}},{status:201});};
+for(const activePeriodId of [otherPeriod,undefined])await syncManagerPending(oldAdmin,{activePeriodId,isCurrent:()=>true,send:deliver});
+assert.equal(creditPosts,0);assert.equal(store.getPendingItems(oldAdmin).length,1);checks++;
+await syncManagerPending(oldAdmin,{activePeriodId:targetPeriod,isCurrent:()=>true,send:deliver});
+assert.equal(creditPosts,1);assert.equal(store.getPendingItems(oldAdmin).length,0);checks++;
 console.log(`PASS ${checks} offline identity checks: account/period boundaries, in-flight switch, retained unowned entries and safe retry`);

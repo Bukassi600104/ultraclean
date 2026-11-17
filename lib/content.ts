@@ -2,7 +2,7 @@ import {withManagerWrite} from "@/lib/manager-write-api";
 import {managerRpc} from "@/lib/manager-write-api";
 import {managerReadResponse} from "@/lib/manager-read-api";
 import { z } from "zod";
-import {cashReceiver} from "@/lib/operations-cash-validation";
+import {accountCashReceiver as cashReceiver} from "@/lib/operations-cash-validation";
 import { NextResponse } from "next/server";
 import { requireContentManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";

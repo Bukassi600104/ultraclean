@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {cashReceiver,cashPayerFields} from "@/lib/operations-cash-validation";
+import {accountCashReceiver as cashReceiver,cashPayerFields} from "@/lib/operations-cash-validation";
 
 const text = z.string().trim().min(1).max(3000);
 const optionalText = z.string().max(3000).nullable().optional();

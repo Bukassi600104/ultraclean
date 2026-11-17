@@ -11,6 +11,18 @@ for(const payload of [{...body.payload,actor_id:id},{...body.payload,amount:'-1'
 assert.equal((await api.GET(new Request('http://localhost/api/farm/credit'))).status,200);assert.equal(calls.at(-1)[0],'farm_credit_read');
 console.log('PASS customer API: trusted actor, exact positive amounts, valid dates and read scope');
 
+const earlier={operation:'opening_balance',request_id:id,payload:{date:'2026-10-30',customer_id:id,amount:'25.50',reference:'Invoice 12'}};
+assert.equal((await api.POST(request(earlier))).status,201);
+assert.equal(calls.at(-1)[1].p_operation,'opening_balance');
+assert.deepEqual(calls.at(-1)[1].p_payload,earlier.payload);
+const acceptedCalls=calls.length;
+for(const extra of [{amount:'0'},{amount:'1.000'},{reference:' '},{amount_paid:'12'},{cash_receiver:{type:'self'}}]){
+ assert.equal((await api.POST(request({...earlier,payload:{...earlier.payload,...extra}}))).status,400);
+}
+assert.equal(calls.length,acceptedCalls);
+assert.equal((await api.POST(request({operation:'void_opening_balance',request_id:id,id,payload:{reason:'Duplicate reference'}}))).status,201);
+console.log('PASS earlier credit and its reversal use their own operations, and cannot include a payment');
+
 const sales=load('app/api/farm/sales/route.ts');
 const response=await sales.POST(new Request('http://localhost/api/farm/sales',{method:'POST',headers:{'X-Request-ID':id},body:JSON.stringify([{date:'2026-10-30',product:'goat',quantity:3,unit_price:80000,customer_id:id,credit:true}])}));
 assert.equal(response.status,201);assert.equal(calls.at(-1)[0],'farm_credit_write');assert.equal(calls.at(-1)[1].p_operation,'invoice_batch');assert.equal(calls.at(-1)[1].p_payload.rows[0].pricing_basis,'per_head');

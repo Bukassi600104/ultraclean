@@ -27,7 +27,7 @@ export function multiplyMoney(left:MoneyInput,right:MoneyInput):string {
 export function subtractMoney(value: MoneyInput, ...costs: MoneyInput[]): string {
   return sumMoney([value, ...costs.map(cost => {const normalized=sumMoney([cost]);return normalized.startsWith("-")?normalized.slice(1):"-"+normalized;})]);
 }
-// Ledger arithmetic retains its full precision. Round once when presenting a currency amount.
+// Keep full precision until a posted invoice or displayed amount is rounded to cents.
 function moneyCents(value:MoneyInput):bigint {
  const {units,scale}=decimal(value);
  if(scale<=2)return units*powerOfTen(2-scale);
@@ -36,8 +36,12 @@ function moneyCents(value:MoneyInput):bigint {
  return units<BigInt(0)?-rounded:rounded;
 }
 
+export function roundMoneyToCents(value:MoneyInput):string {
+ return decimalText(moneyCents(value),2);
+}
+
 export function formatExactCurrency(value:MoneyInput,currency:string):string{
- const text=decimalText(moneyCents(value),2),[whole,fraction]=text.replace(/^-/,"").split(".");
+ const text=roundMoneyToCents(value),[whole,fraction]=text.replace(/^-/,"").split(".");
  return `${currency} ${text.startsWith("-")?"-":""}${BigInt(whole).toLocaleString("en-NG")}.${fraction}`;
 }
 

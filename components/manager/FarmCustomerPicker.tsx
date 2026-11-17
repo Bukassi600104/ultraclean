@@ -5,9 +5,10 @@ import {CreditForm} from './FarmCredit';
 import {useManagerFetch} from '@/contexts/ManagerPeriodContext';
 import {useFarmRecordRefresh} from '@/hooks/useFarmRecordRefresh';
 import type {CreditData} from '@/lib/farm-credit';
+import {sumMoney} from '@/lib/money';
 type Props={
  value:string;credit:boolean;onChange:(id:string,name:string)=>void;onCredit:(value:boolean)=>void;
- onTerms:(terms:{customerId:string;days:number|null})=>void;
+ onTerms:(terms:{customerId:string;days:number|null;outstanding:string|null})=>void;
  onRequest:()=>void;requestBusy:boolean;requestId?:string;draftSaved:boolean;
 };
 export function FarmCustomerPicker({value,credit,onChange,onCredit,onTerms,onRequest,requestBusy,requestId,draftSaved}:Props){
@@ -23,7 +24,8 @@ export function FarmCustomerPicker({value,credit,onChange,onCredit,onTerms,onReq
   return()=>c.abort();
  },[send,version,revision]);
  const customer=data?.customers.find(c=>c.id===value),days=customer?.credit_days??null;
- useEffect(()=>{onTerms({customerId:customer?.id||'',days});},[customer?.id,days,onTerms]);
+ const outstanding=customer&&Array.isArray(data?.invoices)?sumMoney(data.invoices.filter(i=>i.customer_id===customer.id&&!i.voided_at).map(i=>i.owed)):null;
+ useEffect(()=>{onTerms({customerId:customer?.id||'',days,outstanding});},[customer?.id,days,outstanding,onTerms]);
  useEffect(()=>{
   if(!requestId||!credit||days)return;
   const c=new AbortController();

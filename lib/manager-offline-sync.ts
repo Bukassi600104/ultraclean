@@ -9,12 +9,13 @@ export async function checkFarmSubmission(identity:QueueIdentity,requestId:strin
  if(body.status!=='confirmed'||typeof body.record_id!=='string'||!body.record_id.trim())return 'unknown';
  confirmSubmission(identity,requestId,kind==='report'?'/api/farm/daily-reports/submit':'/api/farm/operational-requests',body.record_id);return 'sent';
 }
-export async function syncManagerPending(identity:QueueIdentity,{send=fetch,isCurrent,signal}:{send?:typeof fetch;isCurrent:()=>boolean;signal?:AbortSignal}){
+export async function syncManagerPending(identity:QueueIdentity,{send=fetch,isCurrent,signal,activePeriodId}:{send?:typeof fetch;isCurrent:()=>boolean;signal?:AbortSignal;activePeriodId?:string|null}){
  const key=queueIdentityKey(identity);if(activeSyncs.has(key))return 0;activeSyncs.add(key);
  try{
  let synced=0;
  for(const item of getPendingItems(identity)){
   if(!isCurrent()||signal?.aborted)break;
+  if(item.targetPeriodId&&item.targetPeriodId!==(activePeriodId??identity.periodId))continue;
   if(getSubmissionStatus(identity,item.requestId)==='sent'){
    try{for(const id of item.mediaIds||[])await removeFarmMedia(id,identity);if(!isCurrent()||signal?.aborted)break;removePending(item.id,identity);synced++;}catch{/* Retain confirmed work until local cleanup succeeds. */}
    continue;

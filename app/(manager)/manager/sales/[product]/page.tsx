@@ -4,8 +4,10 @@ import {FarmCustomerPicker} from '@/components/manager/FarmCustomerPicker';
 import {useManagerFetch,useManagerPeriod,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
 import {CashReceiverSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
+import {isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
 
 import { formatCurrency } from "@/lib/utils";
+import {formatExactCurrency,multiplyMoney,roundMoneyToCents,subtractMoney,sumMoney} from "@/lib/money";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -85,9 +87,17 @@ const creditRequestSchema=z.object({customerId:z.string().uuid(),key:z.string().
 type CreditRequest=z.infer<typeof creditRequestSchema>;
 const storedSale=z.object({
  requestId:z.string().uuid(),request:creditRequestSchema.nullable(),
- draft:z.object({form:formDraft,stockGroup:z.string(),receiver:z.string(),batchId:z.string(),eggBatchId:z.string(),customerId:z.string(),credit:z.boolean(),amountReceived:z.string(),paymentDate:z.string()})
+ draft:z.object({form:formDraft,stockGroup:z.string(),receiver:z.string(),batchId:z.string(),eggBatchId:z.string(),customerId:z.string(),credit:z.boolean(),amountReceived:z.string().optional(),amountOwing:z.string().optional(),paymentDate:z.string()})
+   .refine(d=>(d.amountReceived!==undefined)!==(d.amountOwing!==undefined))
 });
-type SaleDraft={amountReceived?:string;paymentDate?:string;customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
+type SaleDraft={amountReceived?:string;amountOwing?:string;paymentDate?:string;customerId?:string;credit?:boolean;form:FormValues;batchId?:string;eggBatchId?:string;stockGroup:string;receiver:string};
+
+type CreditEntry = {basis:'paid'|'owing';value:string};
+const validAmount = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
+const zeroAmount = /^0(?:\.0+)?$/;
+function restoreCreditEntry(draft:Pick<SaleDraft,'amountReceived'|'amountOwing'>):CreditEntry {
+  return draft.amountOwing!==undefined ? {basis:'owing',value:draft.amountOwing} : {basis:'paid',value:draft.amountReceived??''};
+}
 
 export default function SaleProductPage() {
  const {product}=useParams<{product:string}>(),scope=useManagerPeriod();
@@ -102,9 +112,18 @@ function SaleForm({product}:{product:string}) {
   const productKey: Product = selectedProduct?.key === "eggs" ? "other" : selectedProduct?.key ?? "crops";
   const config = selectedProduct ?? FARM_PRODUCTS.find((item) => item.key === "crops")!;
   const [today, setToday] = useState("");
+  const [returnLink,setReturnLink]=useState({href:'/sales',label:'Back to Sales',savedOther:'/sales/other'});
+  useEffect(()=>{
+    const here=window.location.pathname,admin=here.startsWith('/dashboard/farm/'),source=new URLSearchParams(window.location.search);
+    const base=admin?'/dashboard/farm':here.startsWith('/manager/')?'/manager':'';
+    const query=new URLSearchParams();
+    for(const key of ['from','to','period_id','manager_id']){const value=source.get(key);if(value)query.set(key,value);}
+    const creditEntry=source.get('payment')==='credit',suffix=query.size?'?'+query:'';
+    setReturnLink({href:base+(creditEntry?'/credit':'/sales')+suffix,label:creditEntry?'Back to Customers & payments':'Back to Sales',savedOther:base+'/sales/other'+suffix});
+  },[]);
 
   const [customerId,setCustomerId]=useState(''),[credit,setCredit]=useState(false);
-  const [amountReceived,setAmountReceived]=useState(''),[paymentDate,setPaymentDate]=useState('');
+  const [creditEntry,setCreditEntry]=useState<CreditEntry>({basis:'paid',value:''}),[paymentDate,setPaymentDate]=useState('');
   const [batchId,setBatchId]=useState('');
   const [eggBatchId,setEggBatchId]=useState('');
 
@@ -126,12 +145,14 @@ function SaleForm({product}:{product:string}) {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [savedItems, setSavedItems] = useState<{ label: string; total: number }[]>([]);
   const [dirty, setDirty] = useState(false);
-  const scope=useManagerPeriod(),personal=scope?.mode==="personal",submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey);
+  const scope=useManagerPeriod(),personal=scope?.mode==="personal";
+  const legacyView=scope?.mode==='legacy'&&scope.periodId&&scope.actorId!==scope.managerId?':view:'+scope.periodId:'';
+  const submission=useFarmFinancialSubmission<SaleDraft>("sale:"+productKey+legacyView);
   const [receiver,setReceiver]=useState("");
-  const [terms,setTerms]=useState<{customerId:string;days:number|null}>({customerId:'',days:null});
+  const [terms,setTerms]=useState<{customerId:string;days:number|null;outstanding:string|null}>({customerId:'',days:null,outstanding:null});
   const [creditRequest,setCreditRequest]=useState<CreditRequest|null>(null),[asking,setAsking]=useState(false),askLock=useRef(false);
   const [draftProblem,setDraftProblem]=useState(''),[restored,setRestored]=useState(false),draftFault=useRef(false);
-  const draftKey=useManagerStorageKey(scope?.actorId?`farm-sale-draft:${scope.actorId}:${product}`:null);
+  const draftKey=useManagerStorageKey(scope?.actorId?`farm-sale-draft:${scope.actorId}:${product}${legacyView}`:null);
   const approved=terms.customerId===customerId&&terms.days!==null&&terms.days>0;
   const emptyDay=getTodayStr();
   useEffect(()=>{
@@ -147,13 +168,21 @@ function SaleForm({product}:{product:string}) {
       if(raw){
         const stored=storedSale.parse(JSON.parse(raw)),d=stored.draft;
         setForm(d.form);setStockGroup(d.stockGroup);setBatchId(d.batchId||'');setEggBatchId(d.eggBatchId||'');
-        setReceiver(d.receiver);setCustomerId(d.customerId);setCredit(d.credit);setAmountReceived(d.amountReceived);
+        setReceiver(isFarmReceiverChoice(d.receiver)?d.receiver:'');setCustomerId(d.customerId);setCredit(d.credit);setCreditEntry(restoreCreditEntry(d));
         setPaymentDate(d.paymentDate);setRequestId(stored.requestId);setCreditRequest(stored.request);setDirty(true);
-      }else if(productKey==='other'){setEggBatchId(new URLSearchParams(window.location.search).get('egg_batch')||'');}
+      }else{
+        const query=new URLSearchParams(window.location.search);
+        if(productKey==='other')setEggBatchId(query.get('egg_batch')||'');
+        if(query.get('payment')==='credit'){
+          setCredit(true);setCreditEntry({basis:'paid',value:'0'});
+          const customer=query.get('customer_id');
+          if(customer&&z.string().uuid().safeParse(customer).success)setCustomerId(customer);
+        }
+      }
       setRestored(true);
     }catch{draftFault.current=true;setDraftProblem('Your device could not open the saved sale. Restore access to device storage before saving.');}
   },[draftKey,productKey]);
-  const waitingDraft=useMemo(()=>({form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate}),[form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate]);
+  const waitingDraft=useMemo(()=>({form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,...(creditEntry.basis==='owing'?{amountOwing:creditEntry.value}:{amountReceived:creditEntry.value}),paymentDate}),[form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,creditEntry,paymentDate]);
   const persistDraft=useCallback((request:CreditRequest|null)=>{
     if(!draftKey||!restored||draftFault.current)throw Error('Wait for your saved sale to load before continuing.');
     localStorage.setItem(draftKey,JSON.stringify({requestId,request,draft:waitingDraft}));
@@ -182,7 +211,7 @@ function SaleForm({product}:{product:string}) {
     }
     finally{askLock.current=false;setAsking(false);}
   }
-  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setAmountReceived(submission.pending.draft.amountReceived??'');setPaymentDate(submission.pending.draft.paymentDate||'');setRequestId(submission.pending.id);},[submission.pending]);
+  useEffect(()=>{if(!submission.pending)return;setForm(submission.pending.draft.form);setStockGroup(submission.pending.draft.stockGroup);setBatchId(submission.pending.draft.batchId||'');setEggBatchId(submission.pending.draft.eggBatchId||'');setReceiver(submission.pending.draft.receiver);setCustomerId(submission.pending.draft.customerId||'');setCredit(submission.pending.draft.credit||false);setCreditEntry(restoreCreditEntry(submission.pending.draft));setPaymentDate(submission.pending.draft.paymentDate||'');setRequestId(submission.pending.id);},[submission.pending]);
 
   useEffect(() => {
     if (!form.date) return;
@@ -199,17 +228,21 @@ function SaleForm({product}:{product:string}) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  // Compute total
-  const computedTotal = (() => {
-    if (productKey === "catfish") {
-      const kg = Number(form.kg);
-      const rate = Number(form.amount_per_kg);
-      return kg > 0 && rate > 0 ? kg * rate : 0;
-    }
-    const qty = Number(form.quantity);
-    const price = Number(form.unit_price);
-    return qty > 0 && price > 0 ? qty * price : 0;
-  })();
+  const units=Number(productKey==='catfish'?form.kg:form.quantity);
+  const unitPrice=Number(productKey==='catfish'?form.amount_per_kg:form.unit_price);
+  const saleTotal=units>0&&unitPrice>0&&Number.isFinite(units*unitPrice)
+    ? roundMoneyToCents(multiplyMoney(units,unitPrice)) : '0.00';
+  const computedTotal=Number(saleTotal);
+  const remainder=validAmount.test(creditEntry.value)?subtractMoney(saleTotal,creditEntry.value):'';
+  const withinTotal=remainder!==''&&!remainder.startsWith('-');
+  const amountReceived=creditEntry.basis==='paid'?creditEntry.value
+    :withinTotal&&!zeroAmount.test(creditEntry.value)?remainder:'';
+  const unpaidAmount=creditEntry.basis==='owing'?creditEntry.value:remainder;
+  const validCredit=withinTotal&&!zeroAmount.test(unpaidAmount);
+
+  function switchCreditEntry(){
+    setCreditEntry({basis:creditEntry.basis==='paid'?'owing':'paid',value:withinTotal&&computedTotal>0?remainder:''});
+  }
 
   function validate(): string | null {
     if (!form.date) return "Select a date";
@@ -217,8 +250,10 @@ function SaleForm({product}:{product:string}) {
     if(credit&&!approved)return "Request or check the approved credit terms before saving this sale";
     if(customerId&&terms.customerId!==customerId)return "Choose an available customer before saving";
     if(!customerId&&!submission.pending)return "Choose a customer for this invoice";
-    if((!credit||Number(amountReceived)>0)&&customerId&&!receiver)return "Choose who actually received the payment";
-    if(credit&&(!/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(amountReceived)||Number(amountReceived)>=computedTotal))return "Enter the payment received, from zero to less than the sale total";
+    if(credit&&!validCredit)return creditEntry.basis==='owing'
+      ? "Enter the unpaid amount, above zero and up to the sale total."
+      : "Enter the payment received, from zero to less than the sale total";
+    if((!credit||Number(amountReceived)>0)&&customerId&&!isFarmReceiverChoice(receiver))return "Choose who received the payment.";
     if(Number(amountReceived)>0&&paymentDate&&paymentDate<form.date)return "Payment date cannot be before this sale";
     if ((productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
     if(eggsOnly&&!eggBatchId)return "Choose the poultry group that supplied the eggs";
@@ -258,12 +293,17 @@ function SaleForm({product}:{product:string}) {
     rows.push({ label: "Total", value: fmt(computedTotal) });
     const received = credit ? Number(amountReceived) : computedTotal;
     rows.push({label:"Amount received with this sale",value:fmt(received)});
+    if(credit&&validCredit)rows.push({label:"Unpaid amount from this sale",value:formatExactCurrency(unpaidAmount,'NGN')});
     if(received>0) rows.push({label:"Payment date",value:paymentDate||form.date});
     if (form.customer_name) rows.push({ label: "Customer", value: form.customer_name });
     return rows;
   })();
 
   async function handleConfirmedSave() {
+    if (!submission.pending) {
+      const error = validate();
+      if (error) {setShowConfirm(false);toast.error(error);return;}
+    }
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -276,7 +316,7 @@ function SaleForm({product}:{product:string}) {
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: customerId ? undefined : form.customer_name.trim() || undefined,
-        ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),payment_date:paymentDate||form.date}:{}),
+        ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),...(!credit||Number(amountReceived)>0?{payment_date:paymentDate||form.date}:{})}:{}),
         ...((!credit||Number(amountReceived)>0)&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
 
@@ -290,7 +330,7 @@ function SaleForm({product}:{product:string}) {
         if (productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) payload.other_product_name = form.crop_type.trim();
       }
 
-      const res = await submission.send("/api/farm/sales",[payload],{form,stockGroup,receiver,batchId,eggBatchId,customerId,credit,amountReceived,paymentDate},requestId);
+      const res = await submission.send("/api/farm/sales",[payload],waitingDraft,requestId);
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -311,10 +351,11 @@ function SaleForm({product}:{product:string}) {
         crop_type: "", payment_method: prev.payment_method,
         customer_name: "", notes: "",
       }));
-      setShowConfirm(false);setReceiver("");setCustomerId("");setCredit(false);setAmountReceived("");setPaymentDate("");
+      setShowConfirm(false);setReceiver("");setCustomerId("");setCredit(false);setCreditEntry({basis:"paid",value:""});setPaymentDate("");
       toast.success("Sale recorded!");
     } catch (e) {
       if((e as Error).name==="AbortError")return;
+      setShowConfirm(false);
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Failed to save. Please try again.");
     } finally {
@@ -322,7 +363,7 @@ function SaleForm({product}:{product:string}) {
     }
   }
 
-  if(eggsOnly&&submission.pending&&!submission.pending.draft.eggBatchId)return <section className="rounded-xl border bg-white p-4"><h2 className="font-bold">Previous sale awaiting confirmation</h2><p className="mt-1 text-sm">Open the saved Other sale before starting another entry.</p><Link className="mt-2 inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={typeof window!=="undefined"&&window.location.pathname.startsWith("/manager/")?"/manager/sales/other":"/sales/other"}>Open saved sale</Link></section>;
+  if(eggsOnly&&submission.pending&&!submission.pending.draft.eggBatchId)return <section className="rounded-xl border bg-white p-4"><h2 className="font-bold">Previous sale awaiting confirmation</h2><p className="mt-1 text-sm">Open the saved Other sale before starting another entry.</p><Link className="mt-2 inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={returnLink.savedOther}>Open saved sale</Link></section>;
   if (!selectedProduct) return <p className="p-4">Unknown sale product. Choose a product from Sales.</p>;
 
   if (isDayClosed&&!submission.pending) {
@@ -333,8 +374,8 @@ function SaleForm({product}:{product:string}) {
         </div>
         <p className="text-lg font-bold text-gray-900 mb-1">Day is Closed</p>
         <p className="text-sm text-gray-500 mb-4">{form.date} is closed. {dirty?"Your sale draft stays on this device. Ask the MD/Owner to review the original sale date.":"Ask the MD/Owner if a dated entry needs review."}</p>
-        <button onClick={() => router.push("/sales")} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: "#1b4332" }}>
-          Back to Sales
+        <button onClick={() => router.push(returnLink.href)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: "#1b4332" }}>
+          {returnLink.label}
         </button>
       </div>
     );
@@ -441,9 +482,16 @@ function SaleForm({product}:{product:string}) {
           </div>
         )}
 
-        <FarmCustomerPicker value={customerId} credit={credit} onChange={(id,name)=>{setCustomerId(id);setCreditRequest(null);updateField('customer_name',name);}} onCredit={v=>{setCredit(v);setAmountReceived(v?'0':'');}} onTerms={setTerms} onRequest={()=>void askForTerms()} requestBusy={asking} requestId={creditRequest?.id} draftSaved={dirty&&restored&&!draftProblem}/>
-        {credit&&<label className="block text-sm font-semibold">Amount received now (NGN)<input aria-label="Amount received now" inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={amountReceived} onChange={e=>setAmountReceived(e.target.value)}/><span className="text-sm font-normal">Enter 0 when nothing has been received.</span></label>}
-        {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
+        <FarmCustomerPicker value={customerId} credit={credit} onChange={(id,name)=>{setCustomerId(id);setCreditRequest(null);updateField('customer_name',name);}} onCredit={v=>{setCredit(v);setCreditEntry({basis:'paid',value:v?'0':''});}} onTerms={setTerms} onRequest={()=>void askForTerms()} requestBusy={asking} requestId={creditRequest?.id} draftSaved={dirty&&restored&&!draftProblem}/>
+        {credit&&<div className="space-y-2">
+          <label className="block text-sm font-semibold">{creditEntry.basis==='paid'?'Amount received now':'Unpaid amount from this sale'} (NGN)
+            <input aria-label={creditEntry.basis==='paid'?'Amount received now':'Unpaid amount from this sale'} inputMode="decimal" className="mt-1 min-h-11 w-full rounded-xl border p-3" value={creditEntry.value} onChange={e=>setCreditEntry({...creditEntry,value:e.target.value})}/>
+          </label>
+          {creditEntry.basis==='owing'&&validCredit&&<p className="text-sm">Amount paid now <strong>{formatExactCurrency(amountReceived,'NGN')}</strong></p>}
+          <button type="button" className="min-h-11 text-left text-sm font-semibold text-emerald-900 underline" onClick={switchCreditEntry}>{creditEntry.basis==='paid'?'Enter unpaid amount instead':'Enter amount paid instead'}</button>
+        </div>}
+        {credit&&terms.customerId===customerId&&terms.outstanding!==null&&validCredit&&<p className="rounded-xl bg-amber-50 p-3 text-sm">Customer balance after this sale: <strong>{formatExactCurrency(sumMoney([terms.outstanding,unpaidAmount]),'NGN')}</strong></p>}
+        {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" paymentDate={paymentDate||form.date} value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
         {(!credit||Number(amountReceived)>0)&&<div>
           <label className="text-sm font-semibold text-slate-700">Payment Method</label>
           <div className="mt-1.5 grid grid-cols-3 gap-2">
@@ -477,7 +525,7 @@ function SaleForm({product}:{product:string}) {
           style={{ backgroundColor: config.color }}>
           {submission.pending?"Retry saved sale":"Save Sale"}
         </button>
-        <button onClick={() => router.push("/sales")}
+        <button onClick={() => router.push(returnLink.href)}
           className="rounded-2xl px-5 py-4 font-semibold text-sm border border-gray-200 text-gray-600">
           Done
         </button>

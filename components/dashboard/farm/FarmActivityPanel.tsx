@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FARM_PRODUCTS } from "@/lib/farm-products";
 
 import {CashReceiverSelect,CashPayerSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
+import {isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
 import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
 type FarmRecord = Record<string, unknown>;
@@ -84,7 +85,10 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
       if(field.numeric&&!Number.isFinite(Number(value)))return toast.error("Enter valid numeric values");
       changes[field.key]=field.numeric?Number(value):value;
     }
-    if(operation==="update"&&recordType==="sale"&&cashReceiver)changes.cash_receiver=selectedCashReceiver(cashReceiver);
+    if(operation==="update"&&recordType==="sale"&&cashReceiver){
+      if(!isFarmReceiverChoice(cashReceiver))return toast.error("Choose who received the payment.");
+      changes.cash_receiver=selectedCashReceiver(cashReceiver);
+    }
     if(operation==="update"&&["expense","feed"].includes(recordType)&&cashPayer)changes.cash_payer_account_id=cashPayer;
     if(operation==="update"&&categoryEdited)changes.stock_group_id=stockGroup||null;
     setSaving(true);
@@ -112,7 +116,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
       <Label>Action<select className="block border rounded p-2 w-full mt-1" value={operation} onChange={e=>{setOperation(e.target.value);setRetryId(crypto.randomUUID());}}><option value="update">Correct details</option>{['sale','expense','fund'].includes(recordType)&&<option value="void">Void record</option>}{recordType==='supply'&&<option value="archive">Remove from active supplies</option>}</select></Label>
       {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} inputMode={animalCount||(mortality&&field.key==="quantity")?"numeric":undefined} min={animalCount||(mortality&&field.key==="quantity")?0:undefined} step={animalCount||(mortality&&field.key==="quantity")?1:field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
       {operation==="update"&&(["inventory","inventory_transaction"].includes(recordType)||(recordType==="sale"&&!!row.pricing_basis))&&<LivestockGroupPicker product={values.product||String(row.product)} value={stockGroup} onChange={chooseCategory}/>}
-      {operation==="update"&&recordType==="sale"&&<CashReceiverSelect business="farm" value={cashReceiver} onChange={value=>{setCashReceiver(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
+      {operation==="update"&&recordType==="sale"&&<CashReceiverSelect business="farm" paymentDate={String(values.date||row.date||'')} value={cashReceiver} onChange={value=>{setCashReceiver(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["expense","feed"].includes(recordType)&&<CashPayerSelect business="farm" currency="NGN" bucket={recordType==="expense"&&values.expense_source==="sales_cash"?"sales":"owner"} value={cashPayer} onChange={value=>{setCashPayer(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["sale","expense","feed"].includes(recordType)&&<p className="text-xs text-gray-600">Leave the recorded cash person unchanged unless you have verified a correction. Records from before verified cash tracking retain unknown historical custody.</p>}
       <Label>Reason<Textarea value={reason} maxLength={1000} onChange={e=>{setReason(e.target.value);setRetryId(crypto.randomUUID());}}/></Label>

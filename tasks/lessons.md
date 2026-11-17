@@ -78,3 +78,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Exercise credit selection for a customer with no approved terms, and funding review for the reported expense type on its original date with no eligible payer. Keep saved source amounts exact and round only the amount shown on screen.
 
 - Trace overview figures to dated movements and physical counts separately. A customer payment already in the cash ledger has a known event type even when the source has no status field. Open each attention link through to the matching record and its allowed action.
+
+- Test the three farm payment destinations on the payment form and the sale form. The farm_payment_destinations migration routes each to its own holder. The farm_opening_receivables migration records an earlier unpaid amount against a customer. Check that later receipts reduce it once and that adding the earlier balance creates zero sales, stock movements and cash receipts.
