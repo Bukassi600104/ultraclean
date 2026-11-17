@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { FarmOverview } from '@/lib/farm-overview';
 import type { FarmAlert } from '@/lib/farm-summary';
 import { formatExactCurrency } from '@/lib/money';
@@ -23,13 +23,16 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
   const animalUnit = animals.length && animals.every(a => a.unit === animals[0].unit) ? animals[0].unit : 'animals';
   const counted = data.feed.filter(f => f.amount != null);
   const missing = data.feed.length - counted.length;
+  const [requestsOnly,setRequestsOnly]=useState(false);
+  const decisions=alerts.filter(alert=>alert.decision);
+  const visibleAlerts=requestsOnly?decisions:alerts;
   const tiles = [
-    {label:'Farm produce', value:animals.length?count(animals.reduce((n,p)=>n+Number(p.amount),0))+' '+animalUnit:String(data.produce.length), note:animals.length?animals.map(a=>a.label+' '+count(a.amount!)).join(' · '):'Produce types recorded', href:link('stores?view=animals')},
+    {label:'Farm produce', value:animals.length?count(animals.reduce((n,p)=>n+Number(p.amount),0))+' '+animalUnit:String(data.produce.length), note:animals.length?'Recorded stock · view counts':'Produce types recorded', href:'#produce-quantities'},
     {label:'Feed in store', value:counted.length?count(counted.reduce((n,f)=>n+Number(f.amount),0)):missing?'Count needed':data.feedTypesComplete?'No feed recorded':'Unavailable', note:counted.length?(missing?'Bags counted · '+missing+(missing===1?' type needs':' types need')+' a count':'Unopened bags'):'Unopened bags', href:'#feed-quantities'},
-    {label:'Mortality', value:count(data.mortality.total), note:'Recorded deaths in period', href:link(supervisor?'mortality':'inventory?tab=mortality')},
+    {label:data.to===data.today?'Mortality today':'Mortality on '+overviewDate(data.to), value:data.deathsOnEndDate==null?'Unavailable':count(data.deathsOnEndDate), note:count(data.mortality.total)+(data.mortality.total===1?' death':' deaths')+' in the selected period', href:link(supervisor?'mortality':'inventory?tab=mortality#mortality-log')},
     {label:'Sales', value:money(data.sales), note:money(data.collected)+' received', href:link('sales')},
     {label:'Customer debt', value:money(data.debt), note:'Outstanding on '+overviewDate(data.to), href:link('credit')},
-    {label:'Requests / purchases', value:count(data.requestCount+data.purchaseCount), note:data.requestCount+' requests · '+data.purchaseCount+' purchases awaiting a decision'+(data.purchaseCount?' · '+money(data.purchaseAmount):''), href:'#overview-attention'},
+    {label:'Requests / purchases', value:count(data.requestCount+data.purchaseCount), note:data.requestCount+' requests · '+data.purchaseCount+' purchases awaiting a decision'+(data.purchaseCount?' · '+money(data.purchaseAmount):''), href:decisions.length===1?link(decisions[0].href):decisions.length?'#overview-attention':link('operational-requests')},
   ];
   const todayRows = [...data.dailyReports.map(r=>{
     const area=reportArea(r.area);
@@ -37,7 +40,7 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
   }),...data.logs];
   return <section className="min-w-0 space-y-4 text-[#203328]" aria-label="Farm at a glance">
     <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#cfdacd] bg-[#d9e2d8] sm:grid-cols-3 xl:grid-cols-6">
-      {tiles.map(t=><a key={t.label} href={t.href} className="min-w-0 bg-white px-3.5 py-4 hover:bg-[#f4f8f2] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700">
+      {tiles.map(t=><a key={t.label} href={t.href} onClick={t.href==='#overview-attention'?()=>setRequestsOnly(true):undefined} className="min-w-0 bg-white px-3.5 py-4 hover:bg-[#f4f8f2] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700">
         <span className="block text-sm font-semibold text-[#526355]">{t.label}</span>
         <strong className="my-1.5 block break-words text-2xl font-bold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere]">{t.value}</strong>
         <span className="block text-xs leading-5 text-[#455749]">{t.note}</span>
@@ -45,9 +48,10 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
     </div>
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <section id="overview-attention" className={card+' scroll-mt-28'}>
-        <div className="flex items-center justify-between gap-2"><h3 className={heading}>Needs your attention</h3><span className="text-sm text-slate-600">{alerts.length} {alerts.length===1?'item':'items'}</span></div>
-        {alerts.length?<PreviewRows rows={alerts} render={a=><Link href={link(a.href)} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border-l-4 border-l-amber-600 bg-[#f1f4ee] px-3 py-2 hover:bg-[#e7eee4]">
-          <span className="min-w-0"><strong className="block break-words text-sm">{a.title}</strong><span className="block break-words text-sm text-[#455749]">{a.detail}</span></span><span className="shrink-0 text-sm font-semibold text-emerald-900">Open</span>
+        <div className="flex items-center justify-between gap-2"><h3 className={heading}>Needs your attention</h3><span className="text-sm text-slate-600">{visibleAlerts.length} {visibleAlerts.length===1?'item':'items'}</span></div>
+        {requestsOnly&&<button type="button" className={action} onClick={()=>setRequestsOnly(false)}>Show all attention items</button>}
+        {visibleAlerts.length?<PreviewRows rows={visibleAlerts} render={a=><Link href={link(a.href)} className="flex min-h-12 items-center justify-between gap-3 rounded-lg border-l-4 border-l-amber-600 bg-[#f1f4ee] px-3 py-2 hover:bg-[#e7eee4]">
+          <span className="min-w-0"><strong className="block break-words text-sm">{a.title}</strong><span className="block break-words text-sm text-[#455749]">{a.detail}</span></span><span className="shrink-0 text-sm font-semibold text-emerald-900">{a.action}</span>
         </Link>}/>:<p className="mt-3 text-sm text-[#455749]">Nothing needs attention in this view.</p>}
         <div className="mt-2 flex flex-wrap gap-x-4"><Link href={link('operational-requests')} className={action}>View requests</Link><Link href={link('purchases')} className={action}>View purchases</Link></div>
       </section>
@@ -61,8 +65,10 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
     <div className="grid items-start gap-4 lg:grid-cols-2">
       <section id="produce-quantities" className={card+' scroll-mt-28'}>
         <div className="flex items-center justify-between gap-2"><h3 className={heading}>Produce on hand</h3><Link className={action} href={link('stores?view=animals')}>{supervisor?'Record animal count':'Review or correct counts'}</Link></div>
-        <QuantityList rows={data.produce} empty="No produce inventory recorded in this view."/>
-        {data.mortality.products.length>0&&<p className="mt-3 border-t pt-3 text-sm text-[#455749]"><strong>Mortality in period</strong> · {data.mortality.products.map(m=>farmProductLabel(m.product)+' '+count(m.quantity)).join(' · ')}</p>}
+        <p className="text-xs text-[#526355]">Current recorded stock · {overviewDate(data.today)}</p>
+        <QuantityList rows={data.produce} empty="No produce inventory recorded in this view." stockLink={id=>link('stores?view=animals#stock-'+encodeURIComponent(id))} supervisor={supervisor}/>
+        {data.mortality.products.length>0&&<div className="mt-3 border-t pt-3 text-sm text-[#455749]"><strong>Deaths in the selected period</strong> · {data.mortality.products.map(m=>farmProductLabel(m.product)+' '+count(m.quantity)).join(' · ')}
+          {!supervisor&&<Link className={action+' ml-2'} href={link('inventory?tab=mortality#mortality-log')}>Review mortality entries</Link>}</div>}
       </section>
       <section id="feed-quantities" className={card+' scroll-mt-28'}>
         <div className="flex items-center justify-between gap-2"><h3 className={heading}>Feed by type</h3><Link className={action} href={link('feed-stock')}>Feed inventory</Link></div>
@@ -79,6 +85,11 @@ function PreviewRows<T extends {id:string}>({rows,render}:{rows:T[];render:(row:
   return <>{list(rows.slice(0,4))}{rows.length>4&&<details><summary className="min-h-11 cursor-pointer content-center text-sm font-semibold text-emerald-900">Show {rows.length-4} more</summary>{list(rows.slice(4))}</details>}</>;
 }
 
-function QuantityList({rows,empty}:{rows:FarmOverview['produce'];empty:string}) {
-  return rows.length?<dl className="mt-2 divide-y divide-[#dde4d9]">{rows.map(row=><div key={row.label} className="flex min-h-10 flex-wrap items-baseline justify-between gap-x-3 py-2 text-sm"><dt className="break-words capitalize">{row.label}</dt><dd className="font-bold tabular-nums">{row.amount===null?'Count needed':count(row.amount)+' '+row.unit}{'usableKg' in row&&row.usableKg!=null&&<small className="ml-2 font-normal">({String(row.usableKg)} kg estimated usable)</small>}</dd></div>)}</dl>:<p className="mt-3 text-sm text-[#455749]">{empty}</p>;
+function QuantityList({rows,empty,stockLink,supervisor}:{rows:FarmOverview['produce'];empty:string;stockLink?:(id:string)=>string;supervisor?:boolean}) {
+  return rows.length?<dl className="mt-2 divide-y divide-[#dde4d9]">{rows.map(row=><div key={row.label} className="flex min-h-10 flex-wrap items-baseline justify-between gap-x-3 py-2 text-sm"><dt className="break-words capitalize">{row.label}</dt><dd className="text-right font-bold tabular-nums">{row.amount===null?'Count needed':count(row.amount)+' '+row.unit}{'usableKg' in row&&row.usableKg!=null&&<small className="ml-2 font-normal">({String(row.usableKg)} kg estimated usable)</small>}</dd>
+    {stockLink&&row.stockId&&['animals','birds','fish'].includes(row.unit)&&<dd className="flex w-full flex-wrap items-center justify-between gap-x-2 text-xs text-[#455749]">
+      <span>{row.lastCount?'Last counted '+count(row.lastCount.quantity)+' · '+overviewDate(row.lastCount.date)+' · '+row.lastCount.status:'Physical count not yet recorded'}</span>
+      <Link className={action} href={stockLink(row.stockId)}>{supervisor?'Count ':'Review '}{row.label}</Link>
+    </dd>}
+  </div>)}</dl>:<p className="mt-3 text-sm text-[#455749]">{empty}</p>;
 }

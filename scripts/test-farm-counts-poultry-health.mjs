@@ -9,6 +9,9 @@ const store=(actor,op,payload,id=null,retry=crypto.randomUUID())=>scalar(db,'sel
 const health=(actor,payload,item=null,retry=crypto.randomUUID())=>scalar(db,"select farm_health_write($1,'note',$2::jsonb,$3,$4)",[actor,json(payload),item,retry]);
 const reports=(actor,area,observations)=>scalar(db,'select farm_daily_report_submit($1,$2::jsonb,$3)',[actor,json({report_date:date,sections:{template_version:3,area,observations},decision_required:false}),crypto.randomUUID()]);
 try{
+  // The reported loss was a standalone movement, entered before this correction existed.
+  await db.query("insert into farm_inventory(product,current_stock) values('turkey',8)");
+  const historical=await scalar(db,"insert into farm_inventory_transactions(product,action,quantity,date,created_by) values('turkey','mortality',4,$1,$2) returning to_jsonb(farm_inventory_transactions.*)",[date,ids.farm]);
   await periodWrite(db,ids.admin,'activate');
   const period=await scalar(db,"select id from manager_periods where manager_id=$1 and business='farm'",[ids.farm]);
   await scalar(db,"select farm_v2_write($1,'inventory_transaction','create',$2::jsonb,null,null,$3)",[ids.admin,json({date,product:'chicken',action:'add',quantity:9}),crypto.randomUUID()]);
@@ -33,6 +36,20 @@ try{
   const zero=await store(ids.farm,'count',{...count,quantity:0});
   await store(ids.admin,'decide_count',decision,zero.id);assert.equal(await stock(),0);
   assert.equal((await stores(ids.farm)).counts.find(n=>n.id===zero.id).decision.decision,'approve');
+
+  const correctDeath=(who,quantity,key,changes={})=>scalar(db,"select farm_v2_write($1,'inventory_transaction','update',$2::jsonb,$3,$4,$5)",[who,json({date,quantity,...changes}),historical.id,'Checked the original mortality entry',key]);
+  const turkeyCount=()=>scalar(db,"select current_stock::int from farm_inventory where product='turkey'");
+  await assert.rejects(()=>correctDeath(ids.farm,0,crypto.randomUUID()),e=>e.code==='42501');
+  await assert.rejects(()=>correctDeath(ids.admin,0,crypto.randomUUID(),{product:'pig'}),e=>e.code==='22023');
+  await assert.rejects(()=>correctDeath(ids.admin,0.5,crypto.randomUUID()),e=>e.code==='22023');
+  assert.equal(await turkeyCount(),4);
+  const correctionId=crypto.randomUUID(),reversal=await correctDeath(ids.admin,0,correctionId);
+  assert.equal(reversal.correction_of,historical.id);assert.equal(reversal.correction_role,'reversal');assert.equal(reversal.date,date);
+  assert.deepEqual(await correctDeath(ids.admin,0,correctionId),reversal);assert.equal(await turkeyCount(),8);
+  await assert.rejects(()=>correctDeath(ids.admin,0,crypto.randomUUID()),e=>e.code==='40001');
+  assert.equal(await scalar(db,"select count(*)::int from farm_inventory_transactions where correction_of=$1",[historical.id]),1);
+  assert.deepEqual(await scalar(db,"select to_jsonb(t) from farm_inventory_transactions t where id=$1",[historical.id]),historical);
+  assert.equal(await scalar(db,"select count(*)::int from farm_activity where record_type='inventory_transaction' and before_value->>'id'=$1 and reason='Checked the original mortality entry'",[historical.id]),1);
 
   await assert.rejects(()=>reports(ids.farm,'poultry_a',{animal_count:1.5}),e=>e.code==='22023');
   await assert.rejects(()=>reports(ids.farm,'crops',{animal_count:2}),e=>e.code==='22023');

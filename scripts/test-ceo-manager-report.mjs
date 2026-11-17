@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';import {managerDatabase,ids,scalar,periodWrite} from '../tests/helpers/manager-db.mjs';
+import {load} from './load-pure-typescript.mjs';
+const {cashRecordLabels}=load('lib/cash-record-display.ts');
 const db=await managerDatabase();let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++},report=(actor,business,period=null)=>scalar(db,'select manager_report_snapshot($1,$2,$3::uuid,$4::date,$5::date)',[actor,business,period,'2026-10-26','2026-10-28']);
 try{
  await periodWrite(db,ids.admin,'activate');const people=['00000000-0000-4000-8000-000000000091','00000000-0000-4000-8000-000000000092'],periods=[];
@@ -29,5 +31,15 @@ try{
 
  await db.exec("select set_config('operations.actor','',false),set_config('operations.period','',false)");
  const future='00000000-0000-4000-8000-000000000096';await db.query('insert into auth.users(id) values($1)',[future]);await db.query("insert into profiles(id,role) values($1,'manager')",[future]);const futurePeriod=await periodWrite(db,ids.admin,'provision',{manager_id:future,business:'farm',starts_on:'2099-01-01'});const futureHandover=await scalar(db,"select handover_write($1,'get')",[future]);await assert.rejects(()=>scalar(db,"select handover_write($1,'finalize',$2,'[]',$3::uuid)",[future,futureHandover.sessionId,crypto.randomUUID()]),e=>e.code==='42501');checks++;eq(await scalar(db,"select status from manager_periods where id=$1",[futurePeriod.id]),'awaiting_handover');
+ const today=await scalar(db,"select (now() at time zone 'Africa/Lagos')::date::text");
+ const buyer=await scalar(db,"select farm_credit_write($1,'customer',$2,null,$3)",[people[1],JSON.stringify({name:'Customer on receipt'}),crypto.randomUUID()]);
+ const receipt=await scalar(db,"select farm_credit_write($1,'receipt',$2,null,$3)",[people[1],JSON.stringify({customer_id:buyer.id,date:today,amount:'135000.00',cash_receiver:{type:'ceo',profile_id:ids.admin}}),crypto.randomUUID()]);
+ for(const scope of [null,periods[1]]){
+  const snapshot=await scalar(db,'select manager_report_snapshot($1,$2,$3::uuid,$4::date,$4::date)',[ids.admin,'farm',scope,today]);
+  const movement=snapshot.records.operations_cash_events.find(row=>row.record_id===receipt.id);
+  eq(movement.operation,'inflow');eq(movement.status,undefined);eq(movement.created_by_name,'Report 1');eq(movement.amount_exact,'135000.00');
+  const label=cashRecordLabels(snapshot.records,snapshot.cash.accounts).get(movement.id);
+  eq(label,{details:'From Customer on receipt · Received by admin',status:'Payment received'});eq(movement.source_name,'Outside business');
+ }
  console.log('PASS '+checks+' snapshot report checks: separate managers, no double revenue/custody, cash closure guard, assigned assets separate, complete502 records, literal source preservation and empty business');
 }finally{await db.close();}

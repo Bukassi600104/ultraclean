@@ -19,9 +19,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Skull, TrendingDown, ClipboardList } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { FarmInventory, FarmInventoryTransaction } from "@/types";
-import { activeMortality } from "@/lib/farm-inventory";
+import { activeMortality, inventoryTransactionDay } from "@/lib/farm-inventory";
+import { useFarmRecordAnchor } from "@/hooks/useFarmRecordAnchor";
 import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPanel";
 
 interface MortalitySummary {
@@ -50,6 +51,7 @@ export default function FarmInventoryPage() {
   const [refresh, setRefresh] = useState(0);
   const [selectedTab, setSelectedTab] = useState("stock");
   const [periodId, setPeriodId] = useState<string|null>(null);
+  useFarmRecordAnchor(!isLoading && !loadError && selectedTab === "mortality");
   useEffect(() => {
     async function load() {
       setIsLoading(true);setLoadError("");
@@ -67,7 +69,9 @@ export default function FarmInventoryPage() {
         const allData = await allRes.json();
         if (!invRes.ok || !allRes.ok) throw new Error("Inventory unavailable");
         setInventory(Array.isArray(invData) ? invData : []);
-        const throughEnd = (allData.data || []).filter((row:FarmInventoryTransaction) => !to || row.date <= to);
+        const transactions: FarmInventoryTransaction[] = (allData.data || []).map((row: FarmInventoryTransaction) =>
+          ({ ...row, date: inventoryTransactionDay(row) }));
+        const throughEnd = transactions.filter(row => !to || row.date <= to);
         setMortalityLog(activeMortality(throughEnd).filter(row => !from || row.date >= from));
         setAllTransactions(throughEnd.filter((row:FarmInventoryTransaction) => !from || row.date >= from));
       } catch {
@@ -93,8 +97,7 @@ export default function FarmInventoryPage() {
   });
 
   function formatDate(tx: FarmInventoryTransaction) {
-    const raw = tx.date || tx.created_at;
-    return format(new Date(raw), "dd MMM yyyy");
+    return tx.date ? format(parseISO(tx.date), "dd MMM yyyy") : "Date unavailable";
   }
 
   if(loadError)return <DashboardReadError title="Farm Inventory" message={loadError} onRetry={()=>setRefresh(v=>v+1)}/>;
@@ -214,6 +217,7 @@ export default function FarmInventoryPage() {
                         <TableHead className="hidden md:table-cell">
                           Notes
                         </TableHead>
+                        <TableHead>Correction</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -320,7 +324,7 @@ export default function FarmInventoryPage() {
             </div>
 
             {/* Mortality Log Table */}
-            <Card>
+            <Card id="mortality-log" tabIndex={-1} className="scroll-mt-24">
               <CardHeader className="flex flex-row items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-red-500" />
                 <CardTitle className="text-base">Mortality Log</CardTitle>
@@ -336,22 +340,25 @@ export default function FarmInventoryPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date of Mortality</TableHead>
-                        <TableHead>Product</TableHead>
+                        <TableHead>Date<span className="sr-only sm:not-sr-only"> of mortality</span></TableHead>
+                        <TableHead className="hidden sm:table-cell">Product</TableHead>
                         <TableHead>Deaths</TableHead>
-                        <TableHead>Cause</TableHead>
+                        <TableHead className="hidden sm:table-cell">Cause</TableHead>
                         <TableHead className="hidden md:table-cell">
                           Notes
                         </TableHead>
+                        <TableHead>Correction</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {mortalityLog.map((m) => (
                         <TableRow key={m.id}>
                           <TableCell className="font-medium">
+                            <span className="block capitalize sm:hidden">{m.product}</span>
                             {formatDate(m)}
+                            {m.reason&&<span className="mt-1 block text-xs font-normal text-gray-600 sm:hidden">{m.reason}</span>}
                           </TableCell>
-                          <TableCell className="capitalize">
+                          <TableCell className="hidden capitalize sm:table-cell">
                             {m.product}
                           </TableCell>
                           <TableCell>
@@ -359,12 +366,13 @@ export default function FarmInventoryPage() {
                               {m.quantity}
                             </span>
                           </TableCell>
-                          <TableCell className="text-sm text-gray-500">
+                          <TableCell className="hidden text-sm text-gray-500 sm:table-cell">
                             {m.reason || "—"}
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-gray-600">
                             {m.notes || "—"}
                           </TableCell>
+                          <TableCell><FarmAdminCorrection buttonLabel="Correct deaths" recordType="inventory_transaction" record={m} onSaved={()=>setRefresh(value=>value+1)}/></TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

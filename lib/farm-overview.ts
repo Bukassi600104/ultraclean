@@ -8,7 +8,8 @@ import type { ManagerReportData, ReportRow } from './manager-reports';
 import { sumMoney } from './money';
 import { displayRecordValue } from './record-display';
 
-type Quantity = { label: string; amount: number | null; unit: string };
+type Quantity = { label: string; amount: number | null; unit: string; stockId?: string;
+  lastCount?: { quantity: number; date: string; status: string } };
 type OverviewInput = {
   report: ManagerReportData; stores: StoreData; purchases: PurchaseData;
   currentPerformance: PerformanceSource; today: string; owed: string; dailyReports: ReportRow[] | null;
@@ -19,21 +20,33 @@ export function farmOverview({ report, stores, purchases, currentPerformance, to
   if (!report.farm) throw Error('Farm finances unavailable');
   const quantities = new Map<string, number>();
   // A whole-product assignment already includes its named batches.
-  const wholeProducts = new Set<string>();
+  const stockIds = new Map<string, string | undefined>();
   for (const row of report.assets.farm_inventory || []) {
     const key = String(row.product);
     quantities.set(key, Number(row.current_stock));
-    wholeProducts.add(key);
+    stockIds.set(key, typeof row.id === 'string' ? row.id : undefined);
   }
   for (const batch of currentPerformance.batches) {
-    if (batch.archived_at || wholeProducts.has(batch.product)) continue;
+    if (batch.archived_at || stockIds.has(batch.product)) continue;
     quantities.set(batch.product, (quantities.get(batch.product) || 0) + Number(batch.head_count));
   }
-  const produce: Quantity[] = Array.from(quantities, ([product, amount]) => ({
-    label: displayRecordValue(farmProductLabel(product)), amount,
-    unit: product === 'catfish' ? 'fish' : ['chicken', 'turkey'].includes(product) ? 'birds'
-      : ['goat', 'ram', 'pig', 'cattle'].includes(product) ? 'animals' : 'units',
-  })).sort((a, b) => a.label.localeCompare(b.label));
+  const latestCounts = new Map<string, StoreData['counts'][number]>();
+  for (const observation of stores.counts || []) {
+    if (observation.resource !== 'animals' || observation.decision?.decision === 'decline') continue;
+    const previous = latestCounts.get(observation.asset_id);
+    if (!previous || observation.date > previous.date || (observation.date === previous.date && observation.created_at > previous.created_at)) {
+      latestCounts.set(observation.asset_id, observation);
+    }
+  }
+  const produce: Quantity[] = Array.from(quantities, ([product, amount]) => {
+    const stockId = stockIds.get(product), last = stockId && latestCounts.get(stockId);
+    return {
+      label: displayRecordValue(farmProductLabel(product)), amount, stockId,
+      unit: product === 'catfish' ? 'fish' : ['chicken', 'turkey'].includes(product) ? 'birds'
+        : ['goat', 'ram', 'pig', 'cattle'].includes(product) ? 'animals' : 'units',
+      lastCount: last ? { quantity: last.quantity, date: last.date, status: last.decision?.decision === 'approve' ? 'Approved' : 'Awaiting review' } : undefined,
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label));
   const eggStores = stores.assets.filter(a => a.resource === 'eggs');
   if (eggStores.length) {
     const known = eggStores.every(a => a.opening_verified && a.quantity != null);
@@ -51,7 +64,9 @@ export function farmOverview({ report, stores, purchases, currentPerformance, to
     if(!feedByType.has(label.toLowerCase()))feedByType.set(label.toLowerCase(),{label,amount:null,unit:'bags',usableKg:null});
   }
   const feed=Array.from(feedByType.values()).sort((a,b)=>a.label.localeCompare(b.label));
-  const mortality = mortalityByProduct((report.records.farm_inventory_transactions || []) as unknown as FarmInventoryTransaction[], report);
+  const movements = (report.records.farm_inventory_transactions || []) as unknown as FarmInventoryTransaction[];
+  const mortality = mortalityByProduct(movements, report);
+  const deathsOnEndDate = mortalityByProduct(movements, {from: report.to, to: report.to}).total;
   const orders: (PurchaseData['purchases'][number] & { request_id?: string })[] = purchases.purchases;
   const linked = new Set(orders.map(p => p.request_id));
   const requests = (report.decisions.operational_requests || []).filter(r => r.status === 'pending' && !linked.has(String(r.id)));
@@ -69,7 +84,7 @@ export function farmOverview({ report, stores, purchases, currentPerformance, to
     }
   }
   return {
-    from: report.from, to: report.to, today, produce, feed, feedTypesComplete:newerFeed!==null, mortality, sales: report.farm.revenue, collected: report.farm.collections,
+    from: report.from, to: report.to, today, produce, feed, feedTypesComplete:newerFeed!==null, mortality, deathsOnEndDate, sales: report.farm.revenue, collected: report.farm.collections,
     expenses: report.farm.total_expenses, funds: report.farm.closing_balance, debt: owed,
     requestCount: requests.length, purchaseCount: pending.length, purchaseAmount: sumMoney(pending.map(p => p.total_exact)),
     todayReportsAvailable: dailyReports !== null, dailyReports: (dailyReports || []).filter(r => r.status === 'submitted' && r.report_date === today)

@@ -409,3 +409,13 @@ The private farm-log-followups-2026-11-12 release receipts record the production
 - [x] Exercise both role interfaces on phones and desktops and reproduce the blocked choices with isolated test data.
 
 Release verification compares the original data, privileges and application versions. The private farm-credit-funding-2026-11-13 release folder holds the restore, database and live deployment receipts.
+
+## Farm overview, corrections and funds history, 17 November 2026
+
+- [x] Identify the sources of the reported catfish count, mortality and cash event labels in a read-only production snapshot.
+- [x] Show the applicable stock and mortality figures and take the owner to the correct source when an entry needs a correction.
+- [x] Open the exact request or other attention item, expose its next action and update the queue after a decision.
+- [x] Show the recorded cash event and receipt status using plain language.
+- [x] Test both role interfaces and the original cases in an isolated restore, including retries and preservation of recorded history.
+
+The private farm-overview-actions-2026-11-17 release folder holds the restore and workflow checks. The production migration and live version checks write their receipts there.

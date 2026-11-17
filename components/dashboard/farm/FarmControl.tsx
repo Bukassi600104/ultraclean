@@ -50,7 +50,8 @@ export function FarmControl({compact=false,range,name}:{compact?:boolean;range?:
   },[compact,actorId,query]);
   function reportLink(href:string) {
     const url=new URL(href.startsWith('/')?href:'/dashboard/farm/'+href,'https://farm.local');
-    url.searchParams.set('from',range?.from||from);url.searchParams.set('to',range?.to||to);
+    if(!url.searchParams.has('from'))url.searchParams.set('from',range?.from||from);
+    if(!url.searchParams.has('to'))url.searchParams.set('to',range?.to||to);
     if(period)url.searchParams.set('period_id',period);
     if(url.pathname==='/dashboard/funds'){
       url.searchParams.set('business','farm');

@@ -1,7 +1,7 @@
 "use client";
 import {displayFieldName, displayRecordValue, isInternalField} from "@/lib/record-display";
 import {FarmRecordDiscussion} from "@/components/manager/FarmRecordThread";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +32,10 @@ function timestamp(value: string) { return new Date(value).toLocaleString("en-GB
 export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonLabel}:{buttonLabel?:string;recordType:string;record:object;onSaved?:()=>void;requestId?:string}) {
   const row=record as FarmRecord;
   const animalCount=recordType==='inventory'&&['catfish','chicken','turkey','pig','goat','ram','cattle'].includes(String(row.product));
+  const mortality=recordType==='inventory_transaction'&&row.action==='mortality';
+  const checkBatch=mortality&&typeof row.batch_id==='string';
+  const [batchLink,setBatchLink]=useState<string|null>(null);
+  const [lookupError,setLookupError]=useState(false),[lookupTry,setLookupTry]=useState(0);
   const [expectedStock,setExpectedStock]=useState<number>();
   const [open,setOpen]=useState(false);const [saving,setSaving]=useState(false);
   const [stockGroup,setStockGroup]=useState("");const [categoryEdited,setCategoryEdited]=useState(false);
@@ -39,11 +43,31 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
   const [reason,setReason]=useState("");const [values,setValues]=useState<Record<string,string>>({});
   const [cashReceiver,setCashReceiver]=useState(""),[cashPayer,setCashPayer]=useState("");
   const [operation,setOperation]=useState("update");const [retryId,setRetryId]=useState("");
+  useEffect(()=>{
+    if(!open||!checkBatch)return;
+    const controller=new AbortController(),params=new URLSearchParams({date:String(row.date)});
+    const period=new URLSearchParams(window.location.search).get('period_id');
+    if(period)params.set('period_id',period);
+    setLookupError(false);setBatchLink(null);
+    fetch('/api/farm/batch-records?'+params,{cache:'no-store',signal:controller.signal}).then(async response=>{
+      const data=await response.json();
+      if(!response.ok||!Array.isArray(data.records))throw Error();
+      const source=data.records.find((r:{mortality_id?:string;batch_id:string})=>r.mortality_id===row.id&&r.batch_id===row.batch_id);
+      if(controller.signal.aborted)return;
+      if(source){
+        params.set('record_id',source.id);params.set('batch_id',source.batch_id);
+        if(source.period_id)params.set('period_id',source.period_id);
+      }
+      setBatchLink(source?'/dashboard/farm/today?'+params:'');
+    }).catch(()=>{if(!controller.signal.aborted)setLookupError(true);});
+    return ()=>controller.abort();
+  },[open,checkBatch,row.id,row.date,row.batch_id,lookupTry]);
   const editFields=recordType==='sale'&&!row.pricing_basis
     ? [...fields.sale.filter(f=>f.key!=="pricing_basis"),{key:"total_amount",label:"Historical recorded amount (₦)",numeric:true}]
     : fields[recordType]??[];
   function start() {
     if(recordType==='inventory')setExpectedStock(Number(row.current_stock));
+    setBatchLink(null);setLookupError(false);
     setCashReceiver("");setCashPayer("");setStockGroup(String(row.stock_group_id??""));setCategoryEdited(false);
     setValues(Object.fromEntries(editFields.map(f=>[f.key,String(f.key==='target_quantity'?row.current_stock??0:f.key==='quantity_change'&&recordType==='supply'?0:row[f.key]??"")])));
     setReason("");setOperation("update");setRetryId(crypto.randomUUID());setOpen(true);
@@ -51,6 +75,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
   async function save() {
     if(!reason.trim())return toast.error("Enter a correction reason");
     if(animalCount&&(!/^\d+$/.test(values.target_quantity||'')||!Number.isSafeInteger(Number(values.target_quantity))))return toast.error("Enter a whole animal count, including zero.");
+    if(mortality&&(!/^\d+$/.test(values.quantity||'')||!Number.isSafeInteger(Number(values.quantity))))return toast.error("Enter a whole number of deaths, including zero.");
     const changes:FarmRecord={expected_revision:row.revision??0};
     if(recordType==='inventory')changes.expected_current_stock=expectedStock;
     if(operation==='update')for(const field of editFields){
@@ -64,29 +89,34 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
     if(operation==="update"&&categoryEdited)changes.stock_group_id=stockGroup||null;
     setSaving(true);
     try{
-      const response=await fetch(requestId?`/api/farm/corrections/${requestId}`:"/api/farm/corrections/admin",{
+      const endpoint=new URL(requestId?`/api/farm/corrections/${requestId}`:"/api/farm/corrections/admin",window.location.origin);
+      const period=new URLSearchParams(window.location.search).get('period_id');
+      if(period&&(animalCount||mortality))endpoint.searchParams.set('period_id',period);
+      const response=await fetch(endpoint,{
         method:requestId?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(requestId
           ?{action:"apply",operation,changes,reason:reason.trim(),request_id:retryId}
           :{record_type:recordType,record_id:row.id,operation,changes,reason:reason.trim(),request_id:retryId}),
       });
       const result=await response.json();if(!response.ok)throw new Error(result.error||"Correction failed");
-      toast.success("Correction saved with activity history");setOpen(false);onSaved?.();
+      toast.success("Correction saved with activity history");setOpen(false);onSaved?.();window.dispatchEvent(new Event('farm-records-synced'));
     }catch(error){toast.error(error instanceof Error?error.message:"Correction failed");}finally{setSaving(false);}
   }
   if(row.voided_at||row.archived_at)return null;
   const discussion=({sale:"farm_sales",expense:"farm_expenses",feed:"farm_feed_purchases",daily_feed:"farm_daily_feed",inventory_transaction:"farm_inventory_transactions"} as Record<string,string>)[recordType];
   return <>{discussion&&<FarmRecordDiscussion resource={discussion} recordId={String(row.id)}/>}<Button variant="outline" size="sm" onClick={start}>{buttonLabel||(requestId?"Review and apply":"Correct")}</Button>
-    <Dialog open={open} onOpenChange={value=>{if(!saving)setOpen(value);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{animalCount?'Correct '+label(String(row.product))+' count':'Correct '+label(recordType)}</DialogTitle></DialogHeader>
+    <Dialog open={open} onOpenChange={value=>{if(!saving)setOpen(value);}}><DialogContent className="max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>{mortality?'Correct recorded deaths':animalCount?'Correct '+label(String(row.product))+' count':'Correct '+label(recordType)}</DialogTitle></DialogHeader>
+      {checkBatch&&batchLink!==''?(lookupError?<p role="alert">The daily record could not be checked. <button type="button" className="min-h-11 underline" onClick={()=>setLookupTry(n=>n+1)}>Retry</button></p>:batchLink?<a className="inline-flex min-h-11 items-center font-semibold text-emerald-800 underline" href={batchLink}>Open the daily record to correct deaths</a>:<p role="status">Checking the daily record…</p>):<>
       <p className="text-sm text-gray-500">The change and its original values will remain in activity history.</p>
+      {mortality&&<p className="text-sm">Enter 0 if no animals died. Reducing the number returns the difference to stock.</p>}
       {recordType==='sale'&&!row.pricing_basis&&<p className="text-sm text-gray-500">This is a legacy sale. Its historical amount and stock movements are preserved unless you explicitly correct the amount.</p>}
       <Label>Action<select className="block border rounded p-2 w-full mt-1" value={operation} onChange={e=>{setOperation(e.target.value);setRetryId(crypto.randomUUID());}}><option value="update">Correct details</option>{['sale','expense','fund'].includes(recordType)&&<option value="void">Void record</option>}{recordType==='supply'&&<option value="archive">Remove from active supplies</option>}</select></Label>
-      {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} inputMode={animalCount?"numeric":undefined} min={animalCount?0:undefined} step={animalCount?1:field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
+      {operation==='update'&&editFields.map(field=><div key={field.key}><Label htmlFor={`correct-${field.key}`}>{field.label}</Label>{field.choices?<select id={`correct-${field.key}`} className="block border rounded p-2 w-full" value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}><option value="">Unspecified</option>{Array.from(new Set([...field.choices,...(values[field.key]?[values[field.key]]:[])])).map(value=><option key={value} value={value}>{label(value)}</option>)}</select>:<Input id={`correct-${field.key}`} type={field.numeric?"number":field.type??"text"} inputMode={animalCount||(mortality&&field.key==="quantity")?"numeric":undefined} min={animalCount||(mortality&&field.key==="quantity")?0:undefined} step={animalCount||(mortality&&field.key==="quantity")?1:field.numeric?"any":undefined} value={values[field.key]??""} onChange={e=>{setValues({...values,[field.key]:e.target.value});setRetryId(crypto.randomUUID());}}/>}</div>)}
       {operation==="update"&&(["inventory","inventory_transaction"].includes(recordType)||(recordType==="sale"&&!!row.pricing_basis))&&<LivestockGroupPicker product={values.product||String(row.product)} value={stockGroup} onChange={chooseCategory}/>}
       {operation==="update"&&recordType==="sale"&&<CashReceiverSelect business="farm" value={cashReceiver} onChange={value=>{setCashReceiver(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["expense","feed"].includes(recordType)&&<CashPayerSelect business="farm" currency="NGN" bucket={recordType==="expense"&&values.expense_source==="sales_cash"?"sales":"owner"} value={cashPayer} onChange={value=>{setCashPayer(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["sale","expense","feed"].includes(recordType)&&<p className="text-xs text-gray-600">Leave the recorded cash person unchanged unless you have verified a correction. Records from before verified cash tracking retain unknown historical custody.</p>}
       <Label>Reason<Textarea value={reason} maxLength={1000} onChange={e=>{setReason(e.target.value);setRetryId(crypto.randomUUID());}}/></Label>
-      <Button disabled={saving} onClick={save}>{saving?"Saving...":"Save correction"}</Button>
+      <Button disabled={saving} onClick={save}>{saving?"Saving...":"Save correction"}</Button></>}
     </DialogContent></Dialog></>;
 }
 

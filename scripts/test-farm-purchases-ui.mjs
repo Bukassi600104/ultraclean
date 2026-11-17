@@ -73,7 +73,7 @@ await page.route('**/api/**',async route=>{const request=route.request(),url=new
  }else if(url.pathname==='/api/operations/funds'){
   fundsQueries.push(Object.fromEntries(url.searchParams));
   if(fundsError){status=503;body={error:'Funds could not be loaded'};}
-  else body={business:'farm',from:url.searchParams.get('from'),to:wrongFundsDate?'2026-11-11':url.searchParams.get('to'),accounts:[],sources,receipts:[],history:[],total:0,has_more:false,ceo_receivers:[],manager_receivers:[],pending_expenses:[]};
+  else body={business:'farm',from:url.searchParams.get('from'),to:wrongFundsDate?'2026-11-11':url.searchParams.get('to'),periodId:url.searchParams.get('period_id'),accounts:sources.filter(p=>p.holder_type==='manager').map(p=>({...p,period_id:url.searchParams.get('period_id')})),sources,receipts:[],history:[],total:0,has_more:false,ceo_receivers:[],manager_receivers:[],pending_expenses:[]};
  }else if(url.pathname==='/api/farm/batch-records')body={batches:[]};
  await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 });

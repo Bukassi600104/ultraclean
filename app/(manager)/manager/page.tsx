@@ -35,6 +35,10 @@ export default function ManagerHomePage() {
   const data=saved?.identity===identity?saved:null;
   function link(path:string) {
     const base=pathname==='/manager'||pathname.startsWith('/manager/')?'/manager':'';
+    if(path.startsWith('/dashboard/funds?')){
+      const id=new URL(path,'https://farm.local').searchParams.get('funding_id');
+      return base+'/cash'+(id?'#funding-'+encodeURIComponent(id):'');
+    }
     if(path==='/dashboard/funds')return base+'/cash';
     const target=path.replace(/^\/dashboard\/farm\//,'').replace(/^daily-reports(?=[?#]|$)/,'daily-report/history');
     return base+'/'+target;

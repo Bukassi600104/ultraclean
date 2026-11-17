@@ -55,6 +55,18 @@ try{
  assert.deepEqual(await scalar(db,'select to_jsonb(e) from farm_purchase_exceptions e where id=$1',[exception.id]),beforeExpense);
  const payer=await scalar(db,"select operations_private.cash_account($1,'farm','NGN','owner','manager',$2,'Remediation tester',$3)",[ids.admin,period.id,period.id]);
  const postKey=crypto.randomUUID(),postPayload={decision:'post',category:'utilities',expense_source:'bimbo_transfer',cash_payer_account_id:payer,reason:'Verified actual work'};
+ // Cash received by another supervisor stays in that supervisor's own period.
+ const otherManager=crypto.randomUUID();
+ await db.query('insert into auth.users(id) values($1)',[otherManager]);
+ await db.query("insert into profiles(id,role,name) values($1,'manager','Other supervisor')",[otherManager]);
+ const otherPeriod=await periodWrite(db,ids.admin,'provision',{manager_id:otherManager,business:'farm',starts_on:date});
+ await db.query("update manager_periods set status='active' where id=$1",[otherPeriod.id]);
+ const transfer=await scalar(db,"select operations_cash_write($1,'fund',$2::jsonb,$3)",[ids.admin,JSON.stringify({business:'farm',currency:'NGN',date,amount:'4500',recipient:{type:'manager',period_id:otherPeriod.id}}),crypto.randomUUID()]);
+ const receipt=await scalar(db,"select operations_cash_write($1,'receive',$2::jsonb,$3)",[otherManager,JSON.stringify({business:'farm',currency:'NGN',date,amount:'4500',event_id:transfer.data.id}),crypto.randomUUID()]);
+ const otherPayer=receipt.data.target_account_id;
+ await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{...postPayload,cash_payer_account_id:otherPayer},exception.id),e=>e.code==='42501'&&/supervisor period/.test(e.message));
+ assert.equal(Number(await scalar(db,'select operations_private.cash_available($1,$2)',[otherPayer,date])),4500);
+ assert.equal(await scalar(db,'select count(*)::int from farm_exception_postings where exception_id=$1',[exception.id]),0);
  const pending=await purchase(ids.admin,'resolve_exception',postPayload,exception.id,postKey);assert.equal(pending.status,'pending_funding');assert.deepEqual(await purchase(ids.admin,'resolve_exception',postPayload,exception.id,postKey),pending);assert.equal(await scalar(db,'select count(*)::int from farm_expenses'),0);
  assert.equal((await scalar(db,'select farm_purchase_read($1,$2)',[ids.admin,period.id])).exceptions.find(e=>e.id===exception.id).pending_funding_id,pending.id);
  await assert.rejects(()=>purchase(ids.admin,'resolve_exception',{decision:'decline',reason:'Concurrent decision'},exception.id),e=>e.code==='23514');

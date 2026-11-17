@@ -76,3 +76,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - For Daily Log instructions, verify discovery in a separate supervisor session and open the exact source message. Similar text on two reports must lead to two separate conversations.
 
 - Exercise credit selection for a customer with no approved terms, and funding review for the reported expense type on its original date with no eligible payer. Keep saved source amounts exact and round only the amount shown on screen.
+
+- Trace overview figures to dated movements and physical counts separately. A customer payment already in the cash ledger has a known event type even when the source has no status field. Open each attention link through to the matching record and its allowed action.

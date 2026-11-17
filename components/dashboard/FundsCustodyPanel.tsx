@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {useAuth} from "@/contexts/AuthContext";
 import {useManagerFetch,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 import {useOperationsFunds} from "@/hooks/useOperationsFunds";
@@ -13,23 +13,24 @@ const button="min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold disable
 type Decision="post"|"decline";
 type Saved={target:PendingExpense;body:Record<string,unknown>};
 type ReviewDraft={expenseId:string;action:Decision;payer:string;reason:string;bucket?:PendingExpense["bucket"]};
-export function FundsCustodyPanel({business,selection="",onRecordFunding}:{business:Business;selection?:string;onRecordFunding:()=>void}){
+export function FundsCustodyPanel({business,selection="",fundingId,onRecordFunding}:{business:Business;selection?:string;fundingId?:string;onRecordFunding:(expenseDate:string)=>void}){
  const {data,error,loading,refresh}=useOperationsFunds(business,selection),send=useManagerFetch(),{profile}=useAuth(),key=useManagerStorageKey(profile?`ceo-funding-review:${profile.id}:${business}:${selection}`:null);
  const [target,setTarget]=useState<PendingExpense|null>(null),[payer,setPayer]=useState(""),[reason,setReason]=useState(""),[action,setAction]=useState<"post"|"decline">("post"),[saved,setSaved]=useState<Saved|null>(null),[saveError,setSaveError]=useState(""),[busy,setBusy]=useState(false),[storageFault,setStorageFault]=useState(false);
  const [chosenBucket,setChosenBucket]=useState<PendingExpense["bucket"]>("owner");
+ const [storageReadyFor,setStorageReadyFor]=useState<string|null>(null);
  const [draft,setDraft]=useState<ReviewDraft|null>(null),[verifiedPayer,setVerifiedPayer]=useState("");
  const currentKey=useRef(key),alive=useRef(true),lock=useRef(false),returnTo=useRef<HTMLButtonElement|null>(null);
  currentKey.current=key;
- useEffect(()=>{alive.current=true;setSaved(null);setDraft(null);setChosenBucket("owner");setVerifiedPayer("");setTarget(null);setBusy(false);setPayer("");setReason("");setAction("post");setStorageFault(false);setSaveError("");if(key)try{
+ useEffect(()=>{alive.current=true;setStorageReadyFor(null);setSaved(null);setDraft(null);setChosenBucket("owner");setVerifiedPayer("");setTarget(null);setBusy(false);setPayer("");setReason("");setAction("post");setStorageFault(false);setSaveError("");if(key)try{
   const draftRaw=localStorage.getItem(key+":draft");
   if(draftRaw!==null){
    const restored=JSON.parse(draftRaw);
    if(typeof restored?.expenseId!=="string"||!["post","decline"].includes(restored.action)||typeof restored.reason!=="string"||typeof restored.payer!=="string")throw Error();
    setDraft(restored);
   }
-  const entry=JSON.parse(localStorage.getItem(key)||"null") as Saved|null;if(entry){if(!entry.target||typeof entry.target.id!=="string"||!entry.body||entry.body.business!==business||typeof entry.body.request_id!=="string")throw Error();setSaved(entry);}}catch{setStorageFault(true);setSaveError("Your saved funding decision remains on this device for review.");}return()=>{alive.current=false;};},[key,business]);
+  const entry=JSON.parse(localStorage.getItem(key)||"null") as Saved|null;if(entry){if(!entry.target||typeof entry.target.id!=="string"||!entry.body||entry.body.business!==business||typeof entry.body.request_id!=="string")throw Error();setSaved(entry);}}catch{setStorageFault(true);setSaveError("Your saved funding decision remains on this device for review.");}setStorageReadyFor(key);return()=>{alive.current=false;};},[key,business]);
  const currencies=Array.from(new Set((data?.accounts||[]).map(a=>a.currency))).sort(),pending=(data?.pending_expenses||[]).filter(p=>p.status==="pending");
- function review(row:PendingExpense,trigger:HTMLButtonElement){
+ const review=useCallback((row:PendingExpense,trigger:HTMLButtonElement|null)=>{
   const prior=draft?.expenseId===row.id?draft:null;
   returnTo.current=trigger;setTarget(saved?.target||row);setVerifiedPayer("");
   const requestedBucket=saved?.body.funding_source||prior?.bucket||row.bucket;
@@ -38,13 +39,21 @@ export function FundsCustodyPanel({business,selection="",onRecordFunding}:{busin
   setPayer(saved?String(saved.body.payer_account_id||""):prior?.payer||"");
   setAction(saved?(saved.body.action==="decline"?"decline":"post"):prior?.action||"post");
   setSaveError("");
- }
+ },[saved,draft]);
+ const opened=useRef("");
+ useEffect(()=>{
+  if(!fundingId||!key||storageReadyFor!==key||loading||!data||error||storageFault||opened.current===key+fundingId)return;
+  const row=data.pending_expenses?.find(p=>p.id===fundingId&&p.status==="pending");
+  if(!row||saved&&saved.target.id!==fundingId)return;
+  opened.current=key+fundingId;
+  review(row,document.getElementById("review-"+fundingId) as HTMLButtonElement|null);
+ },[fundingId,key,storageReadyFor,loading,data,error,storageFault,saved,review]);
  function recordMissingTransfer(){
   if(!key||!target||busy||saved)return;
   const next={expenseId:target.id,action,payer,reason,bucket:chosenBucket};
   try{localStorage.setItem(key+":draft",JSON.stringify(next));}
   catch{setSaveError("This device could not save your review. Keep it open and try again.");return;}
-  setDraft(next);setTarget(null);onRecordFunding();
+  setDraft(next);setTarget(null);onRecordFunding(target.activity_date);
  }
  async function decide(){
   if(!target||!key||lock.current||storageFault)return;
@@ -72,10 +81,11 @@ export function FundsCustodyPanel({business,selection="",onRecordFunding}:{busin
   }catch(e){if(alive.current&&currentKey.current===ownedKey)setSaveError((e as Error).message);}finally{lock.current=false;if(alive.current&&currentKey.current===ownedKey)setBusy(false);}
  }
  return <section className="mx-auto w-full max-w-6xl space-y-5 text-slate-900"><header><h2 className="text-xl font-bold">Funds control</h2><p className="mt-1 max-w-3xl text-sm text-slate-600">Review who holds money and which expenses still need a payer.</p></header>
+  {data&&!loading&&!error&&fundingId&&!pending.some(p=>p.id===fundingId)&&<p role="status" className="rounded-xl bg-slate-50 p-3">This expense is no longer awaiting a decision in this view.</p>}
   {error?<p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900">{error}<button className={button+" ml-2"} onClick={refresh}>Retry funds</button></p>:loading?<p role="status">Loading funds control…</p>:data&&<>
    {!currencies.length?<p className="rounded-xl border bg-white p-4 text-sm text-slate-600">No verified funds allocations have been recorded for this scope.</p>:currencies.map(currency=><section key={currency} className="space-y-3"><h3 className="font-semibold">{currency} funds</h3><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{[{type:"custodian",title:"With procurement"},{type:"manager",title:"With managers"},{type:"awaiting",title:"Awaiting receipt"},{type:"ceo",title:"With CEO"}].map(group=><article key={group.type} className="rounded-xl border bg-white p-4"><h4 className="text-sm text-slate-600">{group.title}</h4><p className="mt-2 break-words text-lg font-bold">{formatExactCurrency(sumMoney(data.accounts.filter(a=>a.currency===currency&&a.holder_type===group.type).map(a=>a.closing)),currency)}</p></article>)}</div></section>)}
    {data.accounts.length>0&&<div className="overflow-x-auto rounded-xl border bg-white"><table className="w-full text-left text-sm"><caption className="sr-only">Verified cash held by person, currency and funding source</caption><thead className="bg-slate-50 text-slate-600"><tr><th className="p-3">Held by</th><th className="p-3">Source</th><th className="p-3">Available balance</th><th className="p-3">Paid spending in selected period</th></tr></thead><tbody>{data.accounts.map(a=><tr key={a.id} className="border-t"><th scope="row" className="p-3 font-medium">{a.name}</th><td className="p-3">{a.bucket==="owner"?"Owner funds":"Sales money"}</td><td className="p-3">{formatExactCurrency(a.closing,a.currency)}{a.holder_type==="awaiting"&&<span className="block text-xs text-amber-900">Awaiting manager acknowledgement</span>}</td><td className="p-3">{formatExactCurrency(a.paid_spending,a.currency)}</td></tr>)}</tbody></table></div>}
-   <p className="text-xs text-slate-600">Cash reporting period: {data.from==="0001-01-01"?"all recorded history through":`${data.from} to`} {data.to}. Requests below are current.</p><section className="space-y-3"><h3 className="font-semibold">Current funding requests</h3>{!pending.length?<p className="rounded-xl border bg-white p-4 text-sm text-slate-600">No funding requests are awaiting a decision.</p>:pending.map(p=><article key={p.id} className="rounded-xl border bg-white p-4 text-sm"><h4 className="font-semibold">{p.requester_name||"Manager"} · {p.kind==="feed"?"Feed purchase":"Expense"} · {formatExactCurrency(p.amount,p.currency)}</h4><p className="mt-1 text-slate-600">Actual expense date {p.activity_date} · {p.bucket==="owner"?"Owner funds":"Sales money"} · Not yet posted</p>{p.kind==="feed"&&<p className="mt-2">{String(p.payload.num_bags)} bags · {String(p.payload.feed_type)} · {String(p.payload.feed_source||"Recorded source")}</p>}{p.payload?.purchase_id!=null&&<Link className="mt-2 inline-flex min-h-11 items-center text-emerald-800 underline" href="/dashboard/farm/purchases">Review linked purchase and supplier payment</Link>}{p.payload?.notes!=null&&<p className="mt-2 break-words">{String(p.payload.notes)}</p>}<button className={button+" mt-3"} disabled={!!saved||storageFault} onClick={e=>review(p,e.currentTarget)}>{draft?.expenseId===p.id?"Continue funding review":"Review funding"}</button></article>)}</section>
+   <p className="text-xs text-slate-600">Cash reporting period: {data.from==="0001-01-01"?"all recorded history through":`${data.from} to`} {data.to}. Requests below are current.</p><section className="space-y-3"><h3 className="font-semibold">Current funding requests</h3>{!pending.length?<p className="rounded-xl border bg-white p-4 text-sm text-slate-600">No funding requests are awaiting a decision.</p>:pending.map(p=><article key={p.id} className="rounded-xl border bg-white p-4 text-sm"><h4 className="font-semibold">{p.requester_name||"Manager"} · {p.kind==="feed"?"Feed purchase":"Expense"} · {formatExactCurrency(p.amount,p.currency)}</h4><p className="mt-1 text-slate-600">Actual expense date {p.activity_date} · {p.bucket==="owner"?"Owner funds":"Sales money"} · Not yet posted</p>{p.kind==="feed"&&<p className="mt-2">{String(p.payload.num_bags)} bags · {String(p.payload.feed_type)} · {String(p.payload.feed_source||"Recorded source")}</p>}{p.payload?.purchase_id!=null&&<Link className="mt-2 inline-flex min-h-11 items-center text-emerald-800 underline" href={"/dashboard/farm/purchases?purchase_id="+encodeURIComponent(String(p.payload.purchase_id))+(p.period_id?"&period_id="+encodeURIComponent(p.period_id):"")}>Review linked purchase and supplier payment</Link>}{p.payload?.notes!=null&&<p className="mt-2 break-words">{String(p.payload.notes)}</p>}<button id={"review-"+p.id} className={button+" mt-3"} disabled={!!saved||storageFault} onClick={e=>review(p,e.currentTarget)}>{draft?.expenseId===p.id?"Continue funding review":"Review funding"}</button></article>)}</section>
    <p className="text-xs text-slate-600">Earlier unallocated funds stay separate from these verified personal allocations. They are not assigned to a new manager automatically.</p>
   </>}
   {saved&&<button className={button} onClick={e=>review(saved.target,e.currentTarget)}>Retry saved funding decision</button>}{saveError&&!target&&<p role="alert" className="text-sm text-red-900">{saveError}</p>}

@@ -1,4 +1,5 @@
 "use client";
+import {useFarmRecordAnchor} from "@/hooks/useFarmRecordAnchor";
 import {farmTimestamp} from "@/lib/farm-products";
 import {Table} from '@/components/ui/table';
 import {useEffect,useState} from 'react';import Link from 'next/link';
@@ -45,6 +46,7 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
  useEffect(()=>{const c=new AbortController();setError('');send('/api/farm/health',{signal:c.signal}).then(async r=>{const b=await r.json();if(!r.ok)throw Error(b.error||'Health tasks unavailable');setData(b);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[send,version,refresh]);
  const pending=identity?getPendingItems(identity).filter(i=>i.endpoint==='/api/farm/health'):[],labels:Record<string,string>={note:'Record health details',schedule:'Schedule health task',amend:'Correct health schedule',cancel:'Cancel health schedule',complete:'Record completed task',retract:'Retract incorrect completion',details:'Task details',task_notes:'Task discussion',proof:'Completion proof'};
  const tasks=data?.tasks.filter(t=>filter==='all'||t.status===filter)||[];
+ useFarmRecordAnchor(data);
  const today=farmDateToday();
  function badge(t:HealthTask){
   const days=Math.round((Date.parse(t.due_date)-Date.parse(today))/86400000);
@@ -97,7 +99,7 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
    <th scope="col" className="w-[31%] sm:w-[17%]">Status{!admin&&<span className="sm:hidden"> / action</span>}</th>
    {!admin&&<th scope="col" className="hidden w-[19%] sm:table-cell">Action</th>}
   </tr></thead>
-  <tbody>{tasks.map(t=><tr key={t.id}>
+  <tbody>{tasks.map(t=><tr key={t.id} id={'task-'+t.id} tabIndex={-1}>
    <th scope="row" className="font-normal"><h2 className="font-bold">{t.title}</h2><span className="block text-xs text-slate-600 sm:hidden">{t.batch_name}</span>
     <button type="button" className="min-h-11 text-sm font-medium text-emerald-900 underline" onClick={()=>setAction({operation:'details',id:t.id,task:t})}>Task details</button>
    </th>
