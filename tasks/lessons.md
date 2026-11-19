@@ -85,3 +85,5 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Treat operational approval and confirmed funding as separate steps. Verify where each action lands and count resolved items out of the queue. Reconcile owner-confirmed stock through the audited count workflow and keep dated mortality history. The farm_daily_log_feed_size migration keeps the size optional for existing logs and permits a known size without a measured weight.
 
 - Resolve mortality reversals before applying report dates or a page limit. The farm_mortality_report_corrections migration flags reversed entries in authorized reads without writing ledger rows. For paid sales, recheck the effective payment date even if credit temporarily hides the supervisor choice. Replay the original saved submission when its response was lost.
+
+- For a premium public-site refresh, change the composition as well as the colours and typography. Pair motion with a useful interaction, load secondary imagery on demand, and verify reduced motion before sharing the preview.

@@ -18,10 +18,17 @@ export const primefield = {
 };
 
 export const heroImage = {
-  src: "/primefield/hero.webp",
-  width: 1600,
-  height: 900,
-  alt: "Illustration of a grower inspecting rows of leafy crops at sunrise",
+  src: "/primefield/hero-cinematic.webp",
+  width: 1672,
+  height: 941,
+  alt: "Illustration of a grower gathering leafy greens into a woven basket",
+};
+
+export const pondImage = {
+  src: "/primefield/pond-cinematic.webp",
+  width: 1672,
+  height: 941,
+  alt: "Illustration of a fish farmer lifting a hand net from a freshwater pond",
 };
 
 export const farmImage = {
@@ -79,7 +86,7 @@ export const farmProducts = [
 ] as const;
 
 export type FarmProduct = (typeof farmProducts)[number];
-export type FarmImage = FarmProduct["image"] | typeof heroImage | typeof farmImage;
+export type FarmImage = FarmProduct["image"] | typeof heroImage | typeof pondImage | typeof farmImage;
 
 export function findFarmProduct(slug: string | undefined) {
   return farmProducts.find((product) => product.slug === slug);

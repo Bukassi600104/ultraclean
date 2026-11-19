@@ -79,6 +79,41 @@ try {
     }
 
     await page.goto(origin.href);
+    const scenes = page.getByRole("group", { name: "Choose a farm scene" });
+    const fields = scenes.getByRole("button", { name: "Fields" });
+    const ponds = scenes.getByRole("button", { name: "Ponds" });
+    await expect(fields).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".pf-scene-ponds")).toHaveCount(0);
+    await ponds.click();
+    await expect(ponds).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".pf-scene-ponds")).toHaveAttribute("data-visible", "true");
+    await expect(page.getByRole("img", { name: /lifting a hand net/ })).toBeVisible();
+    await fields.click();
+    await expect(fields).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".pf-scene-ponds")).toHaveAttribute("data-visible", "false");
+
+    const tabs = page.getByRole("tablist", { name: "Explore farm products" });
+    const productPanel = page.getByRole("tabpanel");
+    await expect(tabs.getByRole("tab", { name: "Catfish" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("link", { name: "Explore products" }).click();
+    assert.equal(new URL(page.url()).hash, "#products");
+    await tabs.getByRole("tab", { name: "Goats" }).click();
+    await expect(productPanel.getByRole("heading", { name: "Goats" })).toBeVisible();
+    await expect(productPanel.getByRole("link", { name: "Request a quote" })).toHaveAttribute("href", "/contact?request=quote&product=goats");
+    await page.keyboard.press("ArrowRight");
+    const broilerTab = tabs.getByRole("tab", { name: "Broiler chickens" });
+    await expect(broilerTab).toBeFocused();
+    await expect(broilerTab).toHaveAttribute("aria-selected", "true");
+    await expect(productPanel.getByRole("heading", { name: "Broiler chickens" })).toBeVisible();
+    await page.keyboard.press("End");
+    await expect(productPanel.getByRole("heading", { name: "Seasonal produce" })).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(await page.locator(".pf-scene-fields").evaluate((node) => getComputedStyle(node).animationName), "none");
+    assert.equal(await page.locator(".pf-scene-ponds").evaluate((node) => getComputedStyle(node).transitionDuration), "0s");
+    assert.equal(await page.locator(".pf-explorer-content").evaluate((node) => getComputedStyle(node).animationName), "none");
+    await page.emulateMedia({ reducedMotion: null });
+
+    await page.goto(origin.href);
     if (width <= 720) {
       const menu = page.getByRole("button", { name: "Menu" });
       await menu.click();
@@ -137,7 +172,7 @@ try {
     }
 
     await context.close();
-    console.log("PASS routes, images, navigation and product enquiries at " + width + "px");
+    console.log("PASS routes, navigation, scene and product controls, reduced motion, and product enquiries at " + width + "px");
   }
   assert.deepEqual(errors, []);
 } finally {
