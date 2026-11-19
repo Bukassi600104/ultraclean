@@ -77,7 +77,7 @@ try{
   const pending=Array.from({length:6},(_,i)=>({id:uid(),kind:'expense',writer:'farm_v2_write',activity_date:day,period_id:period,currency:'NGN',amount:String(1000+i),shortfall:String(1000+i),bucket:'owner',status:'pending',requester_name:'Test supervisor',payload:{notes:'Isolated expense '+i},created_at:day+'T12:00Z'}));
   const cost=pending[4],reqPath='/api/farm/operational-requests';
   const requests=[request];let decisionConflict=false;
-  const fundsBody=q=>({...source.report.cash,business:'farm',periodId:q.get('period_id'),from:q.get('from'),to:q.get('to'),pending_expenses:pending.filter(e=>e.status==='pending'),sources:[],accounts:[]});
+  const fundsBody=q=>({...source.report.cash,business:'farm',periodId:q.get('period_id'),from:q.get('from'),to:q.get('to'),pending_expenses:pending,sources:[],accounts:[]});
   await page.route('**/api/**',async route=>{
    const req=route.request(),url=new URL(req.url()),p=url.pathname,q=url.searchParams;
    let body={data:[],total:0},status=200;
@@ -119,8 +119,11 @@ try{
   await page.goBack();await page.getByRole('heading',{name:'Needs your attention'}).waitFor();
   await expect(page.getByRole('link',{name:/Requests \/ purchases/})).toContainText('0 requests');
   assert.equal(writes.length,1);
-  const emergency=page.getByRole('link',{name:/Confirm expense funding.*Electrician/});
-  if(!await emergency.isVisible())await page.locator('#overview-attention summary').click();
+  assert.equal(await page.locator('#overview-attention').getByText(/Electrician|Isolated expense/).count(),0);
+  const funding=page.locator('#overview-funding');
+  await funding.locator('summary').first().click();
+  const emergency=funding.getByRole('link',{name:/Electrician.*Approved expense/});
+  if(!await emergency.isVisible())await funding.getByText(/Show .* more/).click();
   await emergency.click();
   await dialog.waitFor();await expect(dialog).toContainText('Emergency pump repair');
   await dialog.getByLabel('How was it paid?').selectOption('bimbo_transfer');
@@ -132,14 +135,15 @@ try{
   await page.getByRole('link',{name:'Return to emergency expense'}).click();await dialog.waitFor();await expect(dialog).toContainText('Emergency pump repair');
   assert.equal(writes.length,1);
   await page.goto(home);
-  const reviewed=page.getByRole('link',{name:new RegExp('Funding source needs confirmation.*1,004')});
-  if(!await reviewed.isVisible()){await page.locator('#overview-attention summary').click();}
+  const reviewed=funding.getByRole('link',{name:/Isolated expense 4.*1,004/});
+  await funding.locator('summary').first().click();
+  if(!await reviewed.isVisible())await funding.getByText(/Show .* more/).click();
   await reviewed.click();await dialog.waitFor();
   await expect(dialog).toContainText('1,004.00');await expect(dialog).toContainText(day);
   await dialog.getByLabel('Decision',{exact:true}).selectOption('decline');await dialog.getByLabel('Reason',{exact:true}).fill('Verified this isolated funding request');
   await dialog.getByRole('button',{name:/Decline/}).click();await dialog.waitFor({state:'hidden'});
   await page.goBack();await page.getByRole('heading',{name:'Needs your attention'}).waitFor();
-  if(await page.locator('#overview-attention summary').count())await page.locator('#overview-attention summary').click();
+  assert.equal(await funding.getByText(/6 expenses/).count(),1);
   assert.equal(await reviewed.count(),0);assert.equal(writes.length,2);assert.deepEqual(errors,[]);
   // Two outstanding requests should open a short decision list, even with a longer funding queue.
   request.status='pending';request.revision++;

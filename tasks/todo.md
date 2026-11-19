@@ -434,3 +434,14 @@ At 375px and 1440px, the button showed white text, a darker hover colour and a v
 - [x] Test the forms, allocation, duplicates, corrections and permissions with isolated records.
 
 The private farm-receivers-credit-2026-11-17 release folder holds the restore checks, comparison of customer balances and verification from both production apps.
+
+## Farm feedback, 19 November 2026
+
+- [x] Restore the five catfish feed sizes on Daily Log and verify they survive save, review and retry.
+- [x] Show available updates when either app opens or resumes and protect queued records during the update.
+- [x] Follow the reported funding alerts and requests to their saved decisions and remove resolved items from the attention list.
+- [x] Reconcile live catfish, livestock and mortality figures against dated counts and records. Rehearse the owner-confirmed catfish correction and verify both scoped balances.
+- [x] Match the Health Tasks table and Who owes the farm section to the supplied layouts using actual records.
+- [x] Run the affected workflows on phones and desktop and verify the database changes on a restored snapshot.
+
+The private primefield-feedback-2026-11-19 release folder holds the restore, stock reconciliation, and live verification receipts. Today's mortality comes from dated movements. Farm Overview shows the livestock counts from the latest applicable Daily Log day and keeps ledger balances available for review.

@@ -1,5 +1,6 @@
 import {z} from 'zod';
 import {cashDate,cashReceiver} from './operations-cash-validation';
+import {sumMoney} from './money';
 const reason=z.string().trim().min(1).max(2000),amount=z.string().regex(/^(?:0|[1-9]\d{0,14})(?:\.\d{1,2})?$/).refine(v=>Number(v)>0,'Enter a positive amount');
 const evidence={evidence_ids:z.array(z.string().uuid()).max(6).optional()};
 const request={request_id:z.string().uuid()},id={id:z.string().uuid()};
@@ -30,4 +31,58 @@ export function invoiceStatus(invoice:{voided_at:string|null;owed:string;collect
  }
  const state=Number(invoice.collected)>0?(invoice.credit_days?'Credit sale · Part paid':'Part paid'):'On credit · Unpaid';
  return invoice.overdue_days>0?`${state} · ${invoice.overdue_days} days overdue`:state;
+}
+
+
+type FarmReceivable = CreditData['invoices'][number];
+
+export type FarmCustomerBalance = {
+  customerId: string;
+  customerName: string;
+  billed: string;
+  paid: string | null;
+  balance: string;
+  oldestUnpaid: string | null;
+  status: 'Overdue' | 'On credit' | 'Clear';
+};
+
+const customerBalanceOrder = {Overdue: 0, 'On credit': 1, Clear: 2};
+
+export function farmCustomerBalances(invoices: FarmReceivable[]): FarmCustomerBalance[] {
+  const groups = new Map<string, FarmReceivable[]>();
+  for (const invoice of invoices) {
+    if (invoice.voided_at) continue;
+    const entries = groups.get(invoice.customer_id);
+    if (entries) entries.push(invoice);
+    else groups.set(invoice.customer_id, [invoice]);
+  }
+
+  const balances = Array.from(groups, ([customerId, entries]): FarmCustomerBalance => {
+    let oldestUnpaid: string | null = null;
+    let overdue = false;
+    for (const invoice of entries) {
+      if (Number(invoice.owed) <= 0) continue;
+      if (!oldestUnpaid || invoice.date < oldestUnpaid) oldestUnpaid = invoice.date;
+      if (invoice.overdue_days > 0) overdue = true;
+    }
+
+    // Allocation totals already account for reversals, refunds and released credit.
+    // Earlier balances participate in the same payment allocation as sale invoices.
+    const paidAmounts = entries.flatMap(invoice => invoice.collected == null ? [] : [invoice.collected]);
+    return {
+      customerId,
+      customerName: entries[0].customer_name,
+      billed: sumMoney(entries.map(invoice => invoice.total)),
+      paid: paidAmounts.length === entries.length ? sumMoney(paidAmounts) : null,
+      balance: sumMoney(entries.map(invoice => invoice.owed)),
+      oldestUnpaid,
+      status: overdue ? 'Overdue' : oldestUnpaid ? 'On credit' : 'Clear',
+    };
+  });
+
+  return balances.sort((a, b) =>
+    customerBalanceOrder[a.status] - customerBalanceOrder[b.status]
+    || (a.oldestUnpaid ?? '').localeCompare(b.oldestUnpaid ?? '')
+    || a.customerName.localeCompare(b.customerName)
+  );
 }

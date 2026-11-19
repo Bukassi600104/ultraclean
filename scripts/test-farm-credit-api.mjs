@@ -53,8 +53,24 @@ assert.equal(eggPage.total,3);assert.equal(eggPage.data[0].id,'eggb');
 const otherPage=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?product=other'))).json();assert.deepEqual(otherPage.data.map(r=>r.id),['custom']);
 const ledger=await (await scopedSales.GET(new Request('http://localhost/api/farm/sales?with_payment=1'))).json();
 assert.equal(ledger.data[0].invoice.owed,'25000');assert.equal(ledger.data[1].invoice,null);
-const {invoiceStatus}=load('lib/farm-credit.ts');
+const {farmCustomerBalances,invoiceStatus}=load('lib/farm-credit.ts');
 assert.match(invoiceStatus(invoice),/Credit sale.*Part paid/);assert.match(invoiceStatus({...invoice,collected:'0'}),/On credit/);
 assert.match(invoiceStatus({...invoice,owed:'0',collected:'100000'}),/Credit sale.*Paid in full/);
 assert.equal(invoiceStatus({...invoice,owed:'0',collected:'75000',credited:'25000'}),'Credit sale · Settled');
 console.log('PASS scoped sales history retains credit status, actual paid amount, outstanding debt and historical sales');
+
+const named={customer_id:id,customer_name:'Repeated name',date:'2026-11-02',voided_at:null};
+const balances=farmCustomerBalances([
+ {...named,total:'100.10',collected:'0.10',owed:'100.00',overdue_days:16},
+ {...named,kind:'opening_balance',date:'2026-11-01',total:'0.20',collected:'0',owed:'0.20',overdue_days:0},
+ {...named,total:'999',collected:'0',owed:'999',overdue_days:5,voided_at:'2026-11-19T08:00:00Z'},
+ {...named,customer_id:'different-customer',total:'2.33',collected:'1.32',credited:'1.01',owed:'0',overdue_days:4},
+ {...named,customer_id:'opening-only',customer_name:'Earlier balance',kind:'opening_balance',date:'2026-11-04',total:'50.01',owed:'50.01',overdue_days:0},
+]);
+assert.deepEqual(balances.map(x=>[x.customerId,x.billed,x.paid,x.balance,x.oldestUnpaid,x.status]),[
+ [id,'100.30','0.10','100.20','2026-11-01','Overdue'],
+ ['opening-only','50.01',null,'50.01','2026-11-04','On credit'],
+ ['different-customer','2.33','1.32','0',null,'Clear'],
+]);
+assert.deepEqual(farmCustomerBalances([]),[]);
+console.log('PASS per-customer exact invoice and earlier balance totals, oldest unpaid, credit terms, same name and reversed entries');

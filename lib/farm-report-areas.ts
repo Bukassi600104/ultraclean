@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {catfishFeedSize,feedSizeWithoutFeeding} from './farm-feed-size';
 
 // These are places to make observations. Stock and its custody stay in the inventory ledger.
 export const reportAreas = [
@@ -35,17 +36,17 @@ const count=z.number().int().nonnegative().max(2147483647);
 const weight=z.number().finite().nonnegative().max(1000000);
 const observation=z.string().trim().max(2000);
 export const areaObservationsSchema=z.object({
-  animal_count:count.optional(),feed_kg:weight.optional(),deaths:count.optional(),eggs:count.optional(),sample_count:count.positive().optional(),
+  animal_count:count.optional(),feed_kg:weight.optional(),feed_size_mm:catfishFeedSize.optional(),deaths:count.optional(),eggs:count.optional(),sample_count:count.positive().optional(),
   sample_weight_kg:weight.positive().optional(),water_quality:observation.optional(),notes:observation.optional(),
 }).strict();
 export const areaFields={
-  animal_count:'Animals counted',feed_kg:'Feed used (kg)',deaths:'Deaths observed',eggs:'Eggs collected',sample_count:'Animals weighed',
+  animal_count:'Animals counted',feed_kg:'Feed used (kg)',feed_size_mm:'Feed size',deaths:'Deaths observed',eggs:'Eggs collected',sample_count:'Animals weighed',
   sample_weight_kg:'Total sample weight (kg)',water_quality:'Water quality',notes:'Notes',
 } as const;
 export type AreaField=keyof typeof areaFields;
 export function applicableAreaFields(area:ReportArea):AreaField[]{
   if(area.key==='crops')return ['notes'];
-  return ['animal_count','feed_kg','deaths',...(area.group==='Poultry'?['eggs' as const]:[]),'sample_count','sample_weight_kg',...(area.group==='Catfish'?['water_quality' as const]:[]),'notes'];
+  return ['animal_count','feed_kg',...(area.group==='Catfish'?['feed_size_mm' as const]:[]),'deaths',...(area.group==='Poultry'?['eggs' as const]:[]),'sample_count','sample_weight_kg',...(area.group==='Catfish'?['water_quality' as const]:[]),'notes'];
 }
 const draftNumber=z.number().finite().optional();
 export const areaSectionsDraftSchema=z.object({template_version:z.literal(3),area:z.string().refine(key=>!!reportArea(key),'Choose a farm area'),
@@ -55,7 +56,12 @@ export const areaSectionsSchema=areaSectionsDraftSchema.extend({observations:are
   const area=reportArea(value.area);
   if (!area) return;
   const entries=Object.entries(value.observations);
-  if(!entries.some(([,entry])=>entry!==undefined&&entry!==''))ctx.addIssue({code:'custom',message:'Add a measurement or a note for this area.'});
+  if(value.observations.feed_size_mm!==undefined&&value.observations.feed_kg===0){
+    ctx.addIssue({code:'custom',message:feedSizeWithoutFeeding,path:['observations','feed_size_mm']});
+  }
+  if(!entries.some(([,entry])=>entry!==undefined&&entry!=='')){
+    ctx.addIssue({code:'custom',message:'Add a measurement or a note for this area.'});
+  }
   if(entries.some(([key])=>!applicableAreaFields(area).includes(key as AreaField)))ctx.addIssue({code:'custom',message:'Choose measurements for this farm area.'});
   if((value.observations.sample_count==null)!==(value.observations.sample_weight_kg==null))ctx.addIssue({code:'custom',message:'Enter both the number weighed and the total sample weight.'});
 });

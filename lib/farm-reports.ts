@@ -8,6 +8,7 @@ import { requireAdmin, requireManager } from "@/lib/auth";
 import { createServerClient } from "@/lib/supabase/server";
 import { farmErrorResponse } from "@/lib/farm-v2";
 import {requestDetails} from '@/lib/farm-purchases';
+import {formatFeedSize} from './farm-feed-size';
 
 export const REQUEST_CATEGORIES = ["purchase", "feed", "veterinary", "repair", "maintenance", "equipment", "staffing", "water", "pump", "emergency", "other"] as const;
 const text = z.string().trim().max(2000).default("");
@@ -132,7 +133,7 @@ function legacyReportView(row:DailyReport) {
   const source=row?.sections;if(!isAreaSections(source))return row;
   const area=reportArea(source.area);if(!area)return row;
   const notes=[areaTitle(area),...applicableAreaFields(area).flatMap(key=>{
-    const value=source.observations[key];return value===undefined||value===''?[]:[`${areaFields[key]}: ${value}`];
+    const value=source.observations[key];return value===undefined||value===''?[]:[`${areaFields[key]}: ${key==='feed_size_mm'?formatFeedSize(Number(value)):value}`];
   })].join('\n');
   const sections=legacySectionsSchema.parse({});
   if(area.group==='Catfish'){

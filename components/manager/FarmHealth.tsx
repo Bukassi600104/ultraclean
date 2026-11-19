@@ -86,29 +86,35 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
  <div className="flex flex-wrap gap-2"><button className={button+' bg-emerald-900 text-white'} onClick={()=>setAction({operation:'note'})}>Record health details</button>{admin&&<button className={button+' bg-white'} onClick={()=>setAction({operation:'schedule'})}>Add to schedule</button>}</div></header>
  {pending.map(i=><p key={i.id} role="status" className="rounded-xl bg-amber-50 p-3 text-sm">{i.conflict||'Saved on this device. Waiting to send.'}</p>)}
  {error?<p role="alert">{error} <button className={button} onClick={()=>setVersion(v=>v+1)}>Retry</button></p>:!data?<p role="status">Loading schedules…</p>:<>
- <section className="rounded-xl border border-[#cbd5ca] bg-white p-3 sm:p-4">
- {data.tasks.length>0&&<label className="mb-3 flex flex-wrap items-center gap-3 text-sm font-semibold">Show<select aria-label="Show health tasks" value={filter} onChange={e=>setFilter(e.target.value)} className="min-h-11 rounded-lg border bg-white px-3">{[['all','All tasks'],['overdue','Overdue'],['due_today','Due today'],['scheduled','Upcoming'],['completed','Completed'],['cancelled','Cancelled']].map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>}
- {!tasks.length&&<p className="py-3">{data.tasks.length?'No tasks match this status.':'No health tasks scheduled yet.'}</p>}
- {!data.tasks.length&&admin&&<div className="flex flex-wrap gap-3 text-sm"><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/farm/batches">Check farm groups</Link><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/managers">Check manager assignments</Link></div>}
- {tasks.length>0&&<Table className={healthTable}>
+ <section aria-labelledby="farm-health-schedule" className="rounded-xl border border-[#cbd5ca] bg-white p-2 sm:p-4">
+ <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+  <h2 id="farm-health-schedule" className="text-lg font-bold">Health task schedule</h2>
+  {data.tasks.length>0&&<label className="flex items-center gap-2 text-sm font-semibold">Show<select aria-label="Show health tasks" value={filter} onChange={e=>setFilter(e.target.value)} className="min-h-11 rounded-lg border bg-white px-2"> {[
+   ['all','All tasks'],['overdue','Overdue'],['due_today','Due today'],['scheduled','Upcoming'],['completed','Completed'],['cancelled','Cancelled']
+  ].map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>}
+ </div>
+ <Table className={healthTable}>
   <caption className="sr-only">Farm health schedule</caption>
-  <thead><tr>
-   <th scope="col">Task<span className="sm:hidden"> / batch</span></th>
-   <th scope="col" className="hidden w-[22%] sm:table-cell">Batch</th>
-   <th scope="col" className="w-[23%] sm:w-[15%]">Due</th>
-   <th scope="col" className="w-[31%] sm:w-[17%]">Status{!admin&&<span className="sm:hidden"> / action</span>}</th>
-   {!admin&&<th scope="col" className="hidden w-[19%] sm:table-cell">Action</th>}
+  <thead className="border-y border-slate-200 bg-slate-50"><tr>
+   <th scope="col" className="w-[34%]">Task</th>
+   <th scope="col" className="w-[23%] sm:w-[30%]">Batch</th>
+   <th scope="col" className="w-[18%] sm:w-[15%]">Due</th>
+   <th scope="col">Status</th>
   </tr></thead>
-  <tbody>{tasks.map(t=><tr key={t.id} id={'task-'+t.id} tabIndex={-1}>
-   <th scope="row" className="font-normal"><h2 className="font-bold">{t.title}</h2><span className="block text-xs text-slate-600 sm:hidden">{t.batch_name}</span>
-    <button type="button" className="min-h-11 text-sm font-medium text-emerald-900 underline" onClick={()=>setAction({operation:'details',id:t.id,task:t})}>Task details</button>
-   </th>
-   <td className="hidden sm:table-cell">{t.batch_name}<span className="block text-xs text-slate-600">{t.manager_name}</span></td>
-   <td><time dateTime={t.due_date}>{displayDate(t.due_date)}</time></td>
-   <td>{badge(t)}<div className={admin?'mt-1':'mt-1 sm:hidden'}>{taskActions(t)}</div></td>
-   {!admin&&<td className="hidden sm:table-cell">{taskActions(t)}</td>}
-  </tr>)}</tbody>
- </Table>}</section>
+  <tbody>
+   {!tasks.length&&<tr><td colSpan={4} className="text-slate-700">{data.tasks.length?'No tasks match this status.':'No health tasks scheduled yet.'}</td></tr>}
+   {tasks.map(t=><tr key={t.id} id={'task-'+t.id} tabIndex={-1}>
+    <th scope="row" className="font-normal">
+     <h2><button type="button" title="Open task details" className="min-h-11 text-left font-bold text-emerald-950 underline decoration-emerald-800/50 underline-offset-2" onClick={()=>setAction({operation:'details',id:t.id,task:t})}>{t.title}</button></h2>
+    </th>
+    <td>{t.batch_name}<span className="hidden text-xs text-slate-600 sm:block">{t.manager_name}</span></td>
+    <td><time dateTime={t.due_date} className="tabular-nums">{displayDate(t.due_date)}</time></td>
+    <td>{badge(t)}<div className="mt-1">{taskActions(t)}</div></td>
+   </tr>)}
+  </tbody>
+ </Table>
+ {!data.tasks.length&&admin&&<div className="flex flex-wrap gap-x-3 px-1 text-sm"><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/farm/batches">Check farm groups</Link><Link className="inline-flex min-h-11 items-center text-emerald-900 underline" href="/dashboard/managers">Check manager assignments</Link></div>}
+ </section>
  {Boolean(data.notes?.length)&&<section className="rounded-xl border bg-white p-3 sm:p-4"><h2 className="mb-2 text-lg font-bold">Recorded health details</h2>
   <Table className={healthTable}><caption className="sr-only">Recorded health details</caption>
    <thead><tr><th scope="col" className="w-[24%] sm:w-[16%]">Date</th><th scope="col" className="w-[32%] sm:w-[24%]">Task / area</th><th scope="col">Observation</th><th scope="col" className="hidden w-[17%] sm:table-cell">Recorded by</th><th scope="col" className="hidden w-[15%] sm:table-cell">Follow up</th></tr></thead>

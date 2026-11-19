@@ -1,8 +1,18 @@
 import {formatExactCurrency,sumMoney,multiplyMoney} from './money';
 import type {FarmControlSource} from './farm-control';
 import type {calculateFarmFinance} from './farm-finance-calculations';
+import type {PendingExpense} from './operations-cash-validation';
 export type ReportingConfig={timezone:string;mortality_alert_count:number|null;feed_alert_days:number|null;display_currency:string|null;exchange_rate:string|null;rate_date:string|null;rate_valid_until:string|null;rate_source:string|null};
-export type FarmAlert={id:string;priority:number;title:string;detail:string;href:string;action:string;decision?:"request"|"purchase"};
+export type FarmAlert={id:string;priority:number;title:string;detail:string;href:string;action:string;decision?:"request"|"purchase";funding?:true};
+
+export function fundingEntryName(expense:PendingExpense){
+ if(expense.kind==='feed')return 'Feed purchase';
+ const {item_name,notes,paid_to}=expense.payload||{};
+ const description=[item_name,notes,paid_to].find(value=>typeof value==='string'&&value.trim());
+ if(typeof description!=='string')return 'Expense';
+ const name=description.trim().replace(/\s+/g,' ');
+ return name.length>90?name.slice(0,87)+'…':name;
+}
 export function farmAlerts(s:Pick<FarmControlSource,'report'|'health'|'currentCredit'|'purchases'|'stores'|'config'|'currentPerformance'>,supervisor=false):FarmAlert[]{
  const alerts:FarmAlert[]=[],add=(id:string,priority:number,title:string,detail:string,path:string,action:string,decision?:FarmAlert['decision'])=>alerts.push({id,priority,title,detail,action,decision,href:'/dashboard/farm/'+path});
  for(const t of s.health.tasks)if(t.status==='overdue'||t.status==='due_today')add(t.id,1,t.title,`${t.batch_name}: ${t.status==='overdue'?'overdue since':'due'} ${t.due_date}`,'health#task-'+t.id,supervisor?'Open task':'Review task');
@@ -11,20 +21,25 @@ export function farmAlerts(s:Pick<FarmControlSource,'report'|'health'|'currentCr
  const linked=new Set(s.purchases.purchases.map(p=>p.request_id));
  for(const r of s.report.decisions.operational_requests||[])if(r.status==='pending'&&!linked.has(String(r.id)))add(String(r.id),2,'Request awaiting decision',String(r.description),'operational-requests?request_id='+r.id,supervisor?'View request':'Review request','request');
  const emergencyFunding=new Set<string>();
- for(const e of s.purchases.exceptions)if(!e.resolution){
-  if(e.funding_status==='pending'&&e.pending_funding_id)emergencyFunding.add(e.pending_funding_id);
-  const needsFunding=e.funding_status==='pending'||e.approval;
-  const title=supervisor?(needsFunding?'Awaiting funding confirmation':'Awaiting expense approval'):(needsFunding?'Confirm expense funding':'Review reported expense');
-  if(!supervisor&&e.funding_status==='pending'&&e.pending_funding_id){
-   alerts.push({id:e.id,priority:1,title,detail:e.supplier+' · '+formatExactCurrency(e.amount_exact,'NGN'),action:'Review funding',href:'/dashboard/funds?funding_id='+e.pending_funding_id});
+ for(const e of s.purchases.exceptions){
+  if(e.resolution||e.funding_status==='posted'||e.funding_status==='declined')continue;
+  const purchasePath='purchases'+(!supervisor?'?review_expense='+e.id:'')+'#expense-'+e.id;
+  const pendingId=e.funding_status==='pending'?e.pending_funding_id:null;
+  if(pendingId)emergencyFunding.add(pendingId);
+  if(e.approval||e.funding_status==='pending'){
+   alerts.push({id:e.id,priority:1,funding:true,title:e.supplier,detail:formatExactCurrency(e.amount_exact,'NGN')+(e.approval?' · Approved expense':''),
+    action:supervisor?'View expense':'Confirm who paid',href:pendingId?'/dashboard/funds?funding_id='+pendingId:'/dashboard/farm/'+purchasePath});
   }else{
-   const path='purchases'+(!supervisor?'?review_expense='+e.id:'')+'#expense-'+e.id;
-   add(e.id,1,title,e.supplier+' · '+formatExactCurrency(e.amount_exact,'NGN'),path,supervisor?'View expense':needsFunding?'Review funding':'Review expense');
+   add(e.id,1,supervisor?'Awaiting expense approval':'Review reported expense',e.supplier+' · '+formatExactCurrency(e.amount_exact,'NGN'),purchasePath,supervisor?'View expense':'Review expense');
   }
  }
  for(const c of s.stores.counts)if(!c.decision)add(c.id,2,'Physical count awaiting review',`${c.label}: counted ${c.date}`,'stores#count-'+c.id,supervisor?'View count':'Review count');
  for(const a of s.stores.assets)if(a.resource==='feed'&&s.config?.feed_alert_days&&a.coverage?.days_left!=null&&Number(a.coverage.days_left)<s.config.feed_alert_days)add(a.id,1,'Feed running low',`${a.label}: estimated ${a.coverage.days_left} days`,'stores?view=feed#stock-'+a.id,'View feed');
- for(const e of s.report.cash.pending_expenses)if(e.status==='pending'&&!emergencyFunding.has(e.id))alerts.push({id:e.id,priority:1,title:supervisor?'Awaiting funding confirmation':'Funding source needs confirmation',action:supervisor?'View expense':'Review funding',detail:`${formatExactCurrency(e.shortfall,e.currency)} missing funding on ${e.activity_date}`,href:'/dashboard/funds?funding_id='+e.id});
+ for(const e of s.report.cash.pending_expenses)if(e.status==='pending'&&!emergencyFunding.has(e.id)){
+  const day=new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(e.activity_date+'T12:00:00Z'));
+  alerts.push({id:e.id,priority:1,funding:true,title:fundingEntryName(e),action:supervisor?'View expense':'Confirm who paid',
+   detail:formatExactCurrency(e.amount,e.currency)+' · '+day,href:'/dashboard/funds?funding_id='+e.id});
+ }
  for(const b of s.currentPerformance.batches){
   const deaths=s.currentPerformance.deaths.filter(d=>d.batch_id===b.id),quantity=sumMoney(deaths.map(d=>d.quantity));
   if(Number(quantity)>0)add('loss:'+b.id,1,s.config?.mortality_alert_count&&Number(quantity)>=s.config.mortality_alert_count?'Mortality alert threshold reached':'Recent mortality recorded',`${b.name}: ${quantity} losses since ${s.currentPerformance.from}`,'performance?batch_id='+b.id+'&from='+s.currentPerformance.from+'&to='+s.currentPerformance.to,'View losses');

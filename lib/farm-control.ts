@@ -17,12 +17,14 @@ export async function getFarmControl(scope:ManagerScope,from:string,to:string){
  if(source?.report?.scope?.actorId!==scope.actorId||source.report.scope.periodId!==scope.periodId||source.report.from!==from||source.report.to!==to)throw Error('Farm report scope could not be verified');
  const report=summarizeManagerSnapshot(source.report),performance=batchPerformance(source.performance),alerts=farmAlerts(source);
  const summary=farmSummary(source,report.farm);
+ const decisions=alerts.filter(a=>!a.funding).length;
+ const funding=alerts.length-decisions;
  // Financial cutoffs can be historical, while the two current-work panels always show today.
  const recentDates={from:source.report.to,to:source.today,personal_report:true};
  const [dailyReports,newerFeed]=source.report.to>=source.today?[source.report.records.farm_daily_reports,[]]
    :await Promise.all([allManagerRecords(scope,'farm_daily_reports',{from:source.today,to:source.today,personal_report:true}).catch(()=>null),
      Promise.all([allManagerRecords(scope,'farm_feed_purchases',recentDates),allManagerRecords(scope,'farm_daily_feed',recentDates)]).then(rows=>rows.flat()).catch(()=>null)]);
  const overview=farmOverview({...source,report,owed:source.credit.summary.owed,dailyReports:dailyReports??null,newerFeed});
- return {...source,report:{...report,records:source.report.records},performance,alerts,summary,overview,whatsappSummary:summary.split('\n').slice(0,9).join('; ')+`; ${alerts.length} current items need attention. Review the Farm control centre for details.`};
+ return {...source,report:{...report,records:source.report.records},performance,alerts,summary,overview,whatsappSummary:summary.split('\n').slice(0,9).join('; ')+`. ${decisions} items need attention. ${funding} expenses need funding confirmation.`};
 }
 export type FarmControlData=Awaited<ReturnType<typeof getFarmControl>>;

@@ -3,7 +3,9 @@ import Link from "next/link";
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from "@/components/ui/dialog";
 import {invoiceStatus,type CreditData} from "@/lib/farm-credit";
 import {formatExactCurrency} from "@/lib/money";
-import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
+import {FarmCustomerBalances} from '@/components/manager/FarmCustomerBalances';
+import {useFarmRecordRefresh} from '@/hooks/useFarmRecordRefresh';
+import {useManagerFetch,useManagerPeriod} from "@/contexts/ManagerPeriodContext";
 
 import { formatCurrency } from "@/lib/utils";
 
@@ -85,6 +87,9 @@ function CloseDayDialog({ onConfirm, onCancel, loading }: { onConfirm: () => voi
 
 export default function SalesPage() {
  const managerFetch=useManagerFetch();
+  const creditRefresh = useFarmRecordRefresh();
+  const scope = useManagerPeriod();
+  const creditScope = [scope?.actorId,scope?.periodId,scope?.mode].join(":");
   const router = useRouter();
   const today = getTodayStr();
   const [sales, setSales] = useState<Sale[]>([]);
@@ -93,7 +98,8 @@ export default function SalesPage() {
   const [summary, setSummary] = useState<{revenue:number;sales_by_product:{name:string;value:number}[]} | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [showProducts,setShowProducts]=useState(false);
-  const [creditData,setCreditData]=useState<CreditData|null>(null),[creditError,setCreditError]=useState("");
+  const [savedCredit,setSavedCredit]=useState<{scope:string; data:CreditData}|null>(null),[creditError,setCreditError]=useState("");
+  const creditData = savedCredit?.scope === creditScope ? savedCredit.data : null;
   const [creditVersion,setCreditVersion]=useState(0);
   const recentSaleInvoices=creditData?.invoices.filter(invoice=>invoice.kind!=='opening_balance').sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -120,8 +126,25 @@ export default function SalesPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  useEffect(()=>{const controller=new AbortController();setCreditData(null);setCreditError("");managerFetch('/api/farm/credit',{signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok||!body.summary||!Array.isArray(body.invoices))throw Error(body.error||'Customer balances unavailable');if(!controller.signal.aborted)setCreditData(body);}).catch(error=>{if(!controller.signal.aborted)setCreditError(error.message);});return()=>controller.abort();},[managerFetch,creditVersion]);
-  useEffect(()=>{const refresh=()=>{void loadData();setCreditVersion(v=>v+1);};window.addEventListener('farm-records-synced',refresh);return()=>window.removeEventListener('farm-records-synced',refresh);},[loadData]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCreditError('');
+    async function loadBalances() {
+      try {
+        const response = await managerFetch('/api/farm/credit',{signal:controller.signal});
+        if (controller.signal.aborted) return;
+        if (response.status === 401 || response.status === 403) setSavedCredit(null);
+        const data = await response.json();
+        if (!response.ok || !data.summary || !Array.isArray(data.invoices)) throw new Error(data.error || 'Customer balances unavailable');
+        if (!controller.signal.aborted) setSavedCredit({scope: creditScope, data});
+      } catch(error) {
+        if (!controller.signal.aborted) setCreditError(error instanceof Error ? error.message : 'Customer balances unavailable');
+      }
+    }
+    void loadBalances();
+    return () => controller.abort();
+  },[managerFetch,creditVersion,creditRefresh,creditScope]);
+  useEffect(()=>{const refresh=()=>void loadData();window.addEventListener('farm-records-synced',refresh);return()=>window.removeEventListener('farm-records-synced',refresh);},[loadData]);
 
   const isDayClosed = dayRecord?.status === "closed";
   const totalSales = summary?.revenue ?? 0;
@@ -179,12 +202,13 @@ export default function SalesPage() {
         <Link className="inline-flex min-h-12 items-center px-3 font-semibold text-emerald-900 underline" href="/credit">Customers &amp; payments</Link>
       </div>
       {isDayClosed&&<p className="rounded-xl bg-amber-50 p-4 text-amber-950">Today&apos;s records are closed. Saved sales remain available below. Payment entries are checked against their actual date.</p>}
-      <section aria-label="Sales and customer balances" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-emerald-900 bg-emerald-950 p-5 text-white"><p className="text-base">Today&apos;s sales</p><p className="mt-2 break-words text-3xl font-bold tabular-nums">{loading?'Loading…':loadError?'Unavailable':fmt(totalSales)}</p><p className="mt-2 text-sm text-emerald-100">All recorded sales for {today}</p></div>
-        {([['Invoice sales',creditData?.summary.revenue],['Payments received',creditData?.summary.collected],['Customer debt',creditData?.summary.owed]] as const).map(([label,value])=><div key={label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5"><p className="text-base text-slate-700">{label}</p><p className="mt-2 break-words text-3xl font-bold tabular-nums">{value!==undefined?formatExactCurrency(value,'NGN'):creditError?'Unavailable':'Loading…'}</p><p className="mt-2 text-sm text-slate-600">{label==='Customer debt'?'Assigned customers · current balance':'Your responsibility scope · all dates'}</p></div>)}
+      <section aria-label="Sales and customer balances" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-emerald-900 bg-emerald-950 p-3 text-white sm:p-5"><p className="text-sm sm:text-base">Today&apos;s sales</p><p className="mt-2 break-words text-lg font-bold tabular-nums sm:text-3xl">{loading?'Loading…':loadError?'Unavailable':fmt(totalSales)}</p><p className="mt-2 text-xs text-emerald-100 sm:text-sm">All recorded sales for {today}</p></div>
+        {([['Invoice sales',creditData?.summary.revenue],['Payments received',creditData?.summary.collected],['Customer debt',creditData?.summary.owed]] as const).map(([label,value])=><div key={label} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 sm:p-5"><p className="text-sm text-slate-700 sm:text-base">{label}</p><p className="mt-2 break-words text-lg font-bold tabular-nums sm:text-3xl">{value!==undefined?formatExactCurrency(value,'NGN'):creditError?'Unavailable':'Loading…'}</p><p className="mt-2 text-xs text-slate-600 sm:text-sm">{label==='Customer debt'?'Assigned customers · current balance':'Your responsibility scope · all dates'}</p></div>)}
       </section>
       <p className="text-sm text-slate-600">Sales show what was sold. Payments show money actually received. Customer debt is still unpaid. These figures have different scopes and must not be added together.</p>
-      {creditError&&<p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-950">{creditError}. <button className="min-h-11 underline" onClick={()=>setCreditVersion(v=>v+1)}>Retry customer balances</button></p>}
+      {creditError&&<p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-950">{creditError}. {creditData&&'Showing the last confirmed balances.'} <button className="min-h-11 underline" onClick={()=>setCreditVersion(v=>v+1)}>Retry customer balances</button></p>}
+      {creditData&&<FarmCustomerBalances invoices={creditData.invoices}/>}
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Recent invoices</h2><Link href="/credit" className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline">View all invoices</Link></div>
         <p className="mb-4 text-sm text-slate-600">Latest 10 in your permitted scope. Historical sales without invoices remain unchanged below.</p>

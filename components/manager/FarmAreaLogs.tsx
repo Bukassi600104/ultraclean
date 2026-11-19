@@ -7,9 +7,19 @@ import {useManagerFetch,useQueueIdentity} from '@/contexts/ManagerPeriodContext'
 import {getPendingItems} from '@/lib/offline-storage';
 import {farmReportDraftKey} from '@/lib/farm-offline-workspace';
 import {useFarmRecordRefresh} from '@/hooks/useFarmRecordRefresh';
+import {catfishFeedSizes,formatFeedSize} from '@/lib/farm-feed-size';
 import {applicableAreaFields,areaFields,areaTitle,batchReportArea,isAreaSections,reportArea,reportAreas,type AreaSections} from '@/lib/farm-report-areas';
 import type {AssignedFarmBatch,FarmBatchRecord} from '@/lib/farm-batch-records';
 import type {DailyReport} from '@/lib/farm-reports';
+
+export function CatfishFeedSizeField({value,className,onChange}:{value:string|number;className:string;onChange:(value:string)=>void}){
+  return <label className="text-sm font-medium">Feed size
+    <select aria-label="Feed size" className={className} value={value} onChange={event=>onChange(event.target.value)}>
+      <option value="">Choose feed size</option>
+      {catfishFeedSizes.map(size=><option key={size} value={size}>{formatFeedSize(size)}</option>)}
+    </select>
+  </label>;
+}
 
 export function AreaLogFields({sections,disabled,onChange}:{sections:AreaSections;disabled:boolean;onChange:(value:AreaSections)=>void}){
   const area=reportArea(sections.area);
@@ -26,6 +36,7 @@ export function AreaLogFields({sections,disabled,onChange}:{sections:AreaSection
         else observations[key]=Number(raw);
         onChange({...sections,observations});
       }
+      if(key==='feed_size_mm')return <CatfishFeedSizeField key={key} value={common.value} className={common.className} onChange={update}/>;
       return <label key={key} className={'text-sm font-medium '+(isText?'sm:col-span-2':'')}>{areaFields[key]}
         {isText?<textarea {...common} rows={2} maxLength={2000} onChange={event=>update(event.target.value)}/>:<input {...common} type="number" inputMode={key.includes('kg')?'decimal':'numeric'} min={key==='sample_count'?1:0} step={key.includes('kg')?'any':1} onChange={event=>update(event.target.value)}/>}
       </label>;
@@ -37,7 +48,7 @@ export function AreaMeasurements({sections}:{sections:AreaSections}){
   const area=reportArea(sections.area);if(!area)return null;
   return <dl className="flex flex-wrap gap-x-6 gap-y-2">{applicableAreaFields(area).map(key=>{
     const value=sections.observations[key];if(value===undefined||value==='')return null;
-    return <div key={key} className={key==='notes'?'basis-full':''}><dt className="text-xs text-slate-600">{areaFields[key]}</dt><dd className="whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{value}</dd></div>;
+    return <div key={key} className={key==='notes'?'basis-full':''}><dt className="text-xs text-slate-600">{areaFields[key]}</dt><dd className="whitespace-pre-wrap break-words text-sm font-semibold text-slate-900">{key==='feed_size_mm'?formatFeedSize(Number(value)):value}</dd></div>;
   })}</dl>;
 }
 

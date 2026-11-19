@@ -61,6 +61,7 @@ export function FarmControl({compact=false,range,name}:{compact?:boolean;range?:
     return url.pathname+url.search+url.hash;
   }
   const finance=data?.report.farm,money=(value:string|number)=>formatExactCurrency(value,'NGN');
+  const attention=data?.alerts.filter(alert=>!alert.funding)||[];
   const funds=data?sumMoney(data.report.cash.accounts.filter(a=>a.currency==='NGN'&&a.holder_type!=='awaiting').map(a=>a.closing)):'0';
   const financials=data&&finance?[['Sales after credits',money(finance.revenue)],['Actual collections',money(finance.collections)],['Paid operating expenses',money(finance.total_expenses)],['Customer debt',money(data.credit.summary.owed)],['Tracked money held',money(funds)]]:[];
   return <section className="min-w-0 space-y-4 text-slate-900" aria-label="Farm control centre" data-farm-report={!compact?'true':undefined} onClickCapture={e=>{
@@ -78,7 +79,7 @@ export function FarmControl({compact=false,range,name}:{compact?:boolean;range?:
     {!data?!error&&<p role="status">Loading farm records…</p>:finance&&<>
       {compact?<>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">{financials.map(([label,value])=><div key={label} className={card}><p className="text-sm text-slate-600">{label}</p><p className="mt-1 break-words text-xl font-bold tabular-nums">{value}</p></div>)}</div>
-        <div className={card}><h3 className="font-bold">Needs attention now</h3>{data.alerts.length?<ul className="divide-y">{data.alerts.slice(0,3).map(a=><li key={a.id}><Link className="block min-h-11 py-2 text-sm text-emerald-950" href={reportLink(a.href)}><strong>{a.title}</strong> · {a.detail}</Link></li>)}</ul>:<p className="mt-2 text-sm">No recorded decisions require attention.</p>}</div>
+        <div className={card}><h3 className="font-bold">Needs attention now</h3>{attention.length?<ul className="divide-y">{attention.slice(0,3).map(a=><li key={a.id}><Link className="block min-h-11 py-2 text-sm text-emerald-950" href={reportLink(a.href)}><strong>{a.title}</strong> · {a.detail}</Link></li>)}</ul>:<p className="mt-2 text-sm">No recorded decisions require attention.</p>}</div>
         <Link className={button} href={'/dashboard/farm/control?'+query}>Open farm reports and controls</Link>
       </>:<>
         <FarmOverviewPanels data={data.overview} alerts={data.alerts} link={reportLink}/>

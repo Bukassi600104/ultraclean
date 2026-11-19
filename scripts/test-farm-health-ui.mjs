@@ -39,12 +39,13 @@ try{
   await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
   const schedule=page.getByRole('table',{name:'Farm health schedule'});
   await schedule.getByText('Actual vet schedule',{exact:true}).waitFor();
-  assert.equal(await schedule.getByRole('columnheader',{name:'Due',exact:true}).count(),1,'The schedule must have visible column headings at '+width+'px');
+  for(const heading of ['Task','Batch','Due','Status'])assert.equal(await schedule.getByRole('columnheader',{name:heading,exact:true}).isVisible(),true,heading+' must be visible at '+width+'px');
+  assert.equal(await schedule.getByRole('cell',{name:/Actual flock/}).isVisible(),true);
   assert.equal(await schedule.locator('tbody tr').first().evaluate(el=>getComputedStyle(el).display),'table-row');
   assert.equal(await schedule.getByRole('button',{name:'Mark done',exact:true}).count(),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.screenshot({path:path.join(folder,'health-'+width+'.png'),fullPage:true});
-  await schedule.getByText('Task details',{exact:true}).click();
+  await schedule.getByRole('button',{name:'Actual vet schedule',exact:true}).click();
   const dialog=page.getByRole('dialog');await dialog.getByText('Use the actual veterinary instruction').waitFor();
   await dialog.getByText(/Vet recommendation .* Review the recorded observation/).waitFor();
   assert.equal(await dialog.getByRole('button',{name:'Correct schedule',exact:true}).isVisible(),true);
@@ -52,6 +53,7 @@ try{
   await dialog.getByRole('heading',{name:'Questions and replies',exact:true}).waitFor();
   await dialog.getByRole('button',{name:'Close',exact:true}).click();
  }
+ await page.setViewportSize({width:375,height:850});
  await page.goto('http://127.0.0.1:'+server.address().port+'/?manager=1');await page.getByRole('button',{name:'Mark done',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Confirm done',exact:true}).click();await page.getByRole('alert').filter({hasText:'Add a photo to confirm this task'}).waitFor();assert.equal(posts.length,1,'No completion without a photo reaches the API');await page.getByRole('button',{name:'Close',exact:true}).click();
  // Select a real file through the picker, retain its scoped local ID offline, then upload and complete.
  await page.getByRole('button',{name:'Mark done',exact:true}).filter({visible:true}).click();
@@ -108,12 +110,19 @@ try{
  await changedHistory.getByRole('row').filter({hasText:'Retracted'}).getByText('Entry details',{exact:true}).click();
  await changedHistory.getByText(withdrawn.reason,{exact:true}).waitFor();
  assert.equal(await changedHistory.getByRole('button',{name:'View proof',exact:true}).count(),1);
- // Farms with only free-form health observations must still see a populated table.
+ // Production can have no health tasks or notes. Show the same four columns on both roles.
  tasks=[];completions=[];
- await page.setViewportSize({width:375,height:700});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
+ for(const [role,width] of [['admin',375],['manager',375],['admin',1440]]){
+  await page.setViewportSize({width,height:750});await page.goto('http://127.0.0.1:'+server.address().port+'/?'+role+'=1');
+  const empty=page.getByRole('table',{name:'Farm health schedule'});
+  await empty.getByText('No health tasks scheduled yet.').waitFor();
+  for(const heading of ['Task','Batch','Due','Status'])assert.equal(await empty.getByRole('columnheader',{name:heading,exact:true}).isVisible(),true);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ }
  await page.getByRole('table',{name:'Recorded health details'}).getByText('Pen checked by supervisor').waitFor();
- assert.equal(await page.getByRole('table',{name:'Farm health schedule'}).count(),0);
- await page.getByText('No health tasks scheduled yet.').waitFor();
+ healthNotes=[];await page.reload();
+ await page.getByRole('table',{name:'Farm health schedule'}).getByText('No health tasks scheduled yet.').waitFor();
+ assert.equal(await page.getByRole('table',{name:'Recorded health details'}).count(),0);
  console.log('Health screenshot artifacts: '+folder);
  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByText('All groups: recorded money').waitFor();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  performanceBatches=['11111111-0000-4000-8000-000000000001','22222222-0000-4000-8000-000000000002'].map((site_id,i)=>({id:site_id,site_id,site_name:'Same site name',name:'Flock '+i,product:'chicken',head_count:'0',recorded_days:0,expected_days:30,egg_days:0,deaths:'0',eggs:'0',feed_kg:null,sample_average_kg:null,feed_conversion_estimate:null,feed_cost_estimate:null,revenue:i?'200':'100',paid_expenses:i?'20':'10',recorded_result:i?'180':'90',trend:[],completeness:'Measurements unavailable'}));await page.goto('http://127.0.0.1:'+server.address().port+'/?performance=1');await page.getByRole('button',{name:'View Flock 1',exact:true}).filter({visible:true}).waitFor();await page.getByLabel('Site',{exact:true}).selectOption(performanceBatches[0].site_id);assert.equal(await page.getByRole('button',{name:'View Flock 0',exact:true}).filter({visible:true}).count(),1);assert.equal(await page.getByRole('button',{name:'View Flock 1',exact:true}).count(),0);assert.equal(await page.getByLabel('Site',{exact:true}).locator('option').count(),3);await page.getByRole('heading',{name:'Selected groups: recorded money'}).waitFor();assert.equal(await page.getByLabel('Batch',{exact:true}).locator('option').count(),2);assert.match(await page.locator('section').filter({has:page.getByRole('heading',{name:'Selected groups: recorded money'})}).innerText(),/100.00/);assert.deepEqual(errors,[]);

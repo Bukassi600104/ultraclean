@@ -107,6 +107,7 @@ try{
   for(const letter of ['A','B','C','D'])await page.getByText('Pen '+letter,{exact:true}).waitFor();
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(artifacts,'location-selector-mobile.png'),fullPage:true});
   await page.getByRole('link',{name:'Log Poultry · Pen D'}).click();
+  assert.equal(await page.getByLabel('Feed size',{exact:true}).count(),0);
   await page.getByLabel('Animals counted',{exact:true}).fill('0');await page.getByLabel('Eggs collected',{exact:true}).fill('17');await page.getByLabel('Deaths observed',{exact:true}).fill('0');await page.getByLabel('Notes',{exact:true}).fill('Nest checked');
   await page.reload();await page.getByLabel('Notes',{exact:true}).waitFor();assert.equal(await page.getByLabel('Animals counted',{exact:true}).inputValue(),'0');assert.equal(await page.getByLabel('Notes',{exact:true}).inputValue(),'Nest checked');
   for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
@@ -133,6 +134,44 @@ try{
     assert.equal(await page.getByRole('link',{name:'Choose another area'}).getAttribute('href'),prefix+'/daily-report');
     assert.equal(await page.getByRole('link',{name:'View report history'}).getAttribute('href'),prefix+'/daily-report/history');
   }
+  // Check the real catfish location form and the original payload after reconnecting.
+  const poultryReport=report;
+  await page.setViewportSize({width:375,height:844});
+  await page.goto(origin+'/daily-report');
+  await page.getByText('Catfish',{exact:true}).first().click();
+  await page.getByRole('link',{name:'Log Catfish · Farm 2 · Tarpaulin Vat 2',exact:true}).click();
+  const feedSize=page.getByLabel('Feed size',{exact:true});
+  await feedSize.waitFor();
+  assert.deepEqual(await feedSize.locator('option').allTextContents(),['Choose feed size','2 mm','3 mm','4 mm','6 mm','9 mm']);
+  await feedSize.selectOption('9');
+  await page.getByLabel('Feed used (kg)',{exact:true}).fill('0');
+  await page.getByRole('button',{name:'Send location log'}).click();
+  await page.getByRole('alert').filter({hasText:'Clear the feed size when no feed was used.'}).waitFor();
+  await page.getByLabel('Feed used (kg)',{exact:true}).fill('');
+  await page.reload();await feedSize.waitFor();assert.equal(await feedSize.inputValue(),'9');
+  const firstAttempt=calls.length;
+  failSubmit=true;await page.getByRole('button',{name:'Send location log'}).click();
+  await page.getByText('Saved on this device. Waiting to send.',{exact:true}).waitFor();
+  await page.reload();
+  await page.getByText('Saved on this device. Waiting to send.',{exact:true}).waitFor();
+  failSubmit=false;await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  await page.getByText('Sent. The server confirmed your report.',{exact:true}).waitFor();
+  const feedAttempts=calls.slice(firstAttempt).filter(call=>call.path==='/api/farm/daily-reports/submit'&&call.method==='POST');
+  assert.ok(feedAttempts.length>=2);
+  for(const attempt of feedAttempts){assert.equal(attempt.requestId,feedAttempts[0].requestId);assert.deepEqual(attempt.body,feedAttempts[0].body);}
+  assert.deepEqual(report.sections.observations,{feed_size_mm:9});
+  await page.goto(origin+'/daily-report/history?report_id='+report.id);
+  await page.getByText('9 mm',{exact:true}).first().waitFor();
+  for(const width of [375,1440]){
+    await page.setViewportSize({width,height:844});
+    await page.goto(origin+'/?admin=yes');
+    await page.getByText('9 mm',{exact:true}).first().waitFor();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  }
+  await page.getByRole('button',{name:'Mark reviewed',exact:true}).click();
+  await page.getByText('Review saved.',{exact:true}).waitFor();
+  assert.equal(report.sections.observations.feed_size_mm,9);
+  report=poultryReport;
   const shown=['10000000-0000-4000-8000-000000000051','10000000-0000-4000-8000-000000000052'].map((key,index)=>({...report,id:key,reviewed_at:null,review_note:null,revision:1,sections:{template_version:3,area:index?'poultry_b':'poultry_a',observations:{eggs:index}}}));
   const reviews=[];
   await page.route('**/api/farm/daily-reports**',async r=>{

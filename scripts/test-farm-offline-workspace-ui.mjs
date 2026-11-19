@@ -36,14 +36,27 @@ try{
  assert.ok(await page.evaluate(key=>localStorage.getItem(key),key));assert.equal(await page.evaluate(()=>Object.keys(localStorage).filter(key=>key.startsWith('farm_pending_')).length),1);checks+=2;
  assert.equal(await page.evaluate(identity=>window.media.getFarmMedia(identity).then(rows=>rows.length),identity),1);checks++;
  // The next active period has two prepared forms. The quarantined earlier period stays intact.
- const nextKey=key.replace('period:p1','period:p2');
- await page.evaluate(({key,pointer,identity})=>{
+ const nextKey=key.replace('period:p1','period:p2'),fishKey=nextKey+':area:farm1_pond1:2026-11-11';
+ await page.evaluate(({key,pointer,identity,fishKey})=>{
   sessionStorage.setItem('actor','alice');localStorage.setItem(pointer,JSON.stringify({version:1,identity,preparedAt:'2026-11-11T08:00:00Z'}));
   localStorage.setItem(key,'{}');
   localStorage.setItem(key+':area:poultry_a:2026-11-11',JSON.stringify({form:{report_date:'2026-11-11',sections:{template_version:3,area:'poultry_a',observations:{eggs:0}},decision_required:false},requestId:crypto.randomUUID()}));
- },{key:nextKey,pointer,identity:{...identity,periodId:'p2'}});
+  localStorage.setItem(fishKey,JSON.stringify({form:{report_date:'2026-11-11',sections:{template_version:3,area:'farm1_pond1',observations:{feed_kg:1.25}},decision_required:false},requestId:crypto.randomUUID()}));
+ },{key:nextKey,pointer,identity:{...identity,periodId:'p2'},fishKey});
  await page.reload();await page.getByLabel('Saved report',{exact:true}).selectOption(nextKey+':area:poultry_a:2026-11-11');
  await page.getByLabel('Eggs collected',{exact:true}).waitFor();assert.equal(await page.getByLabel('Eggs collected',{exact:true}).inputValue(),'0');await page.getByLabel('Notes',{exact:true}).fill('Checked while offline');
  assert.equal(await page.evaluate(key=>JSON.parse(localStorage.getItem(key+':area:poultry_a:2026-11-11')).form.sections.observations.notes,nextKey),'Checked while offline');assert.equal(await page.evaluate(key=>localStorage.getItem(key),key),'{}');checks+=3;
+ await page.getByLabel('Saved report',{exact:true}).selectOption(fishKey);
+ const feedSize=page.getByLabel('Feed size',{exact:true});await feedSize.selectOption('4');
+ const sizedDraft=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),fishKey);
+ assert.deepEqual(sizedDraft.form.sections.observations,{feed_kg:1.25,feed_size_mm:4});
+ await page.reload();await page.getByLabel('Saved report',{exact:true}).selectOption(fishKey);
+ await feedSize.waitFor();assert.equal(await feedSize.inputValue(),'4');
+ await page.unroute('**/api/**');await page.route('**/api/**',route=>route.abort('failed'));
+ await page.getByRole('button',{name:'Save report to send',exact:true}).click();
+ const queuedFish=await page.evaluate(requestId=>Object.keys(localStorage).filter(key=>key.startsWith('farm_pending_farm:alice:p2:')).map(key=>JSON.parse(localStorage.getItem(key))).find(row=>row.requestId===requestId),sizedDraft.requestId);
+ assert.deepEqual(queuedFish.data.sections,sizedDraft.form.sections);
+ await page.reload();await page.getByLabel('Saved report',{exact:true}).selectOption(fishKey);
+ await feedSize.waitFor();assert.equal(await feedSize.isDisabled(),true);assert.equal(await feedSize.inputValue(),'4');checks+=4;
  console.log('PASS '+checks+' actual browser offline workspace checks: identity lock, preserved legacy fields, editing/reload, retained photos, queue persistence, no duplicate and account mismatch');
 }catch(error){console.error(await page.locator('main').innerText());throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

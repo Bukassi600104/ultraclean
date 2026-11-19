@@ -21,4 +21,18 @@ const location={...report,sections:{template_version:3,area:'farm2_vat3',observa
 assert.equal((await send(location)).status,201);assert.deepEqual(call.args.p_payload.sections,location.sections);
 for(const sections of [{...location.sections,area:'farm3_vat1'},{...location.sections,observations:{eggs:5}},{...location.sections,observations:{sample_count:12}},{...location.sections,observations:{}}])assert.equal((await send({...report,sections})).status,400);
 assert.equal((await send({...location,decision_required:true})).status,400);
+const withFeedSize = (observations, area='farm2_vat3') =>
+  ({...location, sections:{...location.sections, area, observations}});
+for (const size of [2,3,4,6,9]) {
+  const log=withFeedSize({feed_kg:1.25,feed_size_mm:size});
+  assert.equal((await send(log)).status,201,'The catfish location log should save its feed size');
+  assert.deepEqual(call.args.p_payload.sections,log.sections);
+}
+assert.equal((await send(withFeedSize({feed_size_mm:4}))).status,201);
+for (const log of [
+  withFeedSize({feed_kg:1,feed_size_mm:5}),
+  withFeedSize({feed_kg:1,feed_size_mm:'4'}),
+  withFeedSize({feed_kg:0,feed_size_mm:4}),
+  withFeedSize({feed_kg:1,feed_size_mm:4},'poultry_b'),
+]) assert.equal((await send(log)).status,400);
 console.log('PASS report API: actor derived on server, guarded atomic delegate, validated retry/evidence/date/revision');

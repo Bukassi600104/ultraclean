@@ -41,7 +41,8 @@ try{
  result.alerts=[{id:'pending',title:'Review actual count',detail:'Recorded count',href:'/dashboard/farm/stores',priority:1}];result.overview.logs=[{id:'record',title:'Recorded batch',status:'Logged',path:'today?date='+result.today+'&batch_id=batch&record_id=record'}];
  await page.goto('http://127.0.0.1:'+server.address().port+'/?from=2026-10-02&to=2026-10-22&period_id='+id);await page.getByRole('link',{name:/Review actual count/}).waitFor();
  for(const locator of [page.getByRole('link',{name:/Review actual count/}),page.getByRole('link',{name:/Recorded batch/})]){const q=new URL(await locator.getAttribute('href'),'http://localhost').searchParams;assert.equal(q.get('from'),'2026-10-02');assert.equal(q.get('to'),'2026-10-22');assert.equal(q.get('period_id'),id);}
- result.overview.produce=[{label:'Catfish',amount:1510,unit:'fish',stockId:id},{label:'Crops',amount:8,unit:'units'}];
+ result.overview.produce=[{label:'Catfish',amount:0,unit:'fish',stockId:id},{label:'Crops',amount:8,unit:'units'}];
+ result.overview.livestockCount={quantity:11,date:result.today,readings:[{id,area:'goats',label:'Goats',quantity:9},{id:'rams',area:'ram',label:'Rams',quantity:2}]};
  result.overview.deathsOnEndDate=0;result.overview.mortality={total:4,products:[{product:'turkey',quantity:4}]};
  result.overview.feedTypesComplete=true;result.overview.feed=[{label:'fish (local)',amount:5,unit:'bags',usableKg:null},{label:'fish (foreign)',amount:null,unit:'bags',usableKg:null}];
  result.overview.dailyReports=[{id,area:'farm1_pond2',status:'Reviewed'}];result.overview.todayReportsAvailable=true;
@@ -52,13 +53,15 @@ try{
    await page.goto('http://127.0.0.1:'+server.address().port+(supervisor?'/?supervisor=1':'/?period_id='+id));
    await page.getByRole('heading',{name:'Produce on hand'}).waitFor();
    const board=page.getByRole('region',{name:'Farm at a glance'});
-   for(const text of ['Catfish','1,510 fish','8 units','5 bags','Count needed','Customer debt','Farm 1 · Pond 2','Offers','Details to follow'])assert.ok((await board.innerText()).toLowerCase().includes(text.toLowerCase()),text);
+   for(const text of ['Catfish','0 fish','11 livestock','Goats 9','Rams 2','8 units','5 bags','Count needed','Customer debt','Farm 1 · Pond 2','Offers','Details to follow'])assert.ok((await board.innerText()).toLowerCase().includes(text.toLowerCase()),text);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
    const recorded=board.getByRole('link',{name:supervisor?'Count Catfish':'Review Catfish'});
    assert.equal(new URL(await recorded.getAttribute('href'),'http://localhost').hash,'#stock-'+id);
    await board.getByText('Physical count not yet recorded').waitFor();
    const deaths=board.getByRole('link',{name:/Mortality (today|on)/i});assert.equal(await deaths.locator('strong').innerText(),'0');
-   assert.match(await deaths.innerText(),/4 deaths in the selected period/);
+   assert.doesNotMatch(await deaths.innerText(),/4 deaths/);
+   await board.getByText('Mortality history',{exact:true}).click();
+   await board.getByText(/4 recorded deaths/).waitFor();
    const expense=await board.getByRole('link',{name:supervisor?/Awaiting expense approval/:/Review reported expense/}).getAttribute('href');
    assert.ok(expense.endsWith('#expense-emergency'));assert.ok(supervisor?expense.startsWith('/purchases#'):expense.includes('period_id='+id));
    const daily=await board.getByRole('link',{name:/Farm 1 · Pond 2/}).getAttribute('href');

@@ -12,4 +12,10 @@ assert.match(queueUpdateProblem({get length(){throw Error('disabled')}},1),/stor
 values.clear();values.set('bossbimbz-property-pending:actor:expenses','broken');assert.match(queueUpdateProblem(storage,1),/storage/);
 values.set('bossbimbz-property-pending:actor:expenses',JSON.stringify({retry:{id:'kept',fingerprint:'{}'},values:{amount:'4500'},schemaVersion:2}));assert.match(queueUpdateProblem(storage,1),/compatible/);
 values.clear();values.set('primefield-feed-record:actor',JSON.stringify({form:{bags:'10'},pending:{id:'same',body:{}}}));values.set('primefield-daily-feed-retry:actor','[]');values.set('bossbimbz-content-pending:actor',JSON.stringify({body:{request_id:'same'},values:{}}));assert.equal(queueUpdateProblem(storage,1),null);
+values.clear();
+values.set('farm-financial:actor:sale:personal-period',JSON.stringify({id:'kept',draft:{amount:'11'},body:{request_id:'kept'}}));
+values.set('farm-sale-draft:actor:catfish',JSON.stringify({schemaVersion:1,draft:{quantity:'10'},requestId:'kept'}));
+assert.equal(queueUpdateProblem(storage,1),null);
+values.set('farm-financial:actor:sale:personal-period',JSON.stringify({schemaVersion:2,id:'kept',draft:{amount:'11'}}));
+assert.match(queueUpdateProblem(storage,1),/compatible/);
 console.log('PASS update safety: legacy/owned queues retained, future formats and unreadable storage block refresh');

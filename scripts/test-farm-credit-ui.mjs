@@ -18,6 +18,7 @@ const browser=await chromium.launch({headless:true}),page=await browser.newPage(
 page.on('pageerror',e=>errors.push(e.message));
 let receipts=[],invoices=[],readStatus=200,openingConflict='',holdAcknowledgement=false;
 const accepted=new Map();
+const balanceTable=()=>page.getByRole('table',{name:'Who owes the farm',exact:true});
 await page.route('**/api/**',async route=>{const req=route.request(),url=new URL(req.url());let body={data:[]};
  if(url.pathname==='/api/farm/credit'){
  if(req.method()==='GET'&&readStatus!==200)return route.fulfill({status:readStatus,json:{error:readStatus===403?'Access ended':'Connection interrupted'}});
@@ -46,6 +47,7 @@ await page.route('**/api/**',async route=>{const req=route.request(),url=new URL
 try{
  for(const width of [375,390,768,1440]){
  await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port);
+ await balanceTable().getByText('No customer invoices or earlier balances recorded here yet.').waitFor();
  await page.getByRole('button',{name:'Record payment received',exact:true}).click();await page.getByRole('dialog').waitFor();
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const rect=await page.getByRole('dialog').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=width+1);
  await page.getByRole('button',{name:'Close',exact:true}).click();
@@ -53,7 +55,7 @@ try{
  await page.getByRole('button',{name:'Record payment received',exact:true}).click();await page.getByLabel('Amount paid (NGN)',{exact:true}).fill('40000');await page.getByLabel('Customer',{exact:true}).selectOption(id);await page.getByLabel('Actual receiver',{exact:true}).selectOption('farm:primefield_account');await page.getByLabel('Amount owing after this payment (optional, NGN)').fill('10');await page.getByRole('button',{name:'Save entry',exact:true}).click();await page.getByRole('alert').filter({hasText:'does not match'}).waitFor();assert.equal(posts.length,0);await page.getByLabel('Amount owing after this payment (optional, NGN)').fill('0');await page.getByRole('button',{name:'Save entry',exact:true}).click();
  await page.getByRole('region',{name:'Payment history',exact:true}).getByRole('row').filter({hasText:'Actual customer'}).getByText('NGN 40,000.00',{exact:true}).waitFor();assert.equal(posts[0].payload.amount,'40000');assert.equal(posts[0].payload.amount_owing,'0');assert.deepEqual(posts[0].payload.cash_receiver,{type:'farm_destination',destination:'primefield_account'});assert.deepEqual(errors,[]);
  invoices=[{id,number:'PF-PAID',customer_id:id,customer_name:'Actual customer',sale_id:id,date:'2026-10-30',due_date:'2026-11-29',total:'100',owed:'0',voided_at:null,overdue_days:0}];await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');await page.getByRole('button',{name:'Credit invoice',exact:true}).click();await page.getByRole('dialog').waitFor();await page.getByLabel('Amount (NGN)',{exact:true}).fill('40');assert.equal(await page.getByRole('heading',{name:'Credit invoice',exact:true}).count(),1);assert.deepEqual(errors,[]);
- await page.getByRole('button',{name:'Close',exact:true}).click();invoices=[{id,number:'PF-PART',customer_id:id,customer_name:'Actual customer',sale_id:id,date:'2026-10-30',due_date:'2026-11-29',total:'100000',owed:'25000',collected:'75000',credited:'0',voided_at:null,overdue_days:0}];await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');await page.getByText('Part paid',{exact:true}).waitFor();await page.getByText('NGN 75,000.00',{exact:true}).waitFor();assert.deepEqual(errors,[]);
+ await page.getByRole('button',{name:'Close',exact:true}).click();invoices=[{id,number:'PF-PART',customer_id:id,customer_name:'Actual customer',sale_id:id,date:'2026-10-30',due_date:'2026-11-29',total:'100000',owed:'25000',collected:'75000',credited:'0',voided_at:null,overdue_days:0}];await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');await page.getByText('Part paid',{exact:true}).waitFor();await page.getByRole('region',{name:'Sales and balances',exact:true}).getByText('NGN 75,000.00',{exact:true}).waitFor();assert.deepEqual(errors,[]);
  receipts=[{id,date:'2026-11-02',customer_name:'Actual customer',amount:'35000',voided_at:null,allocations:[{invoice_id:id,amount:'35000'}]},{id:'old-receipt',date:'2026-11-01',customer_name:'Earlier receipt',amount:'1000',voided_at:null,allocations:[{invoice_id:'unknown-invoice',amount:'1000'}]}];
  for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');const history=page.getByRole('region',{name:'Payment history',exact:true}),row=history.getByRole('row').filter({hasText:'Actual customer'});await row.getByText('PF-PART',{exact:true}).waitFor();for(const label of ['2026-11-02','Actual customer','NGN 35,000.00','NGN 25,000.00'])assert.ok(await row.getByText(label,{exact:true}).isVisible());assert.ok(await history.getByText('Balances show what is owed now, including later payments and credits.',{exact:true}).isVisible());assert.ok(await history.getByRole('row').filter({hasText:'Earlier receipt'}).getByText('Unavailable',{exact:true}).isVisible());assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.doesNotMatch(await page.locator('body').innerText(),/\uFFFD/);await page.screenshot({path:path.join(folder,`credit-history-${width}.png`),fullPage:true});}
  assert.deepEqual(errors,[]);
@@ -121,6 +123,9 @@ try{
    await dialog.getByRole('button',{name:'Save entry',exact:true}).click();await dialog.waitFor({state:'hidden'});
    const payment=page.getByRole('region',{name:'Payment history'}).getByRole('row').filter({hasText:reference});
    await payment.getByText('NGN 3,800.25',{exact:true}).waitFor();assert.equal(receipts.length,1);
+   const customerRow=balanceTable().getByRole('row').filter({hasText:'Actual customer'});
+   assert.equal(await customerRow.getByRole('cell',{name:/^NGN 3,800.25$/}).count(),1);
+   assert.equal(await customerRow.getByRole('cell',{name:'On credit',exact:true}).count(),1);
    assert.equal(posts.at(-1).payload.amount,'1200.25');assert.equal(posts.at(-1).payload.amount_owing,'3800.25');
   }
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.deepEqual(errors,[]);

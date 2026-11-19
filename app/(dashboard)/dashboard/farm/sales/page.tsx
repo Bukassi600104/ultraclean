@@ -1,6 +1,9 @@
 "use client";
 import Link from "next/link";
 import {saleProductLabel} from "@/lib/farm-products";
+import {FarmCustomerBalances} from '@/components/manager/FarmCustomerBalances';
+import {useFarmRecordRefresh} from '@/hooks/useFarmRecordRefresh';
+import type {CreditData} from '@/lib/farm-credit';
 import {SalePaymentDetails} from "@/components/manager/SalePaymentDetails";
 import { formatCurrency } from "@/lib/utils";
 import { livestockGroupLabel } from "@/lib/farm-livestock-categories";
@@ -8,7 +11,7 @@ import { FarmAdminCorrection } from "@/components/dashboard/farm/FarmActivityPan
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { DashboardHeader, DashboardReadError } from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -39,6 +42,10 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
   const [product, setProduct] = useState("all");
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
+  const [credit, setCredit] = useState<{filters: string; invoices: CreditData['invoices']} | null>(null);
+  const [creditError,setCreditError] = useState('');
+  const [creditVersion,setCreditVersion] = useState(0);
+  const creditRefresh = useFarmRecordRefresh();
   const limit = 20;
   const scope=new URLSearchParams();
   for(const key of ["from","to","period_id","manager_id"]){const value=searchParams[key];if(value)scope.set(key,value);}
@@ -69,16 +76,44 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
     load();return()=>controller.abort();
   }, [page, product, version, filters]);
 
-  const totalPages = Math.ceil(total / limit);
+  useEffect(() => {
+    const controller = new AbortController();
+    setCreditError('');
+    async function loadBalances() {
+      try {
+        const response = await fetch('/api/farm/credit?' + filters, {signal: controller.signal, cache: 'no-store'});
+        if (controller.signal.aborted) return;
+        if (response.status === 401 || response.status === 403) setCredit(null);
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data.invoices)) throw new Error(data.error || 'Customer balances are unavailable.');
+        if (!controller.signal.aborted) setCredit({filters, invoices: data.invoices});
+      } catch (error) {
+        if (!controller.signal.aborted) setCreditError(error instanceof Error ? error.message : 'Customer balances are unavailable.');
+      }
+    }
+    void loadBalances();
+    return () => controller.abort();
+  }, [filters, creditRefresh, creditVersion]);
 
-  if(loadError)return <DashboardReadError title="Farm Sales" message={loadError} onRetry={()=>setVersion(v=>v+1)}/>;
+  const activeCredit = credit?.filters === filters ? credit : null;
+  const paymentsHref = '/dashboard/farm/credit' + (filters ? '?' + filters : '');
+  const totalPages = Math.ceil(total / limit);
   return (
     <>
       <DashboardHeader title="Farm Sales" />
-      <div className="mx-auto w-full p-4 lg:p-8 space-y-4 max-w-7xl">
-        
-        <div className="flex items-center justify-between">
-          <div><p className="text-sm text-gray-600">{total} sales{scope.get("from")?" from "+scope.get("from"):""}{scope.get("to")?" to "+scope.get("to"):""}</p><Link className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={"/dashboard/farm/credit?"+filters}>Customers &amp; payments</Link></div>
+      <div className="mx-auto w-full max-w-7xl space-y-4 p-4 lg:p-8">
+        {creditError&&<p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950">
+          {creditError} {activeCredit&&'Showing the last confirmed balances.'} <button type="button" className="min-h-11 underline" onClick={()=>setCreditVersion(v=>v+1)}>Retry balances</button>
+        </p>}
+        {activeCredit ? <FarmCustomerBalances invoices={activeCredit.invoices} paymentsHref={paymentsHref}/> :
+          <div className="flex flex-wrap items-center justify-between gap-x-3">
+            {!creditError&&<p role="status">Loading customer balances…</p>}
+            <Link className="inline-flex min-h-11 items-center font-semibold text-emerald-900 underline" href={paymentsHref}>Customers &amp; payments</Link>
+          </div>
+        }
+        <section aria-labelledby="recent-farm-sales" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 id="recent-farm-sales" className="text-xl font-bold">Recent sales</h2><p className="text-sm text-gray-600">{isLoading?'Loading records…':loadError?'Sales unavailable':total+' sales'}{scope.get("from")?" from "+scope.get("from"):""}{scope.get("to")?" to "+scope.get("to"):""}</p></div>
           <Select value={product} onValueChange={(v) => { setProduct(v); setPage(1); }}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="All products" />
@@ -100,7 +135,9 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
 
         <Card>
           <CardContent className="p-0">
-            {isLoading ? (
+            {loadError ? (
+              <p role="alert" className="p-4 text-sm text-amber-950">{loadError} <button type="button" className="min-h-11 underline" onClick={()=>setVersion(v=>v+1)}>Retry sales</button></p>
+            ) : isLoading ? (
               <div className="p-6 space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-10" />
@@ -158,7 +195,7 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
           </CardContent>
         </Card>
 
-        {totalPages > 1 && (
+        {!loadError&&totalPages > 1 && (
           <div className="flex justify-center gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               Previous
@@ -171,6 +208,7 @@ export default function FarmSalesPage({searchParams={}}:{searchParams?:Record<st
             </Button>
           </div>
         )}
+        </section>
       </div>
     </>
   );

@@ -30,7 +30,7 @@ export async function getCeoOverview(scope: OverviewScope) {
   }),
   section(async()=>{
    const [reports,requests,people]=await Promise.all([all("farm_daily_reports"),all("farm_operational_requests"),all("profiles")]);
-   return {pending:requests.map((r):OverviewRow=>({...r,requester_name:people.find(p=>p.id===r.requested_by)?.name??null})).filter(r=>r.status==="pending"||r.status==="approved").sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),recentReports:reports.filter(r=>r.status==="submitted").sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))).slice(0,5)};
+   return {pending:requests.filter(r=>r.status==="pending").map((r):OverviewRow=>({...r,requester_name:people.find(p=>p.id===r.requested_by)?.name??null})).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))),recentReports:reports.filter(r=>r.status==="submitted").sort((a,b)=>String(b.submitted_at).localeCompare(String(a.submitted_at))).slice(0,5)};
   }),
   section(async()=>{
    const [leads,posts,appointments,dbaSales]=await Promise.all([all("leads"),all("blog_posts"),all("appointments"),all("dba_sales")]);

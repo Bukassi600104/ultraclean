@@ -91,8 +91,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body className="antialiased" style={{ backgroundColor: "#ffffff" }}>
-        {children}
         <AppUpdateNotice/>
+        {children}
         <Toaster position="top-right" richColors />
       </body>
     </html>

@@ -35,6 +35,25 @@ try{
  await assert.rejects(()=>call(ids.farm,{...location('poultry_b',observations),decision_required:true}),e=>e.code==='22023');
  const reviewed=await scalar(db,"select farm_operations_write($1,'report','review',$2::jsonb,$3,'Daily log reviewed',$4)",[ids.admin,JSON.stringify({expected_revision:pen.revision,review_note:'Reviewed'}),pen.id,crypto.randomUUID()]);
  assert.equal(reviewed.reviewed_by,ids.admin);assert.equal(reviewed.sections.observations.eggs,17);
+ const sizedLocation=location('farm1_pond1',{feed_kg:1.25,feed_size_mm:2});
+ for(const [area,measurements] of [
+  ['farm1_pond1',{feed_kg:1,feed_size_mm:5}],
+  ['farm1_pond1',{feed_kg:1,feed_size_mm:'4'}],
+  ['farm1_pond1',{feed_kg:0,feed_size_mm:4}],
+  ['poultry_b',{feed_kg:1,feed_size_mm:4}],
+ ]) await assert.rejects(()=>call(ids.farm,location(area,measurements)),e=>e.code==='22023');
+ const withoutMeasuredWeight=location('farm1_pond2',{feed_size_mm:4});
+ assert.deepEqual((await call(ids.farm,withoutMeasuredWeight)).sections,withoutMeasuredWeight.sections);
+ const sizedDraft=await scalar(db,"select farm_operations_write($1,'report','create',$2::jsonb,null,null,$3)",
+  [ids.farm,JSON.stringify(sizedLocation),crypto.randomUUID()]);
+ assert.deepEqual(sizedDraft.sections,sizedLocation.sections);
+ const sizedSubmit={...location('farm1_pond1',{feed_kg:1.5,feed_size_mm:9}),id:sizedDraft.id,revision:sizedDraft.revision,reason:'Verified size'};
+ const sizeRetry=crypto.randomUUID(),sized=await call(ids.farm,sizedSubmit,sizeRetry);
+ assert.equal(sized.status,'submitted');assert.deepEqual(sized.sections,sizedSubmit.sections);
+ assert.deepEqual(await call(ids.farm,sizedSubmit,sizeRetry),sized);
+ const reviewedSize=await scalar(db,"select farm_operations_write($1,'report','review',$2::jsonb,$3,'Feed checked',$4)",
+  [ids.admin,JSON.stringify({expected_revision:sized.revision,review_note:'Reviewed'}),sized.id,crypto.randomUUID()]);
+ assert.deepEqual(reviewedSize.sections,sized.sections);
  assert.deepEqual(await scalar(db,'select sections from farm_daily_reports where id=$1',[row.id]),sections);
  assert.equal(await scalar(db,'select count(*)::int from farm_inventory_transactions'),0);
  assert.equal(await scalar(db,'select count(*)::int from farm_operational_requests'),1);

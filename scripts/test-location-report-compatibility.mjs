@@ -29,16 +29,20 @@ const load=typescriptLoader({
 });
 const {reportSchema}=load('lib/farm-reports.ts');
 const whole={...area,id:actor,sections:reportSchema.parse({report_date:'2026-11-10',sections:{people:{supervisor:'Earlier supervisor'}}}).sections};
-rows=[area,whole];
+const fish={...area,id:'80000000-0000-4000-8000-000000000003',sections:{
+  template_version:3,area:'farm2_vat2',observations:{feed_kg:2.75,feed_size_mm:9},
+}};
+rows=[area,whole,fish];
 const {GET}=load('app/api/farm/daily-reports/route.ts'),{PUT}=load('app/api/farm/daily-reports/[id]/route.ts');
 const url='https://example.invalid/api/farm/daily-reports';
 assert.throws(()=>render(area.sections));
 const old=await GET(new Request(url+'?page=1'));
 assert.match(old.headers.get('cache-control'),/no-store/);
-const list=await old.json();assert.equal(list.total,2);assert.equal(list.data[0].id,id);assert.deepEqual(list.data[1],whole);
+const list=await old.json();assert.equal(list.total,3);assert.equal(list.data[0].id,id);assert.deepEqual(list.data[1],whole);
 assert.equal(list.data[0].sections.problems.request_category,'');
 for(const expected of ['Poultry · Pen D','Eggs collected: 17','Deaths observed: 0','Nest checked'])assert.ok(render(list.data[0].sections).includes(expected));
 assert.ok(render(list.data[1].sections).includes('Earlier supervisor'));
+assert.ok(render(list.data[2].sections).includes('Feed size: 9 mm'));
 const modern=await GET(new Request(url,{headers:{'X-Farm-Report-Format':'3'}}));
 assert.deepEqual((await modern.json()).data[0].sections,area.sections);
 const reviewRequest=new Request(url+'/'+id,{method:'PUT',headers:{'X-Request-ID':id},body:JSON.stringify({operation:'review',revision:1,reason:'Checked log',review_note:'Checked'})});

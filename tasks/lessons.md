@@ -80,3 +80,6 @@ This file is updated after corrections or non-obvious decisions to prevent repea
 - Trace overview figures to dated movements and physical counts separately. A customer payment already in the cash ledger has a known event type even when the source has no status field. Open each attention link through to the matching record and its allowed action.
 
 - Test the three farm payment destinations on the payment form and the sale form. The farm_payment_destinations migration routes each to its own holder. The farm_opening_receivables migration records an earlier unpaid amount against a customer. Check that later receipts reduce it once and that adding the earlier balance creates zero sales, stock movements and cash receipts.
+
+- For a launch update, check both real login URLs and an installed offline client that reconnects with saved work. Keep the same queue format when only the screens change.
+- Treat operational approval and confirmed funding as separate steps. Verify where each action lands and count resolved items out of the queue. Reconcile owner-confirmed stock through the audited count workflow and keep dated mortality history. The farm_daily_log_feed_size migration keeps the size optional for existing logs and permits a known size without a measured weight.

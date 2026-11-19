@@ -10,6 +10,12 @@ assert.equal((await api.POST(request(body))).status,201);assert.equal(calls.at(-
 assert.equal((await api.POST(request({...body,payload:{...body.payload,actor_id:id}}))).status,400);
 assert.equal((await api.POST(request({...body,payload:{...body.payload,deaths:-1}}))).status,400);
 assert.equal((await api.POST(request({...body,payload:{batch_id:id,date:'2026-10-30'}}))).status,400);
+const withFeedSize = (feed_kg,feed_size_mm) => ({...body,payload:{...body.payload,feed_kg,feed_size_mm}});
+assert.equal((await api.POST(request(withFeedSize(2.5,6)))).status,201,'The assigned-stock log should save its feed size');
+assert.equal(calls.at(-1)[1].p_payload.feed_size_mm,6);
+assert.equal((await api.POST(request(withFeedSize(2.5,8)))).status,400);
+assert.equal((await api.POST(request(withFeedSize(0,6)))).status,400);
+assert.equal((await api.POST(request(withFeedSize(undefined,6)))).status,201);
 assert.equal((await api.GET(new Request('http://localhost/api/farm/batch-records?date=2026-02-30'))).status,400);
 assert.equal((await api.GET(new Request('http://localhost/api/farm/batch-records?date=2026-10-30'))).status,200);
 assert.equal(calls.at(-1)[0],'farm_today_read');

@@ -53,10 +53,20 @@ try {
   const catfishId=report.assets.farm_inventory.find(r=>r.product==='catfish').id;
   stock.stores.counts=[{id:'count-open',resource:'animals',asset_id:catfishId,quantity:0,date:today,created_at:today,decision:null},
     {id:'count-declined',resource:'animals',asset_id:catfishId,quantity:2,date:today,created_at:today+'T01:00',decision:{decision:'decline'}}];
+  stock.stores.area_observations=[
+    {id:'goats',date:today,area:'goats',observations:{animal_count:9}},
+    {id:'older-duplicate',date:today,area:'goats',observations:{animal_count:13}},
+    {id:'rams',date:today,area:'ram',observations:{animal_count:2}},
+    {id:'older',date:earlier,area:'piggery_1',observations:{animal_count:3}},
+    {id:'chickens',date:today,area:'poultry_a',observations:{animal_count:30}},
+    {id:'fish',date:today,area:'farm1_pond2',observations:{animal_count:55}},
+  ];
   const result=farmOverview({...stock,report,today,owed:'50.20',newerFeed:[{feed_type:'pig',feed_source:'local',date:today}],dailyReports:[{id:'log',report_date:today,status:'submitted',sections:{template_version:3,area:'farm1_pond2'}},{id:'draft',report_date:today,status:'draft'}]});
   assert.equal(result.produce.find(p=>p.label==='Catfish').amount,150,'Category stock already contains its batch');
   assert.deepEqual(result.produce.find(p=>p.label==='Catfish').lastCount,{quantity:0,date:today,status:'Awaiting review'});
   assert.equal(result.deathsOnEndDate,2);
+  assert.equal(result.livestockCount.quantity,11);
+  assert.deepEqual(result.livestockCount.readings.map(({id,quantity})=>[id,quantity]),[['goats',9],['rams',2]]);
   const historicalReport={...report,from:earlier,to:today,records:{...report.records,farm_inventory_transactions:[{id:'legacy',product:'turkey',date:earlier,action:'mortality',quantity:4}]}};
   const historicalView=farmOverview({...stock,report:historicalReport,today,owed:'0',dailyReports:[]});
   assert.equal(historicalView.deathsOnEndDate,0);assert.equal(historicalView.mortality.total,4);
@@ -68,15 +78,17 @@ try {
   assert.equal(result.mortality.total,2);assert.deepEqual(result.dailyReports.map(r=>r.area),['farm1_pond2']);
   const {farmAlerts}=load('lib/farm-summary.ts');
   const reportExpense=(id,extra={})=>({id,date:today,supplier:'Isolated electrician',amount_exact:'4500.00',resolution:null,...extra});
-  stock.purchases.exceptions=[reportExpense('new'),reportExpense('approved',{approval:{category:'labor'}}),reportExpense('funding',{funding_status:'pending',pending_funding_id:'linked'}),reportExpense('closed',{resolution:{decision:'link'}})];
-  report.cash.pending_expenses=[{id:'linked',status:'pending',shortfall:'4500',currency:'NGN',activity_date:today},{id:'unrelated',status:'pending',shortfall:'10',currency:'NGN',activity_date:today}];
+  stock.purchases.exceptions=[reportExpense('new'),reportExpense('approved',{approval:{category:'labor'}}),reportExpense('funding',{funding_status:'pending',pending_funding_id:'linked'}),reportExpense('closed',{resolution:{decision:'link'}}),reportExpense('posted',{approval:{category:'labor'},funding_status:'posted'})];
+  report.cash.pending_expenses=[{id:'linked',status:'pending',amount:'4500',shortfall:'4500',currency:'NGN',activity_date:today},{id:'unrelated',status:'pending',amount:'15',shortfall:'10',payload:{item_name:'Verified repair'},currency:'NGN',activity_date:today}];
   const alerts=farmAlerts({...stock,report,config:null,currentCredit:stock.credit});
-  assert.deepEqual(alerts.filter(a=>a.href.includes('#expense-')).map(a=>[a.id,a.title]).sort(),[['approved','Confirm expense funding'],['new','Review reported expense']]);
+  assert.deepEqual(alerts.filter(a=>a.href.includes('#expense-')).map(a=>[a.id,a.title]).sort(),[['approved','Isolated electrician'],['new','Review reported expense']]);
   const supervisorAlerts = farmAlerts({...stock,report,config:null,currentCredit:stock.credit},true);
   assert.equal(supervisorAlerts.find(a=>a.id==='new').title,'Awaiting expense approval');
-  assert.equal(supervisorAlerts.find(a=>a.id==='funding').title,'Awaiting funding confirmation');
+  assert.equal(supervisorAlerts.find(a=>a.id==='funding').funding,true);
+  assert.deepEqual(alerts.filter(a=>!a.funding&&a.href.includes('expense-')).map(a=>a.id),['new']);
+  assert.match(alerts.find(a=>a.id==='unrelated').detail,/15.00/);
   assert.equal(alerts.find(a=>a.id==='funding').href,'/dashboard/funds?funding_id=linked');
-  assert.equal(alerts.find(a=>a.id==='unrelated').href,'/dashboard/funds?funding_id=unrelated');assert.ok(!alerts.some(a=>a.id==='linked'||a.id==='closed'));
+  assert.equal(alerts.find(a=>a.id==='unrelated').href,'/dashboard/funds?funding_id=unrelated');assert.ok(!alerts.some(a=>['linked','closed','posted'].includes(a.id)));
   assert.equal(await scalar(db,"select md5(jsonb_agg(to_jsonb(t) order by t.id)::text) from farm_inventory t"),original);
   console.log('PASS scoped read-only overview SQL and API, service-only grant, manager isolation, current product/feed quantities, linked requests, corrected deaths and daily area logs');
 } finally { await db.close(); }
