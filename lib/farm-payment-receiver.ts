@@ -1,5 +1,7 @@
 import {cashReceiver, type CashReceiver} from './operations-cash-validation';
 
+export const farmSupervisorChoice = 'farm_supervisor';
+
 export const farmPaymentDestinations = [
   {id: 'primefield_account', label: 'Primefield Account'},
   {id: 'sales_and_procurement', label: 'Sales and Procurement'},

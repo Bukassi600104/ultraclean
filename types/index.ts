@@ -151,6 +151,7 @@ export interface FarmInventoryTransaction {
   sale_id?: string | null;
   correction_of?: string | null;
   correction_role?: "reversal" | "replacement" | null;
+  mortality_reversed?: boolean;
 }
 
 export interface Appointment {

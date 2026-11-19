@@ -71,9 +71,9 @@ export default function FarmInventoryPage() {
         setInventory(Array.isArray(invData) ? invData : []);
         const transactions: FarmInventoryTransaction[] = (allData.data || []).map((row: FarmInventoryTransaction) =>
           ({ ...row, date: inventoryTransactionDay(row) }));
-        const throughEnd = transactions.filter(row => !to || row.date <= to);
-        setMortalityLog(activeMortality(throughEnd).filter(row => !from || row.date >= from));
-        setAllTransactions(throughEnd.filter((row:FarmInventoryTransaction) => !from || row.date >= from));
+        const inPeriod = (row: FarmInventoryTransaction) => (!from || row.date >= from) && (!to || row.date <= to);
+        setMortalityLog(activeMortality(transactions).filter(inPeriod));
+        setAllTransactions(transactions.filter(inPeriod));
       } catch {
         setLoadError("Farm inventory could not be loaded. Please retry.");
       } finally {
@@ -85,6 +85,7 @@ export default function FarmInventoryPage() {
 
   // Report recorded deaths; current stock is not a reliable historical cohort size.
   const mortalityProducts = new Set([...inventory.map(row=>row.product),...mortalityLog.map(row=>row.product)]);
+  const activeMortalityIds = new Set(mortalityLog.map(row => row.id));
   const mortalitySummary: MortalitySummary[] = Array.from(mortalityProducts, product => {
     const deaths = mortalityLog
       .filter((m) => m.product === product)
@@ -230,6 +231,9 @@ export default function FarmInventoryPage() {
                         const isDecrease = ["remove", "sale", "mortality"].includes(
                           tx.action
                         );
+                        const corrected = tx.action === "mortality"
+                          ? !activeMortalityIds.has(tx.id)
+                          : allTransactions.some(row => row.correction_of === tx.id && row.correction_role === "reversal");
                         return (
                           <TableRow key={tx.id}>
                             <TableCell className="font-medium whitespace-nowrap">
@@ -260,7 +264,7 @@ export default function FarmInventoryPage() {
                             <TableCell className="hidden md:table-cell text-sm text-gray-600">
                               {tx.notes || "—"}
                             </TableCell>
-                            <TableCell>{!tx.sale_id && tx.correction_role !== "reversal" && !allTransactions.some(row => row.correction_of === tx.id && row.correction_role === "reversal") && <FarmAdminCorrection recordType="inventory_transaction" record={tx} onSaved={() => setRefresh(value => value + 1)} />}</TableCell>
+                            <TableCell>{corrected ? <span className="text-sm text-gray-600">Corrected</span> : !tx.sale_id && tx.correction_role !== "reversal" && <FarmAdminCorrection recordType="inventory_transaction" record={tx} onSaved={() => setRefresh(value => value + 1)} />}</TableCell>
                           </TableRow>
                         );
                       })}

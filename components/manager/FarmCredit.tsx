@@ -8,7 +8,7 @@ import {useManagerFetch,useManagerPeriod,useQueueIdentity} from '@/contexts/Mana
 import {useOfflineSync} from '@/hooks/useOfflineSync';
 import {getPendingItems,getSubmissionStatus,queueIdentityKey,removePending} from '@/lib/offline-storage';
 import {EGG_SALE_PRODUCT,FARM_PRODUCTS,farmDateToday} from '@/lib/farm-products';
-import {isFarmReceiverChoice} from '@/lib/farm-payment-receiver';
+import {farmSupervisorChoice,isFarmReceiverChoice} from '@/lib/farm-payment-receiver';
 import {formatExactCurrency,subtractMoney,sumMoney} from '@/lib/money';
 import {creditSchema,invoiceStatus,type CreditData} from '@/lib/farm-credit';
 import {CashReceiverSelect,selectedCashReceiver} from './CashPartySelect';
@@ -75,12 +75,16 @@ export function CreditForm({operation,id,data,admin=false,onSaved,onRecordOwing}
  function finish(){if(key){localStorage.removeItem(key);localStorage.removeItem(key+':photos');}onSaved();}
  const entryName=operation==='opening_balance'?'earlier balance':operation==='receipt'?'payment':'entry';
  const protectedEntry=operation==='receipt'||operation==='opening_balance';
+ const waitingForSupervisor=operation==='receipt'&&draft.receiver===farmSupervisorChoice;
  function editRejected(item:{id:string;conflict?:string}){
    if(!identity||!correctableCreditConflict(operation,item.conflict))return;
    removePending(item.id,identity);setBalanceVersion(v=>v+1);setDraft(d=>({...d,request_id:crypto.randomUUID()}));
    setError(item.conflict||'Check this entry.');
  }
- async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError('');try{
+ async function submit(e:React.FormEvent){
+ e.preventDefault();
+ if(waitingForSupervisor)return;
+ setBusy(true);setError('');try{
  if(operation==='receipt'&&!isFarmReceiverChoice(draft.receiver))throw Error('Choose who received the payment.');
  const payload=operation==='customer'?{name:draft.name,phone:draft.phone}:operation==='terms'?{days:Number(draft.days),reason:draft.reason}:operation==='assign'?{period_id:draft.period_id,reason:draft.reason}:operation==='opening_balance'?{date:draft.date,customer_id:draft.customer_id,amount:draft.amount,reference:draft.reference?.trim(),...(draft.reason?.trim()?{reason:draft.reason.trim()}:{})}:operation==='receipt'?{date:draft.date,customer_id:draft.customer_id,amount:draft.amount,...(draft.amount_owing?.trim()?{amount_owing:draft.amount_owing.trim()}:{}),cash_receiver:selectedCashReceiver(draft.receiver),notes:draft.reason}:operation==='credit_note'||operation==='refund'?{date:draft.date,amount:draft.amount,reason:draft.reason}:{reason:draft.reason};
  const parsed=creditSchema.safeParse({operation,payload,...(id&&!['receipt','opening_balance'].includes(operation)?{id}:{}),request_id:draft.request_id});if(!parsed.success)throw Error(parsed.error.issues[0]?.message||'Check the entry');
@@ -118,7 +122,7 @@ export function CreditForm({operation,id,data,admin=false,onSaved,onRecordOwing}
  {draft.customer_id&&<p className="text-sm text-slate-700">{expected!==null?'Invoice balance after payment: '+formatExactCurrency(expected,'NGN'):before!==null?'Outstanding invoices: '+formatExactCurrency(before,'NGN'):'The invoice balance will be checked when this payment is sent.'}{net?.startsWith('-')?' Excess payment remains customer credit.':''}</p>}
  <CashReceiverSelect business="farm" paymentDate={draft.date} value={draft.receiver} onChange={v=>update('receiver',v)}/><p className="text-xs text-slate-600">Payments settle the customer’s oldest unpaid entries first.</p></>}
  {operation==='receipt'&&<FarmPhotoPicker date={draft.date} resource="farm_customer_receipts" value={mediaIds} onChange={setMediaIds} onBusyChange={setPhotoBusy}/>}
- {operation!=='customer'&&<label className="block text-sm font-medium">{operation==='receipt'?'Notes':operation==='opening_balance'?'Reason (needed for a closed day)':'Reason'}<textarea className={field} maxLength={2000} required={!['receipt','opening_balance'].includes(operation)} value={draft.reason} onChange={e=>update('reason',e.target.value)}/></label>}{error&&<p role="alert" className="text-red-800">{error}</p>}<button className={button+' w-full bg-emerald-900 text-white'} type="submit">{busy?'Saving…':operation==='opening_balance'?'Save credit owing':operation==='void_opening_balance'?'Reverse earlier balance':'Save entry'}</button>
+ {operation!=='customer'&&<label className="block text-sm font-medium">{operation==='receipt'?'Notes':operation==='opening_balance'?'Reason (needed for a closed day)':'Reason'}<textarea className={field} maxLength={2000} required={!['receipt','opening_balance'].includes(operation)} value={draft.reason} onChange={e=>update('reason',e.target.value)}/></label>}{error&&<p role="alert" className="text-red-800">{error}</p>}<button disabled={waitingForSupervisor} className={button+' w-full bg-emerald-900 text-white'} type="submit">{busy?'Saving…':operation==='opening_balance'?'Save credit owing':operation==='void_opening_balance'?'Reverse earlier balance':'Save entry'}</button>
  </fieldset></form>;
 }
 export function FarmCredit({admin=false,from,to}:{admin?:boolean;from?:string;to?:string}){

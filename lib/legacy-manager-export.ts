@@ -35,7 +35,7 @@ export async function buildLegacyManagerWorkbook(snapshot:LegacyManagerSnapshot)
  for(const source of snapshot.sheets){
   const name=source.name.replace(/[\\/?*\[\]:]/g," ").slice(0,31);if(!name||workbook.getWorksheet(name))throw Error("Historical source sheets must have distinct names");
   if(source.rows.length>1048575)throw Error("This history exceeds one Excel worksheet; no partial export was created");
-  const sheet=workbook.addWorksheet(name),keys=Array.from(new Set(source.rows.flatMap(row=>Object.keys(row)))),fields=keys.length?keys:["id"];
+  const sheet=workbook.addWorksheet(name),keys=Array.from(new Set(source.rows.flatMap(row=>Object.keys(row)))).filter(key=>key!=="mortality_reversed"),fields=keys.length?keys:["id"];
   const columns=fields.flatMap(key=>{const count=source.rows.reduce((n,row)=>Math.max(n,chunks(row[key]).length),1);return Array.from({length:count},(_,part)=>({key,part,header:title(key)+(part?` (part ${part+1})`:"")}));});
   const moneyFields=keys.filter(key=>key.endsWith("_exact"));if(columns.length+moneyFields.length>16384)throw Error("The saved source exceeds Excel column limits; no values were truncated");
   sheet.addRow([...columns.map(c=>c.header),...moneyFields.map(key=>title(key.replace(/_exact$/,""))+" (number)")]);

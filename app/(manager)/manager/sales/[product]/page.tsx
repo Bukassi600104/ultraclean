@@ -4,7 +4,7 @@ import {FarmCustomerPicker} from '@/components/manager/FarmCustomerPicker';
 import {useManagerFetch,useManagerPeriod,useManagerStorageKey} from "@/contexts/ManagerPeriodContext";
 import {useFarmFinancialSubmission} from "@/hooks/useFarmFinancialSubmission";
 import {CashReceiverSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
-import {isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
+import {farmSupervisorChoice,isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
 
 import { formatCurrency } from "@/lib/utils";
 import {formatExactCurrency,multiplyMoney,roundMoneyToCents,subtractMoney,sumMoney} from "@/lib/money";
@@ -239,6 +239,8 @@ function SaleForm({product}:{product:string}) {
     :withinTotal&&!zeroAmount.test(creditEntry.value)?remainder:'';
   const unpaidAmount=creditEntry.basis==='owing'?creditEntry.value:remainder;
   const validCredit=withinTotal&&!zeroAmount.test(unpaidAmount);
+  const hasPayment=!credit||Number(amountReceived)>0;
+  const waitingForSupervisor=hasPayment&&receiver===farmSupervisorChoice;
 
   function switchCreditEntry(){
     setCreditEntry({basis:creditEntry.basis==='paid'?'owing':'paid',value:withinTotal&&computedTotal>0?remainder:''});
@@ -253,7 +255,7 @@ function SaleForm({product}:{product:string}) {
     if(credit&&!validCredit)return creditEntry.basis==='owing'
       ? "Enter the unpaid amount, above zero and up to the sale total."
       : "Enter the payment received, from zero to less than the sale total";
-    if((!credit||Number(amountReceived)>0)&&customerId&&!isFarmReceiverChoice(receiver))return "Choose who received the payment.";
+    if(hasPayment&&customerId&&!isFarmReceiverChoice(receiver))return "Choose who received the payment.";
     if(Number(amountReceived)>0&&paymentDate&&paymentDate<form.date)return "Payment date cannot be before this sale";
     if ((productKey === "crops" || (productKey === "other"&&!eggsOnly&&!eggBatchId)) && !form.crop_type.trim()) return "Enter crop type";
     if(eggsOnly&&!eggBatchId)return "Choose the poultry group that supplied the eggs";
@@ -271,6 +273,7 @@ function SaleForm({product}:{product:string}) {
 
   function handleSavePress() {
     if(submission.pending){void handleConfirmedSave();return;}
+    if(waitingForSupervisor)return;
     const err = validate();
     if (err) return toast.error(err);
     setShowConfirm(true);
@@ -301,6 +304,7 @@ function SaleForm({product}:{product:string}) {
 
   async function handleConfirmedSave() {
     if (!submission.pending) {
+      if(waitingForSupervisor){setShowConfirm(false);return;}
       const error = validate();
       if (error) {setShowConfirm(false);toast.error(error);return;}
     }
@@ -316,8 +320,8 @@ function SaleForm({product}:{product:string}) {
         payment_method: form.payment_method,
         notes: form.notes.trim() || undefined,
         customer_name: customerId ? undefined : form.customer_name.trim() || undefined,
-        ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),...(!credit||Number(amountReceived)>0?{payment_date:paymentDate||form.date}:{})}:{}),
-        ...((!credit||Number(amountReceived)>0)&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
+        ...(customerId?{customer_id:customerId,credit,...(credit?{amount_received:amountReceived}:{}),...(hasPayment?{payment_date:paymentDate||form.date}:{})}:{}),
+        ...(hasPayment&&(personal||customerId)?{cash_receiver:selectedCashReceiver(receiver)}:{}),
       };
 
       if (productKey === "catfish") {
@@ -491,8 +495,8 @@ function SaleForm({product}:{product:string}) {
           <button type="button" className="min-h-11 text-left text-sm font-semibold text-emerald-900 underline" onClick={switchCreditEntry}>{creditEntry.basis==='paid'?'Enter unpaid amount instead':'Enter amount paid instead'}</button>
         </div>}
         {credit&&terms.customerId===customerId&&terms.outstanding!==null&&validCredit&&<p className="rounded-xl bg-amber-50 p-3 text-sm">Customer balance after this sale: <strong>{formatExactCurrency(sumMoney([terms.outstanding,unpaidAmount]),'NGN')}</strong></p>}
-        {(!credit||Number(amountReceived)>0)&&<CashReceiverSelect business="farm" paymentDate={paymentDate||form.date} value={receiver} onChange={setReceiver} disabled={saving||!!submission.pending}/>}
-        {(!credit||Number(amountReceived)>0)&&<div>
+        <CashReceiverSelect business="farm" paymentDate={paymentDate||form.date} value={receiver} onChange={setReceiver} hidden={!hasPayment} disabled={saving||!!submission.pending}/>
+        {hasPayment&&<div>
           <label className="text-sm font-semibold text-slate-700">Payment Method</label>
           <div className="mt-1.5 grid grid-cols-3 gap-2">
             {["cash", "transfer", "pos"].map((m) => (
@@ -508,7 +512,7 @@ function SaleForm({product}:{product:string}) {
             ))}
           </div>
         </div>}
-        {(!credit||Number(amountReceived)>0)&&<label className="block text-sm font-semibold">Payment date<input aria-label="Payment date" type="date" min={form.date} max={today} className="mt-1 min-h-11 w-full rounded-xl border p-3" value={paymentDate||form.date} onChange={e=>setPaymentDate(e.target.value)}/></label>}
+        {hasPayment&&<label className="block text-sm font-semibold">Payment date<input aria-label="Payment date" type="date" min={form.date} max={today} className="mt-1 min-h-11 w-full rounded-xl border p-3" value={paymentDate||form.date} onChange={e=>setPaymentDate(e.target.value)}/></label>}
         {/* 6. Notes — optional */}
         <div>
           <label htmlFor="sale-notes" className="text-sm font-semibold text-slate-700">Notes <span className="font-normal normal-case text-gray-400">(optional)</span></label>
@@ -520,7 +524,7 @@ function SaleForm({product}:{product:string}) {
       </fieldset>
       {/* Buttons */}
       <div className="flex gap-2">
-        <button disabled={!submission.pending&&(asking||(credit&&!approved)||draftFault.current)} onClick={handleSavePress}
+        <button disabled={!submission.pending&&(asking||(credit&&!approved)||draftFault.current||waitingForSupervisor)} onClick={handleSavePress}
           className="flex-1 rounded-2xl py-4 font-bold text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50"
           style={{ backgroundColor: config.color }}>
           {submission.pending?"Retry saved sale":"Save Sale"}

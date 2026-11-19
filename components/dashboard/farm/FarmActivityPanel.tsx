@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FARM_PRODUCTS } from "@/lib/farm-products";
 
 import {CashReceiverSelect,CashPayerSelect,selectedCashReceiver} from "@/components/manager/CashPartySelect";
-import {isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
+import {farmSupervisorChoice,isFarmReceiverChoice} from "@/lib/farm-payment-receiver";
 import { LivestockGroupPicker } from "@/components/manager/LivestockGroupPicker";
 
 type FarmRecord = Record<string, unknown>;
@@ -44,6 +44,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
   const [reason,setReason]=useState("");const [values,setValues]=useState<Record<string,string>>({});
   const [cashReceiver,setCashReceiver]=useState(""),[cashPayer,setCashPayer]=useState("");
   const [operation,setOperation]=useState("update");const [retryId,setRetryId]=useState("");
+  const waitingForSupervisor=operation==="update"&&recordType==="sale"&&cashReceiver===farmSupervisorChoice;
   useEffect(()=>{
     if(!open||!checkBatch)return;
     const controller=new AbortController(),params=new URLSearchParams({date:String(row.date)});
@@ -74,6 +75,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
     setReason("");setOperation("update");setRetryId(crypto.randomUUID());setOpen(true);
   }
   async function save() {
+    if(waitingForSupervisor)return;
     if(!reason.trim())return toast.error("Enter a correction reason");
     if(animalCount&&(!/^\d+$/.test(values.target_quantity||'')||!Number.isSafeInteger(Number(values.target_quantity))))return toast.error("Enter a whole animal count, including zero.");
     if(mortality&&(!/^\d+$/.test(values.quantity||'')||!Number.isSafeInteger(Number(values.quantity))))return toast.error("Enter a whole number of deaths, including zero.");
@@ -120,7 +122,7 @@ export function FarmAdminCorrection({recordType,record,onSaved,requestId,buttonL
       {operation==="update"&&["expense","feed"].includes(recordType)&&<CashPayerSelect business="farm" currency="NGN" bucket={recordType==="expense"&&values.expense_source==="sales_cash"?"sales":"owner"} value={cashPayer} onChange={value=>{setCashPayer(value);setRetryId(crypto.randomUUID());}} keepExisting/>}
       {operation==="update"&&["sale","expense","feed"].includes(recordType)&&<p className="text-xs text-gray-600">Leave the recorded cash person unchanged unless you have verified a correction. Records from before verified cash tracking retain unknown historical custody.</p>}
       <Label>Reason<Textarea value={reason} maxLength={1000} onChange={e=>{setReason(e.target.value);setRetryId(crypto.randomUUID());}}/></Label>
-      <Button disabled={saving} onClick={save}>{saving?"Saving...":"Save correction"}</Button></>}
+      <Button disabled={saving||waitingForSupervisor} onClick={save}>{saving?"Saving...":"Save correction"}</Button></>}
     </DialogContent></Dialog></>;
 }
 

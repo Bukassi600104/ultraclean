@@ -445,3 +445,11 @@ The private farm-receivers-credit-2026-11-17 release folder holds the restore ch
 - [x] Run the affected workflows on phones and desktop and verify the database changes on a restored snapshot.
 
 The private primefield-feedback-2026-11-19 release folder holds the restore, stock reconciliation, and live verification receipts. Today's mortality comes from dated movements. Farm Overview shows the livestock counts from the latest applicable Daily Log day and keeps ledger balances available for review.
+
+## Mortality date and payment recipient follow-up
+
+- [x] Count corrected mortality on the correct date in both farm views. Keep the original entry and adjustment in history.
+- [x] Hold new payments that name the Farm Supervisor until the date-specific choice is ready. Check the other destinations and saved retries.
+- [x] Reproduce both failures with isolated data, verify the fixes and surrounding workflows, with an isolated database and both app layouts.
+
+The dated mortality tests keep both movements in audit history while counting the corrected date once. The payment tests cover a delayed supervisor check, a retry, and payment details after switching a sale to credit. Production verification compares the same farm and account records from before and after the release.

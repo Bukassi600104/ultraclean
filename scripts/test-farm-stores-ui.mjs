@@ -24,7 +24,7 @@ const batched={...death,id:'00000000-0000-4000-8000-000000000011',batch_id:'0000
 let deathReversed=false;
 await page.route('**/api/**',async route=>{const request=route.request(),url=new URL(request.url());let body={data:[]};
  if(url.pathname==='/api/farm/inventory')body=[{id:animal.id,product:'catfish',current_stock:334,last_updated:'2026-11-09T12:00:00Z'}];
- if(url.pathname==='/api/farm/inventory/transaction')body={data:deathReversed?[death,batched,{...death,id:'reversed',action:'add',correction_of:death.id,correction_role:'reversal'}]:[death,batched]};
+ if(url.pathname==='/api/farm/inventory/transaction')body={data:deathReversed?[death,batched,{...death,id:'reversed',action:'add',date:'2026-11-12',correction_of:death.id,correction_role:'reversal'}]:[death,batched]};
  if(url.pathname==='/api/farm/batch-records')body={records:[{id:'00000000-0000-4000-8000-000000000013',batch_id:batched.batch_id,mortality_id:batched.id,period_id:id}]};
  if(url.pathname==='/api/farm/corrections/admin'){
   const payload=request.postDataJSON();
@@ -92,5 +92,12 @@ try{
  assert.equal(batchTarget.pathname,'/dashboard/farm/today');assert.equal(batchTarget.searchParams.get('date'),'2026-11-10');
  assert.equal(batchTarget.searchParams.get('batch_id'),batched.batch_id);assert.equal(batchTarget.searchParams.get('record_id'),'00000000-0000-4000-8000-000000000013');
  assert.equal(batchTarget.searchParams.get('period_id'),id);assert.equal(posts.filter(p=>p.record_type==='inventory_transaction').length,1);
- assert.deepEqual(errors,[]);console.log('PASS four widths, physical observations, exact stock correction to zero, standalone deaths and linked daily record corrections');
+ await page.goto(origin+'/?admin=1&tab=mortality&from=2026-11-09&to=2026-11-09');
+ await page.getByText('No mortality records yet',{exact:true}).waitFor();
+ await page.getByRole('tab',{name:'All Transactions'}).click();
+ const oldDeath=page.getByRole('row').filter({hasText:'09 Nov 2026'});
+ await oldDeath.getByText('Corrected',{exact:true}).waitFor();
+ assert.match(await oldDeath.innerText(),/Turkey|turkey/);
+ assert.equal(await oldDeath.getByRole('button',{name:'Correct',exact:true}).count(),0);
+ assert.deepEqual(errors,[]);console.log('PASS four widths, physical stock, standalone and linked death corrections, historical cutoffs and visible audit history');
 }catch(e){console.error(await page.locator('body').innerText(),errors);throw e;}finally{await browser.close();await new Promise(r=>server.close(r));}

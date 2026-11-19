@@ -6,10 +6,10 @@ import {useAuth} from "@/contexts/AuthContext";
 import {useOperationsFunds} from "@/hooks/useOperationsFunds";
 import {cashReceiver,type CashReceiver} from "@/lib/operations-cash-validation";
 import type {Business} from "@/lib/manager-period-types";
-import {farmPaymentDestinations, farmPaymentReceiver} from "@/lib/farm-payment-receiver";
+import {farmPaymentDestinations, farmPaymentReceiver, farmSupervisorChoice} from "@/lib/farm-payment-receiver";
 import {farmDateToday} from "@/lib/farm-products";
 
-type ReceiverProps = {business:Business; value:string; onChange:(value:string)=>void; disabled?:boolean; keepExisting?:boolean; paymentDate?:string};
+type ReceiverProps = {business:Business; value:string; onChange:(value:string)=>void; disabled?:boolean; hidden?:boolean; keepExisting?:boolean; paymentDate?:string};
 const selectClass = "mt-1 min-h-11 w-full rounded-xl border bg-white p-3 text-sm";
 
 export function selectedCashReceiver(choice:string):CashReceiver|undefined {
@@ -23,13 +23,14 @@ export function selectedCashReceiver(choice:string):CashReceiver|undefined {
 export function CashReceiverSelect(props:ReceiverProps) {
  const {enabled}=useOperationsFeature();
  if(enabled!==true)return null;
- return props.business === 'farm' ? <FarmReceiverSelect {...props}/> : <OtherReceiverSelect {...props}/>;
+ if(props.business==='farm')return <FarmReceiverSelect {...props}/>;
+ return props.hidden ? null : <OtherReceiverSelect {...props}/>;
 }
 
-function FarmReceiverSelect({value, onChange, disabled, keepExisting, paymentDate=farmDateToday()}:ReceiverProps) {
+function FarmReceiverSelect({value, onChange, disabled, hidden, keepExisting, paymentDate=farmDateToday()}:ReceiverProps) {
   const scope = useManagerPeriod();
   const receiver = farmPaymentReceiver(value);
-  const isSupervisor = value === 'farm_supervisor' || receiver?.type === 'farm_supervisor';
+  const isSupervisor = value === farmSupervisorChoice || receiver?.type === 'farm_supervisor';
   const ownPeriod = scope?.mode === 'personal' && scope.status === 'active' && scope.startsOn &&
     scope.startsOn <= paymentDate ? scope.periodId : null;
   const pinned = receiver?.type === 'farm_supervisor' ? receiver.period_id : '';
@@ -45,26 +46,27 @@ function FarmReceiverSelect({value, onChange, disabled, keepExisting, paymentDat
       onChange('');
     } else if (previous.paymentDate !== paymentDate && pinned && pinned !== ownPeriod) {
       setRecheckPeriod(pinned);
-      onChange(ownPeriod ? '' : 'farm_supervisor');
+      onChange(ownPeriod ? '' : farmSupervisorChoice);
     } else if (ownPeriod && pinned !== ownPeriod) {
       onChange(pinned ? '' : 'farm_supervisor:' + ownPeriod);
     }
   }, [scopeKey, paymentDate, disabled, isSupervisor, ownPeriod, pinned, onChange]);
+  if (hidden) return null;
   return <div className="space-y-2">
     <label className="block text-sm font-semibold">Who actually received the money?
       <select aria-label="Who actually received the money?" required={!keepExisting} disabled={disabled} className={selectClass}
-        value={isSupervisor ? 'farm_supervisor' : receiver ? value : ''}
+        value={isSupervisor ? farmSupervisorChoice : receiver ? value : ''}
         onChange={event => {
           const next = event.target.value;
           setRecheckPeriod('');
-          onChange(next === 'farm_supervisor' && ownPeriod ? 'farm_supervisor:' + ownPeriod : next);
+          onChange(next === farmSupervisorChoice && ownPeriod ? 'farm_supervisor:' + ownPeriod : next);
         }}>
         <option value="">{keepExisting ? 'Keep the recorded recipient' : disabled && value && !receiver ? 'Previously saved recipient' : 'Choose who received the payment'}</option>
         {farmPaymentDestinations.map(option => <option key={option.id} value={'farm:' + option.id}>{option.label}</option>)}
-        <option value="farm_supervisor">Farm Supervisor</option>
+        <option value={farmSupervisorChoice}>Farm Supervisor</option>
       </select>
     </label>
-    {isSupervisor && !ownPeriod && !disabled && (paymentDate ? <DatedFarmSupervisor date={paymentDate} pinned={pinned} recheckPeriod={recheckPeriod} onChange={onChange}/> : <p className="text-sm">Enter the payment date to find the supervisor.</p>)}
+    {isSupervisor && !ownPeriod && !disabled && (paymentDate ? <DatedFarmSupervisor key={paymentDate} date={paymentDate} pinned={pinned} recheckPeriod={recheckPeriod} onChange={onChange}/> : <p className="text-sm">Enter the payment date to find the supervisor.</p>)}
   </div>;
 }
 
@@ -80,7 +82,7 @@ function DatedFarmSupervisor({date,pinned,recheckPeriod,onChange}:{date:string; 
     else if (!pinned && recheckPeriod) onChange(eligible.some(person => person.period_id === recheckPeriod) ? 'farm_supervisor:' + recheckPeriod : '');
     else if (!pinned && eligible.length === 1) onChange('farm_supervisor:' + eligible[0].period_id);
   }, [eligible, pinned, recheckPeriod, onChange]);
-  if (loading) return <p className="text-sm" role="status">Checking who supervised the farm on this date…</p>;
+  if (loading) return <p className="text-sm" role="status">Checking supervisor for this date…</p>;
   if (error || !eligible) return <p className="text-sm" role="alert">The supervisor list could not be loaded. <button type="button" className="min-h-11 underline" onClick={refresh}>Retry</button></p>;
   if (!eligible.length) return <p className="text-sm" role="status">Check the payment date or confirm with the MD/Owner who was assigned to the farm that day.</p>;
   if (eligible.length === 1) return null;
@@ -89,7 +91,7 @@ function DatedFarmSupervisor({date,pinned,recheckPeriod,onChange}:{date:string; 
     return <p className="text-sm" role="status">Choose the supervisor under Change filters on the farm overview, then open Customers and payments.</p>;
   }
   return <label className="block text-sm font-medium">Which farm supervisor received it?
-    <select className={selectClass} required value={pinned} onChange={e=>onChange(e.target.value ? 'farm_supervisor:' + e.target.value : 'farm_supervisor')}>
+    <select className={selectClass} required value={pinned} onChange={e=>onChange(e.target.value ? 'farm_supervisor:' + e.target.value : farmSupervisorChoice)}>
       <option value="">Choose the supervisor</option>
       {eligible.map(person => <option key={person.period_id} value={person.period_id}>{person.name}</option>)}
     </select>
