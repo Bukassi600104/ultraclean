@@ -1,11 +1,14 @@
 import { Resend } from "resend";
 import { format } from "date-fns";
+import { primefield } from "@/lib/primefield-site";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = "UltraTidy <hello@ultratidycleaning.com>";
+const SENDER_EMAIL = "hello@ultratidycleaning.com";
+const FROM_EMAIL = "UltraTidy <" + SENDER_EMAIL + ">";
+const FROM_PRIMEFIELD = "Primefield Agri-Business <" + SENDER_EMAIL + ">";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://ultratidycleaning.com";
 const GOOGLE_REVIEW_URL = "https://g.page/r/CbgkPYbL4D3JEBM/review";
 
@@ -33,6 +36,7 @@ function caslFooter(email: string) {
 }
 
 export async function sendLeadConfirmation(data: {
+  business?: string;
   name: string;
   email: string;
   service: string;
@@ -43,11 +47,20 @@ export async function sendLeadConfirmation(data: {
   }
 
   try {
+    const primefieldEnquiry = data.business === "primefield";
     const result = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: primefieldEnquiry ? FROM_PRIMEFIELD : FROM_EMAIL,
       to: data.email,
-      subject: "Thank you for contacting UltraTidy!",
-      html: `
+      ...(primefieldEnquiry ? { replyTo: primefield.email } : {}),
+      subject: primefieldEnquiry ? "We received your Primefield enquiry" : "Thank you for contacting UltraTidy!",
+      html: primefieldEnquiry ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #12392e;">Thanks for contacting Primefield</h1>
+          <p>Hello ${esc(data.name)},</p>
+          <p>We’ve received your enquiry. Our farm team will respond using the details you shared.</p>
+          <p>Primefield Agri-Business Limited<br/>Ibadan, Oyo State, Nigeria<br/><a href="mailto:${primefield.email}">${primefield.email}</a></p>
+        </div>
+      ` : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #0BBDB2;">Thank You, ${esc(data.name)}!</h1>
           <p>We've received your inquiry about <strong>${esc(data.service)}</strong> and we're excited to help.</p>
@@ -73,6 +86,7 @@ export async function sendLeadConfirmation(data: {
 }
 
 export async function sendAdminNotification(data: {
+  business?: string;
   name: string;
   email: string;
   phone: string;
@@ -91,13 +105,15 @@ export async function sendAdminNotification(data: {
   }
 
   try {
+    const primefieldEnquiry = data.business === "primefield";
     const result = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: primefieldEnquiry ? FROM_PRIMEFIELD : FROM_EMAIL,
       to: adminEmail,
-      subject: `New Lead: ${data.name} — ${data.service}`,
+      ...(primefieldEnquiry ? { replyTo: data.email } : {}),
+      subject: primefieldEnquiry ? `Primefield enquiry from ${data.name}` : `New Lead: ${data.name} — ${data.service}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #0BBDB2;">New Lead Received!</h1>
+          <h1 style="color: ${primefieldEnquiry ? "#12392e" : "#0BBDB2"};">${primefieldEnquiry ? "New Primefield enquiry" : "New Lead Received!"}</h1>
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px; font-weight: bold;">Name:</td><td style="padding: 8px;">${esc(data.name)}</td></tr>
             <tr><td style="padding: 8px; font-weight: bold;">Email:</td><td style="padding: 8px;"><a href="mailto:${esc(data.email)}">${esc(data.email)}</a></td></tr>
@@ -105,7 +121,7 @@ export async function sendAdminNotification(data: {
             <tr><td style="padding: 8px; font-weight: bold;">Service:</td><td style="padding: 8px;">${esc(data.service)}</td></tr>
             ${data.notes ? `<tr><td style="padding: 8px; font-weight: bold;">Notes:</td><td style="padding: 8px;">${esc(data.notes)}</td></tr>` : ""}
           </table>
-          <p style="margin-top: 16px;"><a href="${SITE_URL}/dashboard/leads" style="color: #0BBDB2;">View in Dashboard →</a></p>
+          <p style="margin-top: 16px;"><a href="${primefieldEnquiry ? "https://leads.ultratidycleaning.com" : SITE_URL}/dashboard/leads" style="color: ${primefieldEnquiry ? "#12392e" : "#0BBDB2"};">View in Dashboard →</a></p>
         </div>
       `,
     });

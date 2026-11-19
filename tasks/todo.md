@@ -453,3 +453,13 @@ The private primefield-feedback-2026-11-19 release folder holds the restore, sto
 - [x] Reproduce both failures with isolated data, verify the fixes and surrounding workflows, with an isolated database and both app layouts.
 
 The dated mortality tests keep both movements in audit history while counting the corrected date once. The payment tests cover a delayed supervisor check, a retry, and payment details after switching a sale to credit. Production verification compares the same farm and account records from before and after the release.
+
+## Primefield public website redesign
+
+- [x] Audit live routes, legacy aliases, enquiry transport, image provenance, and mobile Lighthouse.
+- [x] Review Pinterest references and local buyer searches. Ground all pages in the farm's published products and contact details.
+- [x] Build the ten public pages, redirects, legacy anchors, preview indexing controls, and a no-write enquiry preview.
+- [x] Run the production build, lint, the 81 existing website tests, Primefield routing and browser tests, and isolated lead and email integration tests.
+- [ ] Review the Vercel preview before approving a production release.
+
+The separate preview branch contains no data migrations. After a later approved production release, rollback can restore the preceding Vercel production deployment.

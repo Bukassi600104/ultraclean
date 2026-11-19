@@ -13,14 +13,14 @@ export interface Profile {
 }
 
 function createAuthClient() {
+  // Authenticated pages are request-bound, including builds without database credentials.
+  const cookieStore = cookies();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return null;
   }
-
-  const cookieStore = cookies();
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
