@@ -1,97 +1,60 @@
 "use client";
 
-import { useState } from "react";
-import { Menu, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { farmQuoteLink, primefield } from "@/lib/primefield-site";
+
+const navigation = [
+  { href: "/products", text: "Products" },
+  { href: "/about", text: "Our farm" },
+  { href: "/contact", text: "Contact" },
+];
 
 export function PrimefieldNav() {
+  const pathname = usePathname();
+  const [activePath, setActivePath] = useState("");
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setActivePath(pathname);
+    setOpen(false);
+  }, [pathname]);
+
+  const active = (href: string) => activePath === href || activePath.startsWith(href + "/");
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-[#2D6A4F]/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Image
-              src="/primefield-logo.png"
-              alt="Primefield Agri-Business Limited"
-              width={160}
-              height={56}
-              className="object-contain"
-              priority
-            />
-          </div>
-
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex gap-8">
-            <a
-              className="text-[#1B4332] hover:text-[#11d469] transition-colors text-sm font-semibold"
-              href="#"
-            >
-              Home
-            </a>
-            <a
-              className="text-[#1B4332]/70 hover:text-[#11d469] transition-colors text-sm font-medium"
-              href="#about"
-            >
-              About
-            </a>
-            <a
-              className="text-[#1B4332]/70 hover:text-[#11d469] transition-colors text-sm font-medium"
-              href="#products"
-            >
-              Products
-            </a>
-            <a
-              className="text-[#1B4332]/70 hover:text-[#11d469] transition-colors text-sm font-medium"
-              href="#contact"
-            >
-              Contact
-            </a>
-          </nav>
-
-          {/* Desktop CTA + Mobile toggle */}
-          <div className="flex items-center gap-4">
-            <a
-              href="#contact"
-              className="hidden md:flex bg-[#1B4332] hover:bg-[#2D6A4F] transition-colors text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-[#1B4332]/20"
-            >
-              Order Now
-            </a>
-            <button
-              className="md:hidden text-[#1B4332]"
-              onClick={() => setOpen(!open)}
-              aria-label="Toggle menu"
-            >
-              {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {open && (
-        <div className="md:hidden bg-white border-t border-[#2D6A4F]/10 px-4 py-4 space-y-3">
-          {["#", "#about", "#products", "#contact"].map((href, i) => (
-            <a
-              key={href}
-              href={href}
-              className="block text-[#1B4332] font-medium py-2 hover:text-[#40916C] transition-colors"
-              onClick={() => setOpen(false)}
-            >
-              {["Home", "About", "Products", "Contact"][i]}
-            </a>
+    <header className="pf-header" onKeyDown={(event) => {
+      if (event.key === "Escape" && open) {
+        setOpen(false);
+        menuButton.current?.focus();
+      }
+    }}>
+      <div className="pf-shell pf-header-inner">
+        <Link className="pf-logo" href="/" prefetch={false} aria-label={primefield.name + " home"} onClick={() => setOpen(false)}>
+          <Image src="/primefield/logo.webp" alt="" width={360} height={196} sizes="(max-width: 720px) 108px, 128px" />
+        </Link>
+        <nav className="pf-desktop-nav" aria-label="Main navigation">
+          {navigation.map(({ href, text }) => (
+            <Link key={href} href={href} prefetch={false} aria-current={active(href) ? "page" : undefined}>{text}</Link>
           ))}
-          <a
-            href="#contact"
-            className="block w-full text-center bg-[#1B4332] text-white py-3 rounded-full text-sm font-bold mt-2"
-            onClick={() => setOpen(false)}
-          >
-            Order Now
-          </a>
-        </div>
-      )}
+        </nav>
+        <Link className="pf-button pf-header-quote" href={farmQuoteLink()} prefetch={false}>Request a quote</Link>
+        <button className="pf-menu-toggle" type="button" aria-expanded={open} aria-controls="pf-mobile-navigation"
+          ref={menuButton} onClick={() => setOpen((value) => !value)}>
+          {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+          {open ? "Close" : "Menu"}
+        </button>
+      </div>
+      <nav id="pf-mobile-navigation" className="pf-shell pf-mobile-nav" aria-label="Mobile navigation" hidden={!open}>
+        {[{ href: "/", text: "Home" }, ...navigation].map(({ href, text }) => (
+          <Link key={href} href={href} prefetch={false} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{text}</Link>
+        ))}
+        <Link className="pf-button" href={farmQuoteLink()} prefetch={false} onClick={() => setOpen(false)}>Request a quote</Link>
+      </nav>
     </header>
   );
 }

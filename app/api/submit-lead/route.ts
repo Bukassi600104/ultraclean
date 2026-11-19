@@ -3,18 +3,21 @@ import { submitLeadSchema } from "@/lib/validations";
 import { createServerClient } from "@/lib/supabase/server";
 import { sendLeadConfirmation, sendAdminNotification } from "@/lib/email";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { isPrimefieldRedesignPreview } from "@/lib/primefield-routing";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  // Rate limiting
-  const ip = request.headers.get("x-forwarded-for") || "anonymous";
-  const { success } = await checkRateLimit(ip);
-  if (!success) {
-    return NextResponse.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429 }
-    );
+  const preview = isPrimefieldRedesignPreview();
+  if (!preview) {
+    const ip = request.headers.get("x-forwarded-for") || "anonymous";
+    const { success } = await checkRateLimit(ip);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
   }
 
   // Parse and validate
@@ -32,6 +35,11 @@ export async function POST(request: NextRequest) {
   if (!result.success) {
     const errors = result.error.flatten().fieldErrors;
     return NextResponse.json({ error: "Validation failed", errors }, { status: 400 });
+  }
+
+  // Preview exercises the live schema without recording enquiries or sending email.
+  if (preview) {
+    return NextResponse.json({ success: true, leadId: null, preview: true }, { status: 201 });
   }
 
   const data = result.data;
@@ -82,11 +90,13 @@ export async function POST(request: NextRequest) {
   // Fire-and-forget emails
   Promise.allSettled([
     sendLeadConfirmation({
+      business: data.business,
       name: data.name,
       email: data.email,
       service: data.service,
     }),
     sendAdminNotification({
+      business: data.business,
       name: data.name,
       email: data.email,
       phone: data.phone,

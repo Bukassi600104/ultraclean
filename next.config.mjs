@@ -18,20 +18,6 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react"],
   },
-  async redirects() {
-    return [
-      {
-        source: "/primefield",
-        destination: "https://primefieldagric.com",
-        permanent: true,
-      },
-      {
-        source: "/primefield/:path*",
-        destination: "https://primefieldagric.com/:path*",
-        permanent: true,
-      },
-    ];
-  },
   async headers() {
     const csp = [
       "default-src 'self'",

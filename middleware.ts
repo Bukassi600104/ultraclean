@@ -1,8 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  isPrimefieldRedesignPreview,
+  PRIMEFIELD_CANONICAL_HOST,
+  PRIMEFIELD_ORIGIN,
+} from "@/lib/primefield-routing";
 import { updateSession } from "@/lib/supabase/middleware";
+
+function rewritePrimefield(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  url.pathname = url.pathname === "/" ? "/primefield" : `/primefield${url.pathname}`;
+  return NextResponse.rewrite(url);
+}
+
+function noindex(response: NextResponse) {
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return response;
+}
+
+function routePrimefieldPreview(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname === "/api/submit-lead" && request.method === "POST") {
+    return noindex(NextResponse.next());
+  }
+  if (pathname.startsWith("/api/")) {
+    return noindex(NextResponse.json({ error: "Not found" }, { status: 404 }));
+  }
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return noindex(new NextResponse(null, { status: 405, headers: { Allow: "GET, HEAD" } }));
+  }
+  return noindex(rewritePrimefield(request));
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isPrimefieldPreview = isPrimefieldRedesignPreview();
+
+  // Keep old internal-prefix links working on both the public site and its isolated preview.
+  if (pathname === "/primefield" || pathname.startsWith("/primefield/")) {
+    const destination = isPrimefieldPreview ? request.nextUrl.clone() : new URL(PRIMEFIELD_ORIGIN);
+    destination.pathname = pathname.slice("/primefield".length) || "/";
+    destination.search = request.nextUrl.search;
+    return noindex(NextResponse.redirect(destination, 308));
+  }
+
+  if (isPrimefieldPreview) return routePrimefieldPreview(request);
+
   if(['/api/app-version','/offline/farm','/farm-sw.js'].includes(pathname))return NextResponse.next();
 
   // Public installation metadata/scripts must not be rewritten into protected apps.
@@ -12,13 +54,13 @@ export async function middleware(request: NextRequest) {
 
   // Production subdomain rewriting
   const hostname = request.headers.get("host") || "";
+  const primefieldHostname = hostname.toLowerCase().split(":")[0];
+  const isPrimefieldWww = primefieldHostname === `www.${PRIMEFIELD_CANONICAL_HOST}`;
 
   const isFarmDomain =
     hostname === "farm.primefieldagric.com";
 
-  const isPrimefieldDomain =
-    hostname === "primefieldagric.com" ||
-    hostname === "www.primefieldagric.com";
+  const isPrimefieldDomain = primefieldHostname === PRIMEFIELD_CANONICAL_HOST || isPrimefieldWww;
 
   const isRegisterDomain =
     hostname.startsWith("register.") ||
@@ -164,9 +206,13 @@ export async function middleware(request: NextRequest) {
       const result = await updateSession(request);
       return result.supabaseResponse;
     }
-    const url = request.nextUrl.clone();
-    url.pathname = `/primefield${pathname === "/" ? "" : pathname}`;
-    return NextResponse.rewrite(url);
+    if (isPrimefieldWww) {
+      const url = new URL(PRIMEFIELD_ORIGIN);
+      url.pathname = pathname;
+      url.search = request.nextUrl.search;
+      return NextResponse.redirect(url, 308);
+    }
+    return rewritePrimefield(request);
   }
 
   if (isRegisterDomain) {
@@ -240,6 +286,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2)$).*)",
   ],
 };
