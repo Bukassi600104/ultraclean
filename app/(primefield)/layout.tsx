@@ -15,7 +15,10 @@ export const metadata: Metadata = {
   keywords: [],
   manifest: null,
   formatDetection: { telephone: false, address: false, email: false },
-  icons: { icon: "/pf-emblem-icon.png", apple: "/pf-emblem-icon.png" },
+  icons: {
+    icon: { url: "/primefield/icon-48.png", type: "image/png", sizes: "48x48" },
+    apple: { url: "/primefield/touch-180.png", sizes: "180x180" },
+  },
 };
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-primefield-body", display: "swap" });

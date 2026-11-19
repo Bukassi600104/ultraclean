@@ -21,6 +21,8 @@ export function FarmPhoto({
         height={image.height}
         sizes={sizes}
         priority={priority}
+        quality={priority ? 75 : 67}
+        fetchPriority={priority ? "high" : "low"}
       />
       {caption && <figcaption>AI-generated illustration</figcaption>}
     </figure>

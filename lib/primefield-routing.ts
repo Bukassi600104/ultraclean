@@ -24,5 +24,6 @@ export function primefieldCanonical(path: string): string {
 
 export function isPrimefieldRedesignPreview(): boolean {
   return process.env.VERCEL_ENV === "preview"
-    && process.env.VERCEL_GIT_COMMIT_REF === "codex/primefield-public-redesign";
+    && (process.env.VERCEL_GIT_COMMIT_REF === "codex/primefield-public-redesign"
+      || process.env.PRIMEFIELD_REDESIGN_PREVIEW === "1");
 }
