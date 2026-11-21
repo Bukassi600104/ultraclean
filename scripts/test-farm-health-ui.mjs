@@ -6,7 +6,7 @@ import os from 'node:os';
 import http from 'node:http';
 import {readFileSync,mkdtempSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-const require=createRequire(import.meta.url),{chromium}=require('@playwright/test');
+const require=createRequire(import.meta.url),{chromium,expect}=require('@playwright/test');
 const {build}=await import(pathToFileURL(path.join(os.tmpdir(),'primefield-v2-test-runtime/node_modules/esbuild/lib/main.js')));
 const id='00000000-0000-4000-8000-000000000001';
 const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {FarmHealth} from './components/manager/FarmHealth';import {FarmPerformance} from './components/manager/FarmPerformance';import {farmPerformanceBackLink} from './lib/dashboard-navigation';import {useOfflineSync} from './hooks/useOfflineSync';function ManagerShellSync(){useOfflineSync();return null;}const back=farmPerformanceBackLink(location.pathname,location.search);createRoot(document.getElementById('root')).render(<><ManagerShellSync/>{location.pathname.endsWith('/today')?<a href={back?.href}>{back?.label}</a>:location.pathname.endsWith('/performance')||new URLSearchParams(location.search).has('performance')?<FarmPerformance/>:<FarmHealth admin={location.search.includes('admin')}/>}</>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',alias:{'@':process.cwd()},define:{'process.env.NODE_ENV':'"development"'},plugins:[{name:'isolated-scope',setup(b){b.onResolve({filter:/^next\/link$/},()=>({path:'link',namespace:'link-mock'}));b.onLoad({filter:/.*/,namespace:'link-mock'},()=>({contents:'import React from \"react\";export default function Link(p){return React.createElement(\"a\",p,p.children)}',loader:'js',resolveDir:process.cwd()}));b.onResolve({filter:/CashPartySelect$/},a=>({path:a.path,namespace:'cash-mock'}));b.onLoad({filter:/.*/,namespace:'cash-mock'},()=>({contents:'export const CashPayerSelect=()=>null;',loader:'js'}));b.onResolve({filter:/^@\/contexts\/ManagerPeriodContext$/},a=>({path:a.path,namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:`const identity={actorId:'${id}',business:'farm',periodId:'${id}'};export const useQueueIdentity=()=>identity;export const useManagerPeriod=()=>({status:'active'});export const useOperationsFeature=()=>({enabled:false});export const useManagerFetch=()=>fetch;`,loader:'js'}));}}]});
@@ -27,7 +27,272 @@ await page.route('**/api/**',async route=>{const req=route.request(),url=new URL
  }else if(url.pathname==='/api/farm/evidence'&&req.method()==='POST'){photoUploads++;body={data:{id:evidenceId,status:'uploaded'}};}
  else if(url.pathname==='/api/farm/performance')body={from:'2026-10-01',to:'2026-10-30',batches:performanceBatches,pool:{revenue:'0',expenses:'0',allocated_revenue:'0',allocated_expenses:'0',unallocated_revenue:'0',unallocated_expenses:'0'},cost_basis:'No recorded costs'};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
 });
+
+const careTitle = 'Animal Health and Farm Care Record';
+const careInstructions = 'Use one row per animal or batch and activity. Copy a row when you need to record the same activity again.';
+const reviewLabel = 'General Review and Suggestions';
+const careFields = [
+  ['animal_group', 'Animal group', 'Fixture layer flock'],
+  ['location', 'Location', 'Fixture Pen A'],
+  ['animal_tag', 'Animal ID / tag code', 'QA-FLOCK-01'],
+  ['record_date', 'Record date', '2026-11-20'],
+  ['age', 'Age', '12 weeks'],
+  ['breed', 'Breed', 'Fixture breed'],
+  ['markings', 'Colour / special markings', 'Brown leg band'],
+  ['diagnosis', 'Issue / diagnosis', 'Routine fixture entry'],
+  ['treatment', 'Treatment / medication given', 'Fixture care recorded'],
+  ['date_received', 'Date received', '2026-11-19'],
+  ['duration', 'Treatment duration', 'One day'],
+  ['withdrawal', 'Withdrawal period', 'Reviewed with supervisor'],
+  ['next_due', 'Next due date', '2026-11-23'],
+  ['animal_status', 'Animal status (dead, alive or sold)', 'alive'],
+  ['notes', 'Notes / observations', 'First fixture observation'],
+];
+const careActivityLabel = 'Scheduled treatment or activity';
+const careHeadings = ['No.', careActivityLabel, ...careFields.map(([, label]) => label)];
+const careActivities = [
+  'Fowl pox booster',
+  'Salt bath and partial water change',
+  'Newcastle disease (LaSota) booster',
+  'Deworming (ivermectin injection)',
+  'Deworming (piperazine in drinking water)',
+  'Hoof trimming',
+  'Gumboro (IBD) vaccination, second dose',
+  'Iron dextran and vitamin check',
+  'PPR vaccination',
+  'FMD vaccination',
+  'Debeaking (beak trimming)',
+  'Tick bath',
+  'Dehorning',
+  'Crossing (mating)',
+  'Sorting and grading',
+  'Layer-house fumigation',
+  'Marek’s disease vaccination',
+  'Ranikhet disease (Newcastle disease)',
+  'Infectious bronchitis vaccination',
+  'Fowl pox vaccination',
+  'Infectious coryza',
+  'Fowl cholera',
+];
+const careRegister = {id:'00000000-0000-4000-8000-000000000005', manager_name:'Assigned manager', starts_on:'2026-11-01', ends_on:null};
+const carePages = [{rows:[], review:null}];
+const carePosts = [];
+const careReceipts = new Map();
+let loseCareConfirmation = false;
+
+await page.route('**/api/farm/health/record*', async route => {
+  const request = route.request();
+  const requestUrl = new URL(request.url());
+  assert.equal(requestUrl.hostname, '127.0.0.1', 'The worksheet fixture may only receive loopback requests');
+  const canWrite = new URL(page.url()).searchParams.has('manager');
+  const respond = (status, json) => route.fulfill({status, json});
+  if (request.method() === 'GET') {
+    const requestedPage = Number(requestUrl.searchParams.get('page') || 1);
+    const fixturePage = carePages[requestedPage - 1];
+    if (!fixturePage) return respond(404, {error:'The requested page does not exist.'});
+    const register = canWrite ? careRegister : {...careRegister, ends_on:'2026-11-21'};
+    return respond(200, {
+      register_id:careRegister.id,
+      can_write:canWrite,
+      page:requestedPage,
+      page_count:carePages.length,
+      registers:[register],
+      rows:fixturePage.rows,
+      review:fixturePage.review,
+    });
+  }
+
+  assert.equal(request.method(), 'POST');
+  assert.ok(canWrite, 'The historical-register viewer must not write');
+  const post = request.postDataJSON();
+  const {operation, register_id, request_id, payload} = post;
+  assert.equal(register_id, careRegister.id);
+  assert.match(request_id, /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);
+  carePosts.push(post);
+  const prior = careReceipts.get(request_id);
+  if (prior) {
+    assert.deepEqual(post, prior.post, 'A retry must reuse the original payload with the request ID');
+    return respond(201, prior.receipt);
+  }
+  const confirm = data => {
+    const receipt = {data};
+    careReceipts.set(request_id, {post, receipt});
+    if (loseCareConfirmation) {
+      loseCareConfirmation = false;
+      return respond(503, {error:'Unable to confirm the save. Please retry.'});
+    }
+    return respond(201, receipt);
+  };
+
+  if (operation === 'add_page') {
+    assert.deepEqual(payload, {});
+    carePages.push({rows:[], review:null});
+    return confirm({page:carePages.length});
+  }
+
+  const fixturePage = carePages[payload.page - 1];
+  assert.ok(fixturePage, 'Rows and reviews must target an existing page');
+  if (operation === 'save_review') {
+    const revision = fixturePage.review?.revision ?? 0;
+    assert.equal(payload.expected_revision, revision);
+    fixturePage.review = {text:payload.text, revision:revision + 1};
+    return confirm({page:payload.page, revision:revision + 1});
+  }
+
+  assert.equal(operation, 'save_row');
+  const lastNumber = Math.max(0, ...fixturePage.rows.map(row => row.row_number));
+  const rowNumber = payload.row_number ?? lastNumber + 1;
+  const rowIndex = fixturePage.rows.findIndex(row => row.row_number === rowNumber);
+  const revision = fixturePage.rows[rowIndex]?.revision ?? 0;
+  if (payload.expected_revision !== revision) return respond(409, {error:'This row has changed. Load the saved row before editing again.'});
+  const row = {row_number:rowNumber, activity:payload.activity, values:payload.values, revision:revision + 1};
+  if (rowIndex === -1) fixturePage.rows.push(row);
+  else fixturePage.rows[rowIndex] = row;
+  return confirm({page:payload.page, row_number:rowNumber, revision:row.revision});
+});
+
 try{
+
+ const managerHealthUrl = 'http://127.0.0.1:' + server.address().port + '/manager/health?manager=1';
+ const ownerHealthUrl = 'http://127.0.0.1:' + server.address().port + '/dashboard/farm/health?admin=1';
+ const record = page.getByRole('table', {name:careTitle, exact:true});
+ const edit = page.getByRole('dialog');
+ const activityButton = activity => record.getByRole('button', {name:activity, exact:true});
+ const action = name => page.getByRole('button', {name, exact:true});
+ const rowField = (key, label) => {
+   if (['record_date', 'date_received', 'next_due'].includes(key)) return edit.getByLabel(label, {exact:true});
+   return edit.getByRole(key === 'animal_status' ? 'combobox' : 'textbox', {name:label, exact:true});
+ };
+ const fillRow = async (overrides = {}) => {
+   for (const [key, label, example] of careFields) {
+     const field = rowField(key, label);
+     const value = overrides[key] ?? example;
+     if (key === 'animal_status') await field.selectOption(value);
+     else await field.fill(value);
+   }
+ };
+ const saveRow = async () => {
+   await edit.getByRole('button', {name:'Save row', exact:true}).click();
+   await edit.waitFor({state:'hidden'});
+ };
+
+ for (const [url, width] of [[managerHealthUrl, 375], [ownerHealthUrl, 390], [managerHealthUrl, 768], [ownerHealthUrl, 1440]]) {
+   await page.setViewportSize({width, height:900});
+   await page.goto(url);
+   await record.waitFor({timeout:12000});
+   await page.getByRole('heading', {name:careTitle, exact:true}).waitFor();
+   await page.getByText('Primefield Agri-Business Limited', {exact:true}).waitFor();
+   await page.getByText(careInstructions, {exact:true}).waitFor();
+   await page.getByRole('textbox', {name:reviewLabel, exact:true}).waitFor();
+   assert.deepEqual(await record.getByRole('columnheader').allTextContents(), careHeadings);
+   assert.deepEqual(await record.locator('tbody tr').evaluateAll(rows => rows.map(row => Array.from(row.cells).slice(0, 2).map(cell => cell.textContent.trim()))), careActivities.map((activity, index) => [String(index + 1), activity]));
+   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'The 17-column table stays inside the page at ' + width + 'px');
+ }
+ assert.equal(carePosts.length, 0, 'Opening the template must not save any of its starter rows');
+
+ await page.setViewportSize({width:375, height:850});
+ await page.goto(managerHealthUrl);
+ await activityButton(careActivities[0]).click();
+ await edit.waitFor();
+ const dialogBounds = await edit.boundingBox();
+ assert.ok(dialogBounds.x >= 0 && dialogBounds.x + dialogBounds.width <= 376, 'A phone can open all fillable fields without horizontal page overflow');
+ await fillRow();
+ await saveRow();
+ const firstSaved = carePosts.at(-1);
+ assert.equal(firstSaved.operation, 'save_row');
+ assert.equal(firstSaved.payload.page, 1);
+ assert.equal(firstSaved.payload.row_number, 1);
+ assert.equal(firstSaved.payload.activity, careActivities[0]);
+ assert.deepEqual(firstSaved.payload.values, Object.fromEntries(careFields.map(([key, , value]) => [key, value])));
+
+ const review = page.getByRole('textbox', {name:reviewLabel, exact:true});
+ const reviewText = 'Review the farm log on Monday.\nDiscuss the fixture follow-up with the supervisor.';
+ await review.fill(reviewText);
+ const reviewSaved = page.waitForResponse(response => new URL(response.url()).pathname === '/api/farm/health/record' && response.request().method() === 'POST');
+ await action('Save review').click();
+ assert.ok((await reviewSaved).ok());
+ assert.equal(carePosts.at(-1).operation, 'save_review');
+ assert.equal(carePosts.at(-1).payload.page, 1);
+ assert.equal(carePages[0].review.text, reviewText);
+ await page.reload();
+ await record.getByRole('cell', {name:'Fixture Pen A', exact:true}).waitFor();
+ assert.equal(await review.inputValue(), reviewText, 'Saved review returns after reloading the register');
+
+ await activityButton(careActivities[0]).click();
+ for (const [key, label, value] of careFields) await expect(rowField(key, label), label + ' persists on the saved row').toHaveValue(value);
+
+ const notes = rowField('notes', 'Notes / observations');
+ const staleDraft = 'Fixture changes entered before another device saved.';
+ const savedNotes = 'Fixture observation saved on another device.';
+ await notes.fill(staleDraft);
+ const storedRow = carePages[0].rows[0];
+ storedRow.revision += 1;
+ storedRow.values.notes = savedNotes;
+ await edit.getByRole('button', {name:'Save row', exact:true}).click();
+ await action('Load saved row').waitFor();
+ await expect(notes).toHaveValue(staleDraft);
+ assert.equal(storedRow.values.notes, savedNotes, 'A conflict does not overwrite the saved row');
+ await action('Load saved row').click();
+ await expect(notes).toHaveValue(savedNotes);
+
+ await notes.fill('Fixture notes saved once across a lost confirmation.');
+ loseCareConfirmation = true;
+ await edit.getByRole('button', {name:'Save row', exact:true}).click();
+ await action('Retry save').waitFor();
+ const unconfirmedSave = carePosts.at(-1);
+ const savedRevision = carePages[0].rows[0].revision;
+ await page.reload();
+ await action('Retry save').click();
+ await page.getByText('Row saved.', {exact:true}).waitFor();
+ assert.deepEqual(carePosts.at(-1), unconfirmedSave, 'Retrying after reload resends the same request ID and payload');
+ assert.equal(carePages[0].rows[0].revision, savedRevision, 'Retry confirms the original save without creating another revision');
+ await activityButton(careActivities[0]).click();
+ await expect(notes).toHaveValue('Fixture notes saved once across a lost confirmation.');
+
+ const worksheetWritesBeforeCopy = carePosts.filter(post => post.operation === 'save_row').length;
+ await edit.getByRole('button', {name:'Copy row', exact:true}).click();
+ assert.equal(await edit.getByLabel(careActivityLabel, {exact:true}).inputValue(), careActivities[0]);
+ for (const [key, label] of careFields) await expect(rowField(key, label), label + ' starts blank on a copied row').toHaveValue('');
+ assert.equal(carePosts.filter(post => post.operation === 'save_row').length, worksheetWritesBeforeCopy, 'Opening a copy does not save a second record');
+ await fillRow({animal_group:'Fixture second flock', location:'Fixture Pen B', animal_tag:'QA-FLOCK-02'});
+ await saveRow();
+ assert.equal(carePosts.at(-1).operation, 'save_row');
+ assert.equal(carePosts.at(-1).payload.page, 2, 'Copied rows continue onto another page when the starter page is full');
+ assert.equal(carePages[0].rows[0].values.animal_tag, 'QA-FLOCK-01', 'Copying a row leaves the existing entry intact');
+ assert.equal(carePages[1].rows[0].values.animal_tag, 'QA-FLOCK-02');
+
+ await action('Add page').click();
+ await record.getByRole('cell', {name:'Fixture Pen B', exact:true}).waitFor({state:'hidden'});
+ await action('Add row').click();
+ await edit.getByLabel(careActivityLabel, {exact:true}).fill('Fixture supplementary activity');
+ await fillRow({animal_group:'Fixture third flock', location:'Fixture Pen C', animal_tag:'QA-FLOCK-03'});
+ await saveRow();
+ assert.equal(carePosts.at(-1).payload.page, 3);
+ await record.getByRole('cell', {name:'Fixture Pen C', exact:true}).waitFor();
+ await action('Previous page').click();
+ await record.getByRole('cell', {name:'Fixture Pen B', exact:true}).waitFor();
+ await action('Previous page').click();
+ await record.getByRole('cell', {name:'Fixture Pen A', exact:true}).waitFor();
+ assert.equal(await review.inputValue(), reviewText);
+ await action('Next page').click();
+ await record.getByRole('cell', {name:'Fixture Pen B', exact:true}).waitFor();
+ assert.deepEqual(await record.getByRole('columnheader').allTextContents(), careHeadings);
+
+ await page.setViewportSize({width:1440, height:900});
+ await page.goto(ownerHealthUrl);
+ await record.getByRole('cell', {name:'Fixture Pen A', exact:true}).waitFor();
+ assert.equal(await action('Add page').count(), 0, 'A historical register is view-only');
+ assert.equal(await action('Save review').count(), 0, 'The original review cannot be edited from a view-only register');
+ await expect(review).toHaveValue(reviewText);
+ assert.equal(await review.isEditable(), false);
+ await action('Next page').click();
+ await record.getByRole('cell', {name:'Fixture Pen B', exact:true}).waitFor();
+ await action('Next page').click();
+ await record.getByRole('cell', {name:'Fixture Pen C', exact:true}).waitFor();
+ assert.deepEqual(errors, []);
+ assert.equal(posts.length, 0, 'Worksheet saves have no effect on the original schedule, notes, or completions API');
+ console.log('PASS animal care record template, mobile entry, copied rows, continuation pages, saved review, and owner history');
+
  for(const width of [375,390,768,1440]){
  await page.setViewportSize({width,height:900});await page.goto('http://127.0.0.1:'+server.address().port+'/?admin=1');
  assert.equal(await page.getByRole('link',{name:'Batch performance',exact:true}).count(),0);await page.getByRole('button',{name:'Add to schedule',exact:true}).click();await page.getByRole('dialog').waitFor();

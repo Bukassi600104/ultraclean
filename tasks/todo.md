@@ -463,3 +463,12 @@ The dated mortality tests keep both movements in audit history while counting th
 - [ ] Review the Vercel preview before approving a production release.
 
 The separate preview branch contains no data migrations. After a later approved production release, rollback can restore the preceding Vercel production deployment.
+
+
+## Animal Health and Farm Care Record
+
+- [x] Match the Word template’s title, instructions, 17 headings, and 22 preset activities verbatim.
+- [x] Support row entry, repeat activities, continuation pages, and General Review and Suggestions in both app views.
+- [x] Verify scoped saves and review access, retries and concurrent edits, previous health workflows, mobile and desktop.
+
+The care register uses new append-only storage. Isolated SQL tests preserved the existing health records and audit counts. API tests covered authorization and invalid entries, and browser tests covered both roles at four widths, including a stale edit and the retry of a lost save confirmation.

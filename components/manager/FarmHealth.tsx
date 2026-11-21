@@ -1,5 +1,6 @@
 "use client";
 import {useFarmRecordAnchor} from "@/hooks/useFarmRecordAnchor";
+import {FarmCareRecord} from './FarmCareRecord';
 import {farmTimestamp} from "@/lib/farm-products";
 import {Table} from '@/components/ui/table';
 import {useEffect,useState} from 'react';import Link from 'next/link';
@@ -84,6 +85,7 @@ export function FarmHealth({admin=false}:{admin?:boolean}){
  return <div className="mx-auto max-w-6xl space-y-4 rounded-2xl bg-[#edf2ec] p-3 text-[#18271f] sm:p-5">
  <header className="flex flex-wrap items-center justify-between gap-3"><p className="max-w-xl text-sm">Scheduled vaccines, treatments and checkups. Each completed task has a date and photo.</p>
  <div className="flex flex-wrap gap-2"><button className={button+' bg-emerald-900 text-white'} onClick={()=>setAction({operation:'note'})}>Record health details</button>{admin&&<button className={button+' bg-white'} onClick={()=>setAction({operation:'schedule'})}>Add to schedule</button>}</div></header>
+ <FarmCareRecord/>
  {pending.map(i=><p key={i.id} role="status" className="rounded-xl bg-amber-50 p-3 text-sm">{i.conflict||'Saved on this device. Waiting to send.'}</p>)}
  {error?<p role="alert">{error} <button className={button} onClick={()=>setVersion(v=>v+1)}>Retry</button></p>:!data?<p role="status">Loading schedules…</p>:<>
  <section aria-labelledby="farm-health-schedule" className="rounded-xl border border-[#cbd5ca] bg-white p-2 sm:p-4">
