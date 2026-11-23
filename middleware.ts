@@ -31,6 +31,12 @@ function routePrimefieldPreview(request: NextRequest) {
   return noindex(rewritePrimefield(request));
 }
 
+function redirectWithSession(url: URL | NextRequest["nextUrl"], session: NextResponse) {
+  const response = NextResponse.redirect(url);
+  for (const cookie of session.cookies.getAll()) response.cookies.set(cookie);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPrimefieldPreview = isPrimefieldRedesignPreview();
@@ -57,6 +63,8 @@ export async function middleware(request: NextRequest) {
   const primefieldHostname = hostname.toLowerCase().split(":")[0];
   const isPrimefieldWww = primefieldHostname === `www.${PRIMEFIELD_CANONICAL_HOST}`;
 
+  const isCeoHost = primefieldHostname.startsWith("leads.");
+
   const isFarmDomain =
     hostname === "farm.primefieldagric.com";
 
@@ -76,6 +84,10 @@ export async function middleware(request: NextRequest) {
     if(!user||request.nextUrl.searchParams.get('reauth')==='1')return loginPage();
     const {data:profile}=await supabase.from('profiles').select('role,suspended').eq('id',user.id).single();
     if(!profile||profile.suspended)return loginPage();
+    if (isCeoHost) {
+      if (profile.role !== "admin") return loginPage();
+      return redirectWithSession(new URL("/dashboard", request.url), supabaseResponse);
+    }
     const routes:Record<string,string>={admin:isFarmDomain?'/':'/dashboard',manager:isFarmDomain?'/':'https://farm.primefieldagric.com',property_manager:'/property',content_manager:'/content',farm_vet:'/farm-support',farm_accountant:'/farm-support'};
     const destination=routes[profile.role];
     if(!destination)return loginPage();
@@ -158,7 +170,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  if (hostname.startsWith("leads.")) {
+  if (isCeoHost) {
     const result = await updateSession(request);
     const { supabaseResponse, user, supabase } = result;
 
@@ -171,19 +183,19 @@ export async function middleware(request: NextRequest) {
     if (!user) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
-      return NextResponse.redirect(redirectUrl);
+      return redirectWithSession(redirectUrl, supabaseResponse);
     }
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, suspended")
       .eq("id", user.id)
       .single();
 
-    if (profile?.role !== "admin") {
+    if (profile?.role !== "admin" || profile.suspended) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
-      return NextResponse.redirect(redirectUrl);
+      return redirectWithSession(redirectUrl, supabaseResponse);
     }
 
     // Paths already prefixed with /dashboard pass through as-is
@@ -197,7 +209,7 @@ export async function middleware(request: NextRequest) {
     // and client (original URL), producing a React hydration mismatch.
     const url = request.nextUrl.clone();
     url.pathname = `/dashboard${pathname === "/" ? "" : pathname}`;
-    return NextResponse.redirect(url);
+    return redirectWithSession(url, supabaseResponse);
   }
 
   if (isPrimefieldDomain) {

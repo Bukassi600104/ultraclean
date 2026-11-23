@@ -164,7 +164,7 @@ export function AppUpdateNotice() {
   },[app,checkForOpenWork]);
 
   const release=latest?.app===app?latest.release:null;
-  if(!app || !release)return null;
+  if(!app || !release || (app === "ceo" && path === "/login"))return null;
   const needsUpdate=release.releaseId!==APP_RELEASE;
   const noticeKey=app+':'+release.releaseId;
   if(needsUpdate ? later===noticeKey : (
