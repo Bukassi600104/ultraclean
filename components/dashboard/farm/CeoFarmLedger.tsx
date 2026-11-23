@@ -60,7 +60,7 @@ export function CeoFarmLedger({ farm, funding, scope }: { farm: Farm; funding?: 
 
   const owner: LedgerLine[] = reconciliation ? [
     ["Opening balance", reconciliation.opening_owner_balance],
-    ["+ Owner transfers recorded", reconciliation.owner_transfers, recipientStatement],
+    ["+ Owner transfers recorded", reconciliation.owner_transfers, funds + "&record_type=farm_fund_transfers#saved-funds-records"],
     ["− Posted general expenses", reconciliation.owner_general_expenses, expenses],
     ["− Posted feed purchases", reconciliation.feed_expenses, expenses],
     ...(reconciliation.owner_rounding_adjustment ? [["Rounding adjustment", reconciliation.owner_rounding_adjustment] as LedgerLine] : []),

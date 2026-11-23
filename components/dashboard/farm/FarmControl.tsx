@@ -63,7 +63,7 @@ export function FarmControl({compact=false,range,name}:{compact?:boolean;range?:
   const finance=data?.report.farm,money=(value:string|number)=>formatExactCurrency(value,'NGN');
   const attention=data?.alerts.filter(alert=>!alert.funding)||[];
   const funds=data?sumMoney(data.report.cash.accounts.filter(a=>a.currency==='NGN'&&a.holder_type!=='awaiting').map(a=>a.closing)):'0';
-  const financials=data&&finance?[['Sales after credits',money(finance.revenue)],['Actual collections',money(finance.collections)],['Paid operating expenses',money(finance.total_expenses)],['Customer debt',money(data.credit.summary.owed)],['Tracked money held',money(funds)]]:[];
+  const financials=data&&finance?[['Actual collections',money(finance.collections)],['Customer debt',money(data.credit.summary.owed)],['Tracked money held',money(funds)]]:[];
   return <section className="min-w-0 space-y-4 text-slate-900" aria-label="Farm control centre" data-farm-report={!compact?'true':undefined} onClickCapture={e=>{
     if(compact||!data||!(e.target instanceof Element)||!e.target.closest('a[href^="/dashboard/"]'))return;
     try{sessionStorage.setItem('farm-control-scroll:'+data.report.scope.actorId+':'+query,String(e.currentTarget.closest('main')?.scrollTop||0));}catch{}
