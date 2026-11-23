@@ -3,6 +3,8 @@ import {useManagerFetch} from "@/contexts/ManagerPeriodContext";
 
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { LIVESTOCK_PRODUCTS, farmDateToday } from "@/lib/farm-products";
 import { InventoryActivity } from "@/components/manager/InventoryActivity";
@@ -17,12 +19,18 @@ const ANIMALS = LIVESTOCK_PRODUCTS.map((product) => ({ value: product.key, label
 
 export default function StockPage() {
  const managerFetch=useManagerFetch();
+  const pathname = usePathname();
+  const managerBase = pathname === '/manager' || pathname.startsWith('/manager/') ? '/manager' : '';
+  const [sourceReport, setSourceReport] = useState<string | null>(null);
   const [today, setToday] = useState("");
   const [date, setDate] = useState("");
   useEffect(() => {
     const t = farmDateToday();
+    const linkedReport = new URLSearchParams(window.location.search).get('report_id');
+    const reportId = linkedReport && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(linkedReport) ? linkedReport : null;
     setToday(t);
-    setDate(t);
+    setDate(reportId ? '' : t);
+    setSourceReport(reportId);
   }, []);
   const [batchId,setBatchId]=useState('');
   const [product, setProduct] = useState("catfish");
@@ -37,6 +45,7 @@ export default function StockPage() {
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
 
   async function handleSave() {
+    if (!date || date > today) return toast.error("Choose the date the stock arrived");
     if (!batchId && !validClassification(product,classification)) return toast.error("Select the animal type and growth stage");
     if (!Number.isInteger(Number(quantity))) return toast.error("Enter a whole-animal quantity");
     if (!quantity || Number(quantity) <= 0) return toast.error("Enter a valid quantity");
@@ -71,10 +80,14 @@ export default function StockPage() {
         </div>
       </div>
 
+      {sourceReport && <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+        <p>Enter the arrival date and the number of new animals received. Check recent stock activity first to avoid recording an arrival twice.</p>
+        <Link className="inline-flex min-h-11 items-center font-semibold underline" href={managerBase + '/daily-report/history?report_id=' + encodeURIComponent(sourceReport)}>Back to the daily report</Link>
+      </div>}
       <div className="bg-white rounded-2xl p-5 border border-gray-100 space-y-4">
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Date</label>
-          <input type="date" max={today}
+          <label htmlFor="stock-arrival-date" className="text-xs font-bold uppercase tracking-wider text-gray-500">Arrival date</label>
+          <input id="stock-arrival-date" type="date" max={today}
             className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
             value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
@@ -99,8 +112,8 @@ export default function StockPage() {
         <FarmBatchPicker product={product} value={batchId} onChange={setBatchId} refreshKey={savedId}/>
         {!batchId&&<LivestockClassificationFields product={product} value={classification} onChange={setClassification} />}
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity *</label>
-          <input type="number" inputMode="numeric"
+          <label htmlFor="stock-quantity" className="text-xs font-bold uppercase tracking-wider text-gray-500">Quantity received *</label>
+          <input id="stock-quantity" type="number" inputMode="numeric" min={1} step={1}
             className="mt-1.5 w-full rounded-xl border border-gray-200 px-3.5 py-3 text-sm"
             placeholder="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
         </div>

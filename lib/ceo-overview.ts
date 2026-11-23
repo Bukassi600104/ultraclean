@@ -1,16 +1,19 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { getFarmFinance } from "@/lib/farm-finance";
 import { mortalityByProduct } from "@/lib/farm-inventory";
+import { moneyNumber, sumMoney, type MoneyInput } from "@/lib/money";
 import { reportingDate, summarizeContent, summarizeProperties, summarizeUltraTidy, summarizeDba, type OverviewRow, type OverviewScope } from "@/lib/ceo-calculations";
 import type { FarmInventoryTransaction } from "@/types";
 
 export async function getCeoOverview(scope: OverviewScope) {
  const db=createServerClient(); if(!db) throw new Error("Database not configured");
- async function all(table:string):Promise<OverviewRow[]> {
+ async function all(table:string,columns?:string,orderKey="id",filters:Record<string,string>={}):Promise<OverviewRow[]> {
   const rows:OverviewRow[]=[];
   for(let offset=0;;offset+=500) {
    const moneyTables=["content_sales","property_rent_payments","property_expenses","ultratidy_inflow","ultratidy_expenses","dba_sales"];
-   const {data,error}=await db!.from(table).select(moneyTables.includes(table)?"*,amount_exact:amount::text":"*").order("id").range(offset,offset+499);
+   let query=db!.from(table).select(columns??(moneyTables.includes(table)?"*,amount_exact:amount::text":"*"));
+   for(const [column,value] of Object.entries(filters))query=query.eq(column,value);
+   const {data,error}=await query.order(orderKey).range(offset,offset+499);
    if(error) throw error;
    rows.push(...((data??[]) as unknown as OverviewRow[]));if(!data||data.length<500)return rows;
   }
@@ -20,7 +23,7 @@ export async function getCeoOverview(scope: OverviewScope) {
   let timer:ReturnType<typeof setTimeout>|undefined;
   try{return {data:await Promise.race([read(),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('SECTION_TIMEOUT')),18000);})]),error:null};}catch{return {data:null,error:"This section could not be loaded. Please retry. Reference: CEO_SECTION_UNAVAILABLE"};}finally{clearTimeout(timer);}
  }
- const [content,properties,farm,operations,crm,ultratidy,dba]=await Promise.all([
+ const [content,properties,farm,operations,crm,ultratidy,dba,funding]=await Promise.all([
   section(async()=>{const [records,performance,leads,sales]=await Promise.all([all("content_records"),all("content_performance"),all("content_leads"),all("content_sales")]);return summarizeContent({records,performance,leads,sales},scope);}),
   section(async()=>{const [properties,units,rent,expenses,maintenance,tenancies]=await Promise.all([all("property_properties"),all("property_units"),all("property_rent_payments"),all("property_expenses"),all("property_maintenance"),all("property_tenancies")]);return summarizeProperties({properties,units,rent,expenses,maintenance,tenancies},scope);}),
   section(async()=>{
@@ -40,7 +43,21 @@ export async function getCeoOverview(scope: OverviewScope) {
    return {leads:periodLeads.length,publishedPosts:posts.filter(r=>r.status==="published").length,pendingAppointments:appointments.filter(r=>r.status==="pending").length,dbaSalesCount:dbaSales.filter(r=>within(r.created_at)).length,recentLeads:[...leads].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5),leadsByStatus:distribution("status").map(([name,count])=>({name,count})),leadsByBusiness:distribution("business").map(([name,count])=>({name,count}))};
   }),
   section(async()=>summarizeUltraTidy({inflow:await all("ultratidy_inflow"),expenses:await all("ultratidy_expenses")},scope)),
-  section(async()=>summarizeDba({sales:await all("dba_sales"),products:await all("dba_products")},scope))
+  section(async()=>summarizeDba({sales:await all("dba_sales"),products:await all("dba_products")},scope)),
+  section(async()=>{
+   const [expenses,emergency,linked,decisions]=await Promise.all([
+    all("manager_pending_expenses","id,activity_date,amount_exact:amount::text","id",{business:"farm",currency:"NGN",status:"pending"}),
+    all("farm_purchase_exceptions","id,date,amount_exact:amount::text"),
+    all("farm_exception_postings","exception_id","exception_id"),
+    all("farm_operation_events","record_id","id",{record_type:"purchase_exception",operation:"resolve"}),
+   ]);
+   const within=(date:unknown)=>typeof date==="string"&&date>=scope.from&&date<=scope.to;
+   const pending=expenses.filter(row=>within(row.activity_date));
+   const processedReports=new Set([...linked.map(row=>row.exception_id),...decisions.map(row=>row.record_id)]);
+   const unreviewed=emergency.filter(row=>within(row.date)&&!processedReports.has(row.id));
+   const summarize=(rows:OverviewRow[])=>({count:rows.length,amount:moneyNumber(sumMoney(rows.map(row=>row.amount_exact as MoneyInput)))});
+   return {pending:summarize(pending),emergency:summarize(unreviewed)};
+  }),
  ]);
- return {ultratidy,dba,scope,generatedAt:new Date().toISOString(),content,properties,farm,operations,crm};
+ return {ultratidy,dba,scope,generatedAt:new Date().toISOString(),content,properties,farm,operations,crm,funding};
 }

@@ -126,8 +126,17 @@ function useWrite(kind:string,onError:(message:string)=>void,onConflict?:(messag
 }
 
 const initialReport=(area?:ReportArea,date=today()):ReportForm=>({report_date:date,sections:area?{template_version:3,area:area.key,observations:{}}:blankSections(),decision_required:false});
+function reportLocation(report: DailyReport) {
+  return isAreaSections(report.sections) ? reportArea(report.sections.area) : undefined;
+}
+
+function reviewStatus(report: DailyReport) {
+  return report.reviewed_at ? "Reviewed" : report.status === "submitted" ? "Awaiting review" : "Draft";
+}
+
 export function FarmDailyReports({admin=false,historyOnly=false,area,activityDate}:{admin?:boolean;historyOnly?:boolean;area?:ReportArea;activityDate?:string}) {
   const managerBase=farmManagerPrefix(usePathname());
+  const periodId = useManagerPeriod()?.periodId;
   const identity=useQueueIdentity(),offline=useOfflineSync();
   const [draftError,setDraftError]=useState(''),[draftFault,setDraftFault]=useState(false),[checking,setChecking]=useState(false);
   const [mediaIds,setMediaIds]=useState<string[]>([]),[photoBusy,setPhotoBusy]=useState(false),[queueBusy,setQueueBusy]=useState(false),[queuedRequest,setQueuedRequest]=useState(''),[requestId,setRequestId]=useState(()=>crypto.randomUUID());
@@ -154,31 +163,63 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
       void records.load();
     }
     setSelected(null);
+    setWriteError("");
+    setEditingReview(false);
+    reviewDirty.current = false;
   }
   const [reviewSelection,setReviewSelection]=useState<DailyReport[]>([]),[reviewingPage,setReviewingPage]=useState(false);
   const [areaFilter,setAreaFilter]=useState(''),[unreviewed,setUnreviewed]=useState(false);
   const {profile}=useAuth(),records=useOperations("daily-reports",area?`&area_filter=${area.key}&date=${activityDate}`:`${admin?'&preview=1':''}${areaFilter?'&area_filter='+areaFilter:''}${unreviewed?'&unreviewed=1':''}`);
   const [form,setForm]=useState<ReportForm>({report_date:"",sections:blankSections(),decision_required:false}),[selected,setSelected]=useState<DailyReport|null>(null),[reason,setReason]=useState(""),[review,setReview]=useState(""),[message,setMessage]=useState(""),[restored,setRestored]=useState(false);
   const baseKey=useManagerStorageKey(profile?`primefield-report-draft:${profile.id}`:null),storageKey=baseKey&&area?`${baseKey}:area:${area.key}:${activityDate}`:baseKey,restoredKey=useRef<string|null>(null);
-  const {write,busy:writeBusy,uncertain,retry,storageFault:retryFault}=useWrite("daily-reports",records.setError);
+  const [writeError, setWriteError] = useState("");
+  const [editingReview, setEditingReview] = useState(false);
+  const reviewDirty = useRef(false);
+  const {write,busy:writeBusy,uncertain,retry,storageFault:retryFault}=useWrite("daily-reports",admin ? setWriteError : records.setError, admin ? async () => {
+    await records.load();
+    setWriteError("This report changed. Check the latest review before saving.");
+  } : undefined);
   const busy=writeBusy||queueBusy||photoBusy||offline.isSyncing||checking||reviewingPage;
   useEffect(()=>{restoredKey.current=null;setRestored(false);setDraftFault(false);if(!storageKey||admin||historyOnly)return;try{const saved=localStorage.getItem(storageKey);if(saved!==null){const draft=JSON.parse(saved);if(!validReportDraft(draft)||(area&&(!isAreaSections(draft.form.sections)||draft.form.sections.area!==area.key||draft.form.report_date!==activityDate)))throw Error();setForm(draft.form);setSelected(draft.selected??null);setMediaIds(draft.mediaIds??[]);setQueuedRequest(draft.queuedRequest??'');setRequestId(draft.requestId||(draft.queuedRequest||crypto.randomUUID()));setMessage("Local draft restored. Save it when connected.");}else {setForm(initialReport(area,activityDate));setSelected(null);setMediaIds([]);setQueuedRequest('');setRequestId(crypto.randomUUID());setMessage('');}restoredKey.current=storageKey;setRestored(true);}catch{setDraftFault(true);setDraftError(recoveryMessage);}},[storageKey,admin,historyOnly,area,activityDate]);
   useEffect(()=>{if(!storageKey||restoredKey.current!==storageKey||!restored||draftFault||admin||historyOnly||selected?.status==="submitted")return;try{localStorage.setItem(storageKey,JSON.stringify({...JSON.parse(localStorage.getItem(storageKey)||"{}"),form,selected,mediaIds,queuedRequest,requestId}));setDraftError("");}catch{setDraftError("This draft could not be saved on the device. Keep the page open and restore storage access before leaving.");}},[form,selected,mediaIds,queuedRequest,requestId,storageKey,restored,draftFault,admin,historyOnly]);
   const loadedDetail=useRef("");
   useEffect(()=>{
-    const params=new URL(window.location.href).searchParams,target=params.get("report_id");
-    if(!target||loadedDetail.current===target)return;
-    const row=records.rows.find(item=>item.id===target) as DailyReport|undefined;
-    if(!row)return;
-    loadedDetail.current=row.id;setSelected(row);setForm({report_date:row.report_date,sections:row.sections,decision_required:row.decision_required});setReview(row.review_note??"");
-    const messageId=params.get("message_id");
-    if(uuid(messageId)){setDiscussionMessage(messageId);setDiscussion(row);}
-  },[records.rows]);
+    const params = new URL(window.location.href).searchParams;
+    const linkedId = params.get("report_id");
+    const target = linkedId ?? ((admin || historyOnly || selected?.status === "submitted") ? selected?.id : null);
+    const row = records.rows.find(item => item.id === target) as DailyReport | undefined;
+    if (!row) return;
+    if (row.id !== selected?.id || row.revision > selected.revision) {
+      const sameReport = row.id === selected?.id;
+      setSelected(row);
+      setForm({report_date:row.report_date, sections:row.sections, decision_required:row.decision_required});
+      if (!sameReport || !reviewDirty.current) setReview(row.review_note ?? "");
+      if (!sameReport) {
+        setReason("");
+        setEditingReview(false);
+        reviewDirty.current = false;
+      } else if (row.reviewed_at && !selected.reviewed_at && reviewDirty.current) {
+        setEditingReview(true);
+      }
+    }
+    if (linkedId && loadedDetail.current !== linkedId) {
+      loadedDetail.current = linkedId;
+      const messageId = params.get("message_id");
+      if (uuid(messageId)) { setDiscussionMessage(messageId); setDiscussion(row); }
+    }
+  }, [records.rows, selected, admin, historyOnly]);
   const existingArea=area?(records.rows as DailyReport[]).find(r=>r.status==='submitted'&&r.report_date===activityDate&&isAreaSections(r.sections)&&r.sections.area===area.key):undefined;
   const queueStatus=identity&&queuedRequest?getSubmissionStatus(identity,queuedRequest):undefined;
   const unresolved=!!queuedRequest&&queueStatus!=="sent";
   const readOnly=admin||historyOnly||draftFault||selected?.status==="submitted"||!!queuedRequest;
-  function choose(row:DailyReport){if(unresolved||draftFault)return;requestAnimationFrame(()=>{detailRef.current?.focus({preventScroll:true});detailRef.current?.scrollIntoView({block:"start"});});setMediaIds([]);setQueuedRequest('');setRequestId(crypto.randomUUID());setSelected(row);setForm({report_date:row.report_date,sections:row.sections,decision_required:row.decision_required});setReason("");setReview(row.review_note??"");setMessage("");}
+  function choose(row: DailyReport) {
+    if (unresolved || draftFault) return;
+    requestAnimationFrame(() => { detailRef.current?.focus({preventScroll:true}); detailRef.current?.scrollIntoView({block:"start"}); });
+    setMediaIds([]); setQueuedRequest(""); setRequestId(crypto.randomUUID());
+    setSelected(row); setForm({report_date:row.report_date, sections:row.sections, decision_required:row.decision_required});
+    setReason(""); setReview(row.review_note ?? ""); setMessage(""); setWriteError("");
+    setEditingReview(false); reviewDirty.current = false;
+  }
   function fresh(){if(unresolved||draftFault)return;setMediaIds([]);setQueuedRequest('');setRequestId(crypto.randomUUID());setSelected(null);setForm(initialReport(area,activityDate));setReason("");setMessage("");}
   async function queueReport(savedOnly=false){
     if(uncertain||busy||queuedRequest||draftFault||!restored)return;
@@ -205,7 +246,22 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
     await records.load();
   }
   async function submitSaved(){await queueReport(true);}
-  async function markReviewed(){if(!selected)return;const row=await write({operation:"review",revision:selected.revision,review_note:review,reason},selected.id) as DailyReport|null;if(row){choose({...row,reviewer:profile?{id:profile.id,name:profile.name}:row.reviewer});setMessage("Review saved.");await records.load();}}
+  async function refreshAfterReview() {
+    window.dispatchEvent(new Event("farm-records-synced"));
+    await records.load();
+  }
+  async function markReviewed() {
+    if (!admin || selected?.status !== "submitted" || busy || uncertain) return;
+    if (selected.reviewed_at && (!review.trim() || !reason.trim())) return;
+    const row = await write({
+      operation:"review", revision:selected.revision, review_note:review.trim() || "Reviewed",
+      reason:selected.reviewed_at ? reason.trim() : "Daily log reviewed",
+    }, selected.id) as DailyReport | null;
+    if (!row) return;
+    choose({...selected, ...row, reviewer:profile ? {id:profile.id, name:profile.name} : row.reviewer});
+    setMessage("Review saved.");
+    await refreshAfterReview();
+  }
   async function quickReview(row:DailyReport){
     const saved=await write({operation:"review",revision:row.revision,review_note:"Reviewed",reason:"Daily log reviewed"},row.id) as DailyReport|null;
     if(saved)setSelected(current=>current?.id===saved.id?{...current,...saved,reviewer:profile?{id:profile.id,name:profile.name}:saved.reviewer}:current);
@@ -217,19 +273,41 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
     try{
       for(const row of reviewSelection){if(!await quickReview(row))break;completed++;}
       setMessage(`${completed} of ${reviewSelection.length} reports marked as reviewed.${completed<reviewSelection.length?" Check the remaining reports before retrying.":""}`);
-    }finally{setReviewSelection([]);setReviewingPage(false);await records.load();}
+    } finally {
+      setReviewSelection([]);
+      setReviewingPage(false);
+      if (completed) await refreshAfterReview();
+    }
   }
   const availableReviews=(records.rows as DailyReport[]).filter(row=>row.status==='submitted'&&!row.reviewed_at);
-  async function retryPending(){const row=await retry() as DailyReport|null;if(row){choose(row);setMessage("Saved submission confirmed.");if(row.status==="submitted"&&storageKey){try{localStorage.removeItem(storageKey);}catch{/* Confirmed online. */}}await records.load();}}
+  async function retryPending() {
+    const row = await retry() as DailyReport | null;
+    if (!row) return;
+    const previous = selected?.id === row.id ? selected : records.rows.find(item => item.id === row.id) as DailyReport | undefined;
+    choose({ ...previous, ...row, ...(admin && row.reviewed_at && profile ? {reviewer:{id:profile.id,name:profile.name}} : {}) });
+    setMessage("Saved submission confirmed.");
+    if (row.status === "submitted" && storageKey) {
+      try { localStorage.removeItem(storageKey); } catch { /* Confirmed online. */ }
+    }
+    if (admin && row.reviewed_at) await refreshAfterReview();
+    else await records.load();
+  }
+  const selectedLocation = selected ? reportLocation(selected) : undefined;
+  const reportTitle = selectedLocation ? areaTitle(selectedLocation) : selected ? "Whole farm report" : area ? areaTitle(area) : "Daily farm update";
   return <div className={"mx-auto space-y-5 text-slate-800 "+(area?"max-w-2xl":"max-w-6xl")}>
     {draftError&&<p role="alert" className="rounded-lg bg-amber-50 p-3 text-amber-900">{draftError}</p>}
     <div className="flex flex-wrap items-center justify-between gap-3">{!area&&!admin&&<p className="text-sm text-slate-600">Farm conditions, people and problems.</p>}{!admin&&<Link className="text-sm font-semibold text-emerald-700 underline" href={managerBase+(historyOnly?"/daily-report":"/daily-report/history")}>{historyOnly?"Write a report":"View report history"}</Link>}{area&&<Link className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-800 underline" href={managerBase+"/daily-report"}>Choose another area</Link>}</div>
     {uncertain&&<div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">The previous submission is unconfirmed. Its saved values are locked to prevent duplicates. <button className="min-h-11 px-3 font-semibold underline" disabled={busy||retryFault} onClick={()=>void retryPending()}>Retry saved submission</button></div>}{records.error&&<div role="alert" className="rounded-lg bg-red-50 p-4 text-red-800">{records.error} <button className="underline" onClick={()=>void records.load()}>Reload records</button></div>}{message&&<p role="status" className="rounded-lg bg-emerald-50 p-4 text-emerald-800">{message}</p>}
+    {writeError && <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-800">{writeError}</p>}
     {queuedRequest&&queueStatus!=="sent"&&<button className="min-h-11 font-semibold text-emerald-800 underline" disabled={busy} onClick={()=>void checkStatus()}>Check saved submission status</button>}
     {existingArea&&!selected&&!queuedRequest&&<p className="rounded-lg bg-emerald-50 p-3 text-sm">A log has already been sent for this area and date. <Link className="font-semibold underline" href={`${managerBase}/daily-report/history?report_id=${existingArea.id}`}>View sent log</Link></p>}
     {(!draftFault&&(!existingArea||selected||queuedRequest)&&(!historyOnly&&!admin||selected&&!records.error))&&<section ref={detailRef} tabIndex={-1} className={panel}>
-      <div className="flex flex-wrap justify-between gap-3"><h2 className="text-xl font-bold text-emerald-950">{selected?`${selected.report_date} · ${selected.status}`:area?areaTitle(area):"Daily farm update"}</h2>{admin&&selected&&<button type="button" className="min-h-11 text-sm font-semibold text-emerald-800 underline" onClick={backToReports}>Back to reports</button>}{!area&&!admin&&!historyOnly&&<button className="text-emerald-700 underline disabled:opacity-50" disabled={busy||uncertain||unresolved||draftFault||!restored} onClick={fresh}>New report</button>}</div>
-      {selected&&<><p className="text-sm text-slate-600">{selected.manager?.name||"Manager name not recorded"}{selected.reviewed_at&&<span className="ml-2 rounded-full bg-emerald-50 px-2 py-1 font-medium text-emerald-900">Reviewed</span>}</p><details className="text-sm"><summary className="min-h-11 cursor-pointer font-semibold text-slate-600">Report details</summary><dl className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2"><div><dt className="text-slate-500">Created at</dt><dd>{farmTimestamp(selected.created_at)}</dd></div><div><dt className="text-slate-500">Submitted at</dt><dd>{farmTimestamp(selected.submitted_at)}</dd></div>{selected.reviewed_at&&<div><dt className="text-slate-500">Reviewed at</dt><dd>{farmTimestamp(selected.reviewed_at)}</dd></div>}{selected.reviewed_by&&<div><dt className="text-slate-500">Reviewed by</dt><dd className="break-words">{selected.reviewer?.name||"Name not recorded"}</dd></div>}{selected.review_note&&<div className="sm:col-span-2"><dt className="text-slate-500">Review note</dt><dd className="whitespace-pre-wrap break-words">{selected.review_note}</dd></div>}</dl></details></>}
+      <div className="flex flex-wrap justify-between gap-3"><h2 className="text-xl font-bold text-emerald-950">{reportTitle}</h2>{admin&&selected&&<button type="button" className="min-h-11 text-sm font-semibold text-emerald-800 underline disabled:opacity-50" disabled={busy} onClick={backToReports}>Back to reports</button>}{!area&&!admin&&!historyOnly&&<button className="text-emerald-700 underline disabled:opacity-50" disabled={busy||uncertain||unresolved||draftFault||!restored} onClick={fresh}>New report</button>}</div>
+      {selected&&<><div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-600">
+        <p><time dateTime={selected.report_date}>{selected.report_date}</time> · {selected.manager?.name || "Manager name not recorded"}</p>
+        <span aria-live="polite" className="rounded-full bg-emerald-50 px-2 py-1 font-medium text-emerald-900">{reviewStatus(selected)}</span>
+        {selected.decision_required && <span className="rounded-full bg-amber-50 px-2 py-1 font-medium text-amber-950">Decision requested</span>}
+      </div><details className="text-sm"><summary className="min-h-11 cursor-pointer font-semibold text-slate-600">Report details</summary><dl className="grid gap-3 rounded-xl bg-slate-50 p-3 sm:grid-cols-2"><div><dt className="text-slate-500">Created at</dt><dd>{farmTimestamp(selected.created_at)}</dd></div><div><dt className="text-slate-500">Submitted at</dt><dd>{farmTimestamp(selected.submitted_at)}</dd></div>{selected.reviewed_at&&<div><dt className="text-slate-500">Reviewed at</dt><dd>{farmTimestamp(selected.reviewed_at)}</dd></div>}{selected.reviewed_by&&<div><dt className="text-slate-500">Reviewed by</dt><dd className="break-words">{selected.reviewer?.name||"Name not recorded"}</dd></div>}{selected.review_note&&<div className="sm:col-span-2"><dt className="text-slate-500">Review note</dt><dd className="whitespace-pre-wrap break-words">{selected.review_note}</dd></div>}</dl></details></>}
       {!readOnly&&area&&<p className="text-sm font-medium text-slate-600">{new Date((form.report_date||activityDate)+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric",timeZone:"Africa/Lagos"})}</p>}
       {!readOnly&&!area&&<label className="block text-sm font-medium">Report date<input type="date" required className={`${input} mt-1 max-w-xs`} disabled={busy||uncertain||!!selected||!!area} value={form.report_date} onChange={event=>setForm({...form,report_date:event.target.value})}/></label>}
 
@@ -241,17 +319,58 @@ export function FarmDailyReports({admin=false,historyOnly=false,area,activityDat
       {!readOnly&&<FarmPhotoPicker date={form.report_date} resource="farm_daily_reports" value={mediaIds} onChange={setMediaIds} onBusyChange={setPhotoBusy}/>}
       {!readOnly&&<><p className="text-xs text-slate-500">{area?"Saved on this device as you type. This observation does not move stock.":"Drafts save on this device. Use Save draft to store online. Submitted reports are read only."}</p>{selected&&<label className="block text-sm font-medium">Reason for draft changes<input maxLength={2000} className={`${input} mt-1`} disabled={busy||uncertain} value={reason} onChange={event=>setReason(event.target.value)}/></label>}<div className="flex flex-wrap gap-3">{!area&&<button className={button} disabled={busy||uncertain} onClick={()=>void save(false)}>Save draft</button>}<button className={button} disabled={busy||uncertain||!restored||!!area&&records.loading} onClick={()=>void save(true)}>{area?"Send location log":"Save and submit"}</button>{selected&&<button className={button} disabled={busy||uncertain} onClick={()=>void submitSaved()}>Submit saved draft</button>}</div></>}
       {selected?.status==="submitted"&&<><FarmRecordEvidence resource="farm_daily_reports" recordId={selected.id}/>{questions(selected)}</>}
-      {admin&&selected?.status==="submitted"&&<details open={!selected.reviewed_at} className="space-y-3 border-t pt-4"><summary className="min-h-11 cursor-pointer font-semibold">{selected.reviewed_at?"Update review":"Review report"}</summary><label className="block text-sm font-medium">Review note<textarea aria-label="Review note" maxLength={2000} className={`${input} mt-1`} disabled={busy||uncertain} value={review} onChange={event=>setReview(event.target.value)}/></label><label className="block text-sm font-medium">Reason<input maxLength={2000} className={`${input} mt-1`} disabled={busy||uncertain} value={reason} onChange={event=>setReason(event.target.value)}/></label><button disabled={busy||uncertain||!review.trim()||!reason.trim()} className={button} onClick={()=>void markReviewed()}>Record review</button><Link href="/dashboard/farm/operational-requests" className="ml-3 text-emerald-700 underline">Review operational requests</Link></details>}
+      {selected?.status === "submitted" && selectedLocation?.group === "Catfish" &&
+        <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <p>Animals counted describes what was seen. Fish added to inventory need a stock movement.</p>
+          <Link className="inline-flex min-h-11 items-center font-semibold text-emerald-800 underline"
+            href={admin ? "/dashboard/farm/inventory?tab=transactions" + (periodId ? "&period_id=" + encodeURIComponent(periodId) : "") :
+              managerBase + "/stock?report_id=" + encodeURIComponent(selected.id) + "&product=catfish"}>
+            {admin ? "View stock movements" : "Record a stock addition"}
+          </Link>
+        </div>}
+      {admin && selected?.status === "submitted" && <section aria-label="Report review" className="space-y-3 border-t pt-4">
+        {selected.reviewed_at && !editingReview ?
+          <button type="button" className="min-h-11 text-sm font-semibold text-emerald-800 underline disabled:opacity-50"
+            disabled={busy || uncertain} onClick={() => setEditingReview(true)}>Edit saved review</button> :
+          <form className="space-y-3" onSubmit={event => { event.preventDefault(); void markReviewed(); }}>
+            <label className="block text-sm font-medium">Review note{!selected.reviewed_at && " (optional)"}
+              <textarea aria-label="Review note" maxLength={2000} className={input + " mt-1"}
+                disabled={busy || uncertain} required={!!selected.reviewed_at} value={review}
+                onChange={event => { reviewDirty.current = true; setReview(event.target.value); }}/>
+            </label>
+            {selected.reviewed_at && <label className="block text-sm font-medium">Reason for changing this review
+              <input maxLength={2000} className={input + " mt-1"} disabled={busy || uncertain} required value={reason}
+                onChange={event => { reviewDirty.current = true; setReason(event.target.value); }}/>
+            </label>}
+            <div className="flex flex-wrap items-center gap-3">
+              <button type="submit" className={button} disabled={busy || uncertain || (!!selected.reviewed_at && (!review.trim() || !reason.trim()))}>
+                {selected.reviewed_at ? "Save review changes" : "Mark reviewed"}
+              </button>
+              {selected.reviewed_at && <button type="button" className="min-h-11 rounded-lg border px-3 text-sm font-medium"
+                disabled={busy || uncertain} onClick={() => {
+                  reviewDirty.current = false; setEditingReview(false); setReview(selected.review_note ?? ""); setReason(""); setWriteError("");
+                }}>Cancel</button>}
+            </div>
+          </form>}
+        {selected.decision_required && <Link href="/dashboard/farm/operational-requests" className="inline-flex min-h-11 items-center text-sm text-emerald-700 underline">Review operational requests</Link>}
+      </section>}
     </section>}
     {!area&&!records.error&&(!admin||!selected)&&<section className={panel}><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{admin?"Report inbox":"Your reports"}</h2>{admin&&<div className="flex flex-wrap items-center gap-2">{availableReviews.length>1&&<button disabled={busy||uncertain||records.loading} className={button} onClick={()=>setReviewSelection(availableReviews)}>Mark shown as reviewed</button>}<button className="min-h-11 rounded-lg border px-3 text-sm font-medium" aria-pressed={unreviewed} onClick={()=>{setUnreviewed(!unreviewed);records.setPage(1);}}>Awaiting review</button><label className="text-sm">Farm area <select className="min-h-11 max-w-full rounded-lg border p-2" value={areaFilter} onChange={e=>{setAreaFilter(e.target.value);records.setPage(1);}}><option value="">All areas</option><option value="whole">Whole farm</option>{reportAreas.map(a=><option key={a.key} value={a.key}>{areaTitle(a)}</option>)}</select></label></div>}</div>{records.loading?<p role="status">Loading reports…</p>:!records.rows.length?<p className="text-sm text-slate-500">No daily reports recorded.</p>:<div className="divide-y divide-slate-200">{(records.rows as DailyReport[]).map(row=>{
-        const location=isAreaSections(row.sections)?reportArea(row.sections.area):null;
+        const location = reportLocation(row);
         return <article key={row.id} className="min-w-0 space-y-2 bg-white py-4">
           <button type="button" disabled={busy||uncertain||unresolved||draftFault} className="flex min-h-11 w-full flex-wrap items-start justify-between gap-2 text-left" onClick={()=>choose(row)}>
-            <span><strong className="block">{location?areaTitle(location):"Whole farm report"}</strong><span className="text-sm text-slate-600">{row.report_date} · {admin?(row.manager?.name||"Name not recorded")+" · ":""}{row.status}</span></span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">{row.reviewed_at?"Reviewed":row.decision_required?"Decision needed":row.status==="submitted"?"View log":"Open draft"}</span>
+            <span><strong className="block">{location ? areaTitle(location) : "Whole farm report"}</strong><span className="text-sm text-slate-600">
+              <time dateTime={row.report_date}>{row.report_date}</time>{admin && " · " + (row.manager?.name || "Name not recorded")}
+              {row.submitted_at && <span className="block">Sent {farmTimestamp(row.submitted_at)}</span>}
+            </span></span>
+            <span className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">{reviewStatus(row)}</span>
+              {row.status === "submitted" && row.decision_required && !row.reviewed_at &&
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-950">Decision requested</span>}
+            </span>
           </button>
           {isAreaSections(row.sections)&&<AreaMeasurements sections={row.sections}/>}
-          {admin&&row.status==="submitted"&&<>{row.has_photos!==false&&<FarmRecordEvidence thumbnail resource="farm_daily_reports" recordId={row.id}/>}<div className="flex flex-wrap gap-2">{questions(row)}{!row.reviewed_at&&<button className={button} disabled={busy||uncertain} onClick={async()=>{if(await quickReview(row)){setMessage("Review saved.");await records.load();}}}>Mark reviewed</button>}</div></>}
+          {admin&&row.status==="submitted"&&<>{row.has_photos!==false&&<FarmRecordEvidence thumbnail resource="farm_daily_reports" recordId={row.id}/>}<div className="flex flex-wrap gap-2">{questions(row)}{!row.reviewed_at&&<button className={button} disabled={busy||uncertain} onClick={async()=>{if(await quickReview(row)){setMessage("Review saved.");await refreshAfterReview();}}}>Mark reviewed</button>}</div></>}
         </article>;
       })}</div>}{(records.total>50||records.page>1)&&<Pagination {...records}/>}</section>}
     <FarmDiscussionDialog resource="farm_daily_reports" recordId={discussion?.id??null} description={discussion?`${discussion.manager?.name||"Farm supervisor"} · ${discussion.report_date}`:undefined} messageId={discussionMessage} onClose={closeDiscussion}/>

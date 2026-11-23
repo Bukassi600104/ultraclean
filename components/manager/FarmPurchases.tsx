@@ -122,7 +122,7 @@ const statusBadge=(status:string)=>'inline-block rounded-lg px-2 py-1 text-sm fo
 export function ReportedExpenses({reports,admin=false,onDecision,periodId,compact=false}:{reports:ReportedExpense[];admin?:boolean;onDecision?:(id:string)=>void;periodId?:string|null;compact?:boolean}){
  if(!reports.length)return null;
  const scope=periodId?'?period_id='+encodeURIComponent(periodId):'';
- return <section className="space-y-3">
+ return <section id={compact?undefined:'emergency-expenses'} className="scroll-mt-24 space-y-3">
   <h2 className="text-lg font-bold">{compact?'Expenses awaiting approval or funding':'Emergency expenses'}</h2>
   {reports.map(e=><article id={compact?undefined:'expense-'+e.id} tabIndex={-1} key={e.id} className="scroll-mt-24 rounded-2xl border border-emerald-100 bg-white p-4">
    <div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0"><h3 className="break-words text-base font-bold">{e.supplier}</h3><p className="text-sm text-slate-600">{expenseDate(e.date)}{e.reported_by_name&&' · '+e.reported_by_name}</p></div><strong className="text-lg">{formatExactCurrency(e.amount_exact,'NGN')}</strong></div>

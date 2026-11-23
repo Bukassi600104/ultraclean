@@ -50,16 +50,19 @@ try{
   const queuedBefore=await page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('farm_pending_')).map(k=>JSON.parse(localStorage.getItem(k))));assert.equal(queuedBefore.length,1);assert.equal(queuedBefore[0].data.sections.farm1.pond1.water_quality,'Fish healthy');
   failSubmit=false;await page.evaluate(()=>window.dispatchEvent(new Event('online')));await page.getByText('Sent. The server confirmed your report.',{exact:true}).waitFor();
   const submissions=calls.filter(call=>call.path.endsWith('/daily-reports/submit'));assert.ok(submissions.length>=2);assert.equal(new Set(submissions.map(call=>call.requestId)).size,1);assert.equal(await page.getByLabel('Pond 1 Water Quality',{exact:true}).count(),0);assert.equal(await page.getByText('Fish healthy',{exact:true}).count(),1);checks+=4;
-  await page.goto(origin+'/?history=yes');await page.getByRole('button',{name:/2026.*submitted|\d{4}-\d{2}-\d{2}.*submitted/}).click();assert.equal(await page.getByRole('button',{name:'Save draft',exact:true}).count(),0);checks++;
-  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:/submitted/}).click();assert.equal(await page.getByRole('link',{name:'Daily Feed',exact:true}).getAttribute('href'),'/dashboard/farm/daily-feed');assert.equal(await page.getByRole('link',{name:'Feed Inventory',exact:true}).getAttribute('href'),'/dashboard/farm/feed-stock');checks+=2;await page.getByLabel('Review note',{exact:true}).fill('Reviewed the pond and pump situation');await page.getByLabel('Reason',{exact:true}).fill('Daily supervision');await page.getByRole('button',{name:'Record review'}).click();await page.getByText('Review saved.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Report date',{exact:true}).count(),0);assert.equal(await page.getByRole('checkbox').count(),0);await page.getByText('Report details',{exact:true}).click();await page.getByText('Bimbo',{exact:true}).waitFor();await page.getByText('Report details',{exact:true}).click();checks+=3;assert.equal(report.sections.farm1.water_issue,'Water check completed');assert.equal(report.sections.farm2.pump_status,'Working');checks+=2;assert.equal(report.sections.template_version,2);assert.equal(report.sections.livestock.sick_animals.length,2);assert.equal(calls.filter(call=>call.path.includes('feed-stock')&&call.method!=='GET').length,0);checks+=3;assert.equal(report.review_note,'Reviewed the pond and pump situation');checks++;
+  await page.goto(origin+'/?history=yes');await page.getByRole('button',{name:/Whole farm report/}).click();assert.equal(await page.getByRole('button',{name:'Save draft',exact:true}).count(),0);checks++;
+  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:/Whole farm report/}).click();assert.equal(await page.getByRole('link',{name:'Daily Feed',exact:true}).getAttribute('href'),'/dashboard/farm/daily-feed');assert.equal(await page.getByRole('link',{name:'Feed Inventory',exact:true}).getAttribute('href'),'/dashboard/farm/feed-stock');checks+=2;assert.equal(await page.getByRole('button',{name:'Mark reviewed',exact:true}).isEnabled(),true);
+  assert.equal(await page.getByLabel('Reason for changing this review').count(),0);
+  await page.getByLabel('Review note',{exact:true}).fill('Reviewed the pond and pump situation');
+  await page.getByRole('button',{name:'Mark reviewed',exact:true}).click();await page.getByText('Review saved.',{exact:true}).waitFor();assert.equal(await page.getByLabel('Report date',{exact:true}).count(),0);assert.equal(await page.getByRole('checkbox').count(),0);await page.getByText('Report details',{exact:true}).click();await page.getByText('Bimbo',{exact:true}).waitFor();await page.getByText('Report details',{exact:true}).click();checks+=3;assert.equal(report.sections.farm1.water_issue,'Water check completed');assert.equal(report.sections.farm2.pump_status,'Working');checks+=2;assert.equal(report.sections.template_version,2);assert.equal(report.sections.livestock.sick_animals.length,2);assert.equal(calls.filter(call=>call.path.includes('feed-stock')&&call.method!=='GET').length,0);checks+=3;assert.equal(report.review_note,'Reviewed the pond and pump situation');assert.equal(calls.filter(call=>call.body.operation==='review').at(-1).body.reason,'Daily log reviewed');checks+=4;
   await page.goto(origin+'/?screen=requests');await page.getByRole('button',{name:'New request',exact:true}).click();await page.getByLabel('What do you need?').fill('Replacement pump');await page.getByLabel('When needed',{exact:true}).fill(await page.getByLabel('Request date',{exact:true}).inputValue());await page.getByLabel('Why needed',{exact:true}).fill('Restore the water supply');assert.equal(await page.getByLabel('Take a photo',{exact:true}).count(),0);assert.equal(await page.getByLabel('Add a photo',{exact:true}).count(),0);failRequest=true;await page.getByRole('button',{name:'Submit request',exact:true}).click();await page.getByText('Saved on this device. Waiting to send.',{exact:false}).first().waitFor();await page.reload();await page.getByText('Sent. The server confirmed your request.',{exact:true}).waitFor();const creates=calls.filter(call=>call.method==='POST'&&call.path.includes('operational-requests'));assert.ok(creates.length>=2);assert.equal(creates.at(-1).body.request_details.why_needed,'Restore the water supply');assert.deepEqual(creates.at(-1).body.request_details.items,[]);assert.equal(new Set(creates.map(call=>call.requestId)).size,1);checks+=5;
   await page.goto(origin+'/?screen=requests&admin=yes');await page.getByRole('button',{name:/pending/}).click();assert.equal(await page.getByRole('button',{name:'Approve',exact:true}).isEnabled(),true);await page.getByRole('button',{name:'Approve',exact:true}).click();for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});const box=await page.getByRole('dialog').boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width);checks++;}await page.getByLabel('Decision note',{exact:true}).fill('Restore water supply');await page.getByRole('button',{name:'Confirm decision',exact:true}).click();await page.getByRole('button',{name:'Mark resolved',exact:true}).waitFor();assert.equal(request.ceo_response,'Restore water supply');assert.equal(request.reason,request.ceo_response);await page.getByRole('button',{name:'Mark resolved',exact:true}).click();await page.getByLabel('Decision note',{exact:true}).fill('Pump installed');await page.getByRole('button',{name:'Confirm decision',exact:true}).click();await page.getByText('Resolution:',{exact:true}).waitFor();assert.equal(request.status,'resolved');assert.equal(request.resolution,'Pump installed');checks+=4;
   for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`requests-${width}.png`),fullPage:true});checks++;}
-  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:/submitted/}).click();for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`report-${width}.png`),fullPage:true});checks++;}
+  await page.goto(origin+'/?admin=yes');await page.getByRole('button',{name:/Whole farm report/}).click();for(const width of [375,390,768,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(artifacts,`report-${width}.png`),fullPage:true});checks++;}
   await page.goto(origin+'/?screen=requests');await page.getByRole('button',{name:'New request',exact:true}).click();await page.getByLabel('What do you need?').fill('Storage unavailable test');await page.getByLabel('When needed',{exact:true}).fill(await page.getByLabel('Request date',{exact:true}).inputValue());await page.getByLabel('Why needed',{exact:true}).fill('Restore the water supply');const postsBefore=calls.filter(call=>call.method==='POST').length;await page.evaluate(()=>{window.savedSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new Error('Quota exceeded');};});await page.getByRole('button',{name:'Submit request',exact:true}).click();await page.getByRole('alert').last().waitFor();assert.equal(calls.filter(call=>call.method==='POST').length,postsBefore);assert.equal(await page.getByLabel('What do you need?').inputValue(),'Storage unavailable test');await page.evaluate(()=>{Storage.prototype.setItem=window.savedSetItem;});checks+=2;
   report={...report,sections:{farm1:{pond1:'Original legacy pond note',pond2:'',pond3:'',pond4:'',water_issue:''},farm2:{vat1:'Legacy vat note',vat2:'',vat3:'',mortality:'',water_issue:'',pump_status:''},livestock:{goats:'Original goats',ram:'',cattle:'',piggery:'',poultry:'',mortality:'',sick_animals:'Two sick goats reported historically',feed:'',water:''},crops:{report:''},people:{supervisor:'',tasks_completed:''},problems:{issues:'',action_taken:'',request_category:'other'}}};await page.goto(origin+`/?admin=yes&report_id=${id}`);await page.getByText('Original legacy pond note',{exact:true}).waitFor();assert.equal(await page.getByText('Two sick goats reported historically',{exact:true}).count(),1);assert.equal(await page.getByLabel('Pond 1',{exact:true}).count(),0);assert.ok(calls.some(call=>call.method==='GET'&&call.search.includes('id='+id)));checks+=4;
   request={...request,report_id:id,action_taken:'Temporary pump stopped',decision_at:'2026-11-02T10:00:00Z',decision_by:id,decider:{id,name:'Bimbo'}};await page.goto(origin+`/?screen=requests&admin=yes&request_id=${id}`);await page.getByRole('link',{name:'View originating daily report'}).waitFor();assert.equal(await page.getByRole('link',{name:'View originating daily report'}).getAttribute('href'),`/dashboard/farm/daily-reports?report_id=${id}`);await page.getByText('Temporary pump stopped',{exact:false}).waitFor();await page.getByText('Bimbo',{exact:true}).waitFor();checks+=3;
-  assert.doesNotMatch(await page.locator('body').innerText(),/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);checks++;await page.goto(origin+'/?history=yes');await page.getByRole('button',{name:/submitted/}).click();await page.getByText('View feed records already entered today',{exact:true}).click();await page.getByText(/Linked to daily feeding/).waitFor();assert.doesNotMatch(await page.locator('body').innerText(),/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);assert.match(await page.locator('body').innerText(),/Bags received: \+2 bags/);assert.match(await page.locator('body').innerText(),/Physical count for review: 3 bags counted/);checks+=3;
+  assert.doesNotMatch(await page.locator('body').innerText(),/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);checks++;await page.goto(origin+'/?history=yes');await page.getByRole('button',{name:/Whole farm report/}).click();await page.getByText('View feed records already entered today',{exact:true}).click();await page.getByText(/Linked to daily feeding/).waitFor();assert.doesNotMatch(await page.locator('body').innerText(),/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);assert.match(await page.locator('body').innerText(),/Bags received: \+2 bags/);assert.match(await page.locator('body').innerText(),/Physical count for review: 3 bags counted/);checks+=3;
   // Recovery tests use real components and storage, with all network effects isolated above.
   const reportKey=`primefield-report-draft:${id}:period:legacy`,requestKey=`primefield-request-draft:${id}:period:legacy`,retryKey=`primefield-operation-retry:${id}:daily-reports:period:legacy`;
   const originalDraft=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),reportKey);
@@ -250,6 +253,67 @@ try{
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await fresh;
   assert.equal(await discussion.count(),0);
   checks+=8;
+  // CEO's direct report link saves the exact same-day log and keeps the note on conflicts.
+  const fishLog={...shown[0],id:'10000000-0000-4000-8000-000000000057',report_date:'2026-11-21',
+    submitted_at:'2026-11-21T10:00:00Z',reviewed_at:null,review_note:null,revision:1,
+    sections:{template_version:3,area:'farm1_pond1',observations:{animal_count:432,notes:'Received fish today'}}};
+  const otherLog={...shown[1],report_date:fishLog.report_date,submitted_at:'2026-11-21T09:00:00Z'};
+  let loseReviewResponse=true;
+  const reviewAttempts=[],savedReviews=new Map();
+  await page.unroute('**/api/farm/daily-reports**');
+  await page.route('**/api/farm/daily-reports**',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    if(req.method()==='GET'){const rows=[fishLog,otherLog].filter(row=>!url.searchParams.has('id')||url.searchParams.get('id')===row.id);return route.fulfill({json:{data:rows,total:rows.length}});}
+    const body=req.postDataJSON(),key=req.headers()['x-request-id'];
+    assert.ok(url.pathname.endsWith('/'+fishLog.id));
+    reviewAttempts.push({body,key});
+    if(savedReviews.has(key))return route.fulfill({json:{data:savedReviews.get(key)}});
+    if(body.revision!==fishLog.revision)return route.fulfill({status:409,json:{error:'Record changed; refresh'}});
+    Object.assign(fishLog,{reviewed_at:'2026-11-21T12:00:00Z',review_note:body.review_note,revision:fishLog.revision+1});
+    savedReviews.set(key,{...fishLog});
+    if(loseReviewResponse){loseReviewResponse=false;return route.abort('failed');}
+    return route.fulfill({json:{data:fishLog}});
+  });
+  await page.goto(origin+'/?admin=yes');
+  await page.getByRole('button',{name:/Catfish.*Pond 1.*2026-11-21/}).waitFor();
+  await page.getByRole('button',{name:/Poultry.*Pen B.*2026-11-21/}).waitFor();
+  await page.goto(origin+'/?admin=yes&report_id='+fishLog.id);
+  await page.getByRole('heading',{name:/Catfish.*Pond 1/}).waitFor();
+  const reviewPanel=page.getByRole('region',{name:'Report review'});
+  const reviewNote=reviewPanel.getByLabel('Review note',{exact:true});
+  const reviewReason=reviewPanel.getByLabel('Reason for changing this review');
+  assert.equal(await reviewPanel.getByRole('button',{name:'Mark reviewed'}).isEnabled(),true);
+  assert.equal(await reviewReason.count(),0);
+  assert.equal(await page.getByRole('link',{name:'View stock movements'}).getAttribute('href'),'/dashboard/farm/inventory?tab=transactions');
+  await reviewNote.fill('Noted');
+  Object.assign(fishLog,{reviewed_at:'2026-11-21T11:45:00Z',review_note:'Reviewed on another device',revision:2});
+  await reviewPanel.getByRole('button',{name:'Mark reviewed'}).click();
+  await page.getByText('This report changed. Check the latest review before saving.',{exact:true}).waitFor();
+  await reviewPanel.getByRole('button',{name:'Save review changes'}).waitFor();
+  assert.equal(await reviewNote.inputValue(),'Noted');
+  assert.equal(await reviewPanel.getByRole('button',{name:'Save review changes'}).isDisabled(),true);
+  await reviewReason.fill('Confirm the handover summary');
+  await page.evaluate(()=>{window.reviewEvents=0;window.addEventListener('farm-records-synced',()=>window.reviewEvents++);});
+  await reviewPanel.getByRole('button',{name:'Save review changes'}).click();
+  await page.getByRole('button',{name:'Retry saved submission'}).waitFor();
+  assert.equal(await reviewNote.inputValue(),'Noted');
+  await page.getByRole('button',{name:'Retry saved submission'}).click();
+  await page.getByText('Saved submission confirmed.',{exact:true}).waitFor();
+  assert.deepEqual(reviewAttempts.map(a=>a.body.revision),[1,2,2]);
+  assert.equal(reviewAttempts[0].body.reason,'Daily log reviewed');
+  assert.deepEqual(reviewAttempts[1],reviewAttempts[2]);
+  assert.equal(fishLog.review_note,'Noted');
+  assert.equal(otherLog.reviewed_at,null);
+  assert.equal(await page.evaluate(()=>window.reviewEvents),1);
+  Object.assign(fishLog,{review_note:'Verified at the pond',revision:4});
+  await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+  await page.getByText('Report details',{exact:true}).click();
+  await page.getByText('Verified at the pond',{exact:true}).waitFor();
+  await page.goto(origin+'/daily-report/history?report_id='+fishLog.id);
+  await page.locator('span[aria-live="polite"]').filter({hasText:/^Reviewed$/}).waitFor();
+  assert.equal(await page.getByRole('link',{name:'Record a stock addition'}).getAttribute('href'),'/stock?report_id='+fishLog.id+'&product=catfish');
+  assert.equal(await page.getByRole('button',{name:'Mark reviewed'}).count(),0);
+  checks+=16;
   const creditId='00000000-0000-4000-8000-000000001033';
   const creditRequest={id:creditId,request_date:'2026-11-12',category:'other',description:'Approve credit terms for the recorded customer',requested_by:id,status:'pending',revision:0,request_details:{needed_on:'2026-11-12',why_needed:'Part payment',items:[],credit_customer_id:id}};
   let decisionBody;
@@ -269,4 +333,8 @@ try{
   await page.getByText('Decision saved. The manager can see your response.',{exact:true}).waitFor();
   assert.equal(decisionBody.credit_days,14);assert.equal(decisionBody.operation,'approve');checks+=3;
   assert.deepEqual(faults,[]);checks++;console.log(`PASS: ${checks} actual farm React/browser checks with project Tailwind CSS: report fields, per-location logging, scoped drafts, photos, confirmed reviews, retry safety and responsive layouts. Screenshots: ${artifacts}`);
-}catch(error){console.error({faults,body:await page.locator("body").innerText()});throw error;}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
+}catch(error){
+  console.error(error);
+  const body=await page.locator('body').innerText({timeout:1500}).catch(()=>undefined);
+  console.error({faults,body});throw error;
+}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

@@ -19,8 +19,7 @@ export const overviewDate = (date: string) => {
 export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
   data: FarmOverview; alerts: FarmAlert[]; link: (path: string) => string; supervisor?: boolean;
 }) {
-  const animals = data.produce.filter(p => ['birds','fish','animals'].includes(p.unit));
-  const animalUnit = animals.length && animals.every(a => a.unit === animals[0].unit) ? animals[0].unit : 'animals';
+  const recordedAnimals = data.produce.filter(p => ['animals', 'birds'].includes(p.unit) && p.amount != null);
   const counted = data.feed.filter(f => f.amount != null);
   const missing = data.feed.length - counted.length;
   const [requestsOnly,setRequestsOnly]=useState(false);
@@ -28,15 +27,19 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
   const attention=alerts.filter(alert=>!alert.funding);
   const decisions=alerts.filter(alert=>alert.decision);
   const visibleAlerts=requestsOnly?decisions:attention;
-  const catfish=data.produce.find(row=>row.unit==='fish');
-  const livestock=data.livestockCount;
-  const stockSummary=livestock
-    ? [catfish?.amount==null?null:count(catfish.amount)+' catfish', count(livestock.quantity)+' livestock'].filter(Boolean).join(' · ')
-    : animals.length?count(animals.reduce((n,p)=>n+Number(p.amount),0))+' '+animalUnit:String(data.produce.length);
+  const catfish = data.produce.find(row => row.unit === 'fish');
+  const livestock = data.livestockCount;
+  const stockSummary = [
+    catfish?.amount == null ? null : count(catfish.amount) + ' fish',
+    recordedAnimals.length ? count(recordedAnimals.reduce((total, row) => total + Number(row.amount), 0)) + ' livestock & birds' : null,
+  ].filter(Boolean).join(' · ') || 'Not recorded';
+  const mortalityLink = (from: string, to: string) => link(
+    (supervisor ? 'mortality?' : 'inventory?tab=mortality&') + new URLSearchParams({from, to}) + '#mortality-log',
+  );
   const tiles = [
-    {label:'Farm produce', value:stockSummary, note:livestock?'Livestock counted '+overviewDate(livestock.date):animals.length?'Recorded stock · view counts':'Produce types recorded', href:'#produce-quantities'},
+    {label:'Current recorded stock', value:stockSummary, note:'Stock records · view by product', href:'#produce-quantities'},
     {label:'Feed in store', value:counted.length?count(counted.reduce((n,f)=>n+Number(f.amount),0)):missing?'Count needed':data.feedTypesComplete?'No feed recorded':'Unavailable', note:counted.length?(missing?'Bags counted · '+missing+(missing===1?' type needs':' types need')+' a count':'Unopened bags'):'Unopened bags', href:'#feed-quantities'},
-    {label:data.to===data.today?'Mortality today':'Mortality on '+overviewDate(data.to), value:data.deathsOnEndDate==null?'Unavailable':count(data.deathsOnEndDate), note:'Recorded deaths · Nigeria time', href:link(supervisor?'mortality':'inventory?tab=mortality#mortality-log')},
+    {label:data.to===data.today?'Mortality today':'Mortality on '+overviewDate(data.to), value:data.deathsOnEndDate==null?'Unavailable':count(data.deathsOnEndDate), note:'Recorded deaths on this day · Nigeria time', href:mortalityLink(data.to, data.to)},
     {label:'Sales', value:money(data.sales), note:money(data.collected)+' received', href:link('sales')},
     {label:'Customer debt', value:money(data.debt), note:'Outstanding on '+overviewDate(data.to), href:link('credit')},
     {label:'Requests / purchases', value:count(data.requestCount+data.purchaseCount), note:data.requestCount+' requests · '+data.purchaseCount+' purchases awaiting a decision'+(data.purchaseCount?' · '+money(data.purchaseAmount):''), href:decisions.length===1?link(decisions[0].href):decisions.length?'#overview-attention':link('operational-requests')},
@@ -81,22 +84,29 @@ export function FarmOverviewPanels({data, alerts, link, supervisor=false}: {
       <section id="produce-quantities" className={card+' scroll-mt-28'}>
         <div className="flex items-center justify-between gap-2"><h3 className={heading}>Produce on hand</h3><Link className={action} href={link('stores?view=animals')}>{supervisor?'Record animal count':'Review or correct counts'}</Link></div>
         <p className="text-xs text-[#526355]">Current recorded stock · {overviewDate(data.today)}</p>
-        {livestock&&<div className="mt-3 rounded-lg bg-[#f1f4ee] p-3">
-          <h4 className="font-semibold">Livestock counted <span className="tabular-nums">{count(livestock.quantity)}</span></h4>
-          <p className="text-sm text-[#455749]">{overviewDate(livestock.date)}</p>
-          <ul className="flex flex-wrap gap-x-4">{livestock.readings.map(row=><li key={row.area}><Link className={action} href={link('daily-reports?report_id='+encodeURIComponent(row.id))}>{row.label} {count(row.quantity)}</Link></li>)}</ul>
-        </div>}
-        <QuantityList rows={livestock?data.produce.filter(row=>row.unit!=='animals'):data.produce} empty="No produce inventory recorded in this view." stockLink={id=>link('stores?view=animals#stock-'+encodeURIComponent(id))} supervisor={supervisor}/>
-        {livestock&&animals.some(row=>row.unit==='animals')&&<details className="mt-2 border-t text-sm">
-          <summary className="min-h-11 cursor-pointer content-center font-semibold">Livestock ledger balances</summary>
-          <QuantityList rows={animals.filter(row=>row.unit==='animals')} empty="No livestock ledger balances recorded." stockLink={id=>link('stores?view=animals#stock-'+encodeURIComponent(id))} supervisor={supervisor}/>
+        <QuantityList rows={data.produce} empty="No produce inventory recorded in this view." stockLink={id=>link('stores?view=animals#stock-'+encodeURIComponent(id))} supervisor={supervisor}/>
+        <div className="flex flex-wrap gap-x-4">
+          <Link className={action} href={link('inventory')}>View inventory</Link>
+          {supervisor && <Link className={action} href={link('stock')}>Add stock</Link>}
+        </div>
+        {(livestock || !!data.pondCounts?.length) && <details className="mt-3 rounded-lg bg-[#f1f4ee] px-3 pb-2 text-sm">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold">Counts from daily reports</summary>
+          <p className="text-[#455749]">Daily report counts describe the areas checked. Record arrivals or approve a physical count to update inventory.</p>
+          {livestock && <div className="mt-2">
+            <h4 className="font-semibold">{count(livestock.quantity)} land animals counted on {overviewDate(livestock.date)}</h4>
+            <ul className="flex flex-wrap gap-x-4">{livestock.readings.map(row => <li key={row.area}><Link className={action} href={link('daily-reports?report_id=' + encodeURIComponent(row.id))}>{row.label} {count(row.quantity)}</Link></li>)}</ul>
+          </div>}
+          {!!data.pondCounts?.length && <div className="mt-2">
+            <h4 className="font-semibold">Latest pond counts</h4>
+            <ul>{data.pondCounts.map(row => <li key={row.id}><Link className={action} href={link('daily-reports?report_id=' + encodeURIComponent(row.id))}>{row.label} · {count(row.quantity)} counted · {overviewDate(row.date)}</Link></li>)}</ul>
+          </div>}
         </details>}
-        {data.mortality.products.length>0&&<details className="mt-3 border-t text-sm text-[#455749]">
-          <summary className="min-h-11 cursor-pointer content-center font-semibold">Mortality history</summary>
+        <details className="mt-3 border-t text-sm text-[#455749]">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold">Mortality in selected period</summary>
           <p>{count(data.mortality.total)} recorded {data.mortality.total===1?'death':'deaths'} · {overviewDate(data.from)} to {overviewDate(data.to)}</p>
           <p>{data.mortality.products.map(m=>farmProductLabel(m.product)+' '+count(m.quantity)).join(' · ')}</p>
-          <Link className={action} href={link(supervisor?'mortality':'inventory?tab=mortality#mortality-log')}>View mortality records</Link>
-        </details>}
+          <Link className={action} href={mortalityLink(data.from, data.to)}>View mortality records for this period</Link>
+        </details>
       </section>
       <section id="feed-quantities" className={card+' scroll-mt-28'}>
         <div className="flex items-center justify-between gap-2"><h3 className={heading}>Feed by type</h3><Link className={action} href={link('feed-stock')}>Feed inventory</Link></div>

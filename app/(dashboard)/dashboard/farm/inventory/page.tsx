@@ -51,7 +51,7 @@ export default function FarmInventoryPage() {
   const [refresh, setRefresh] = useState(0);
   const [selectedTab, setSelectedTab] = useState("stock");
   const [periodId, setPeriodId] = useState<string|null>(null);
-  useFarmRecordAnchor(!isLoading && !loadError && selectedTab === "mortality");
+  useFarmRecordAnchor(!isLoading && !loadError && (selectedTab === "mortality" || selectedTab === "transactions"));
   useEffect(() => {
     async function load() {
       setIsLoading(true);setLoadError("");
@@ -59,7 +59,8 @@ export default function FarmInventoryPage() {
         const scope = new URLSearchParams(window.location.search);
         const period = scope.get("period_id") || "", from = scope.get("from"), to = scope.get("to");
         setPeriodId(period);
-        if (scope.get("tab") === "mortality") setSelectedTab("mortality");
+        const tab = scope.get("tab");
+        if (tab === "mortality" || tab === "transactions" || tab === "stock") setSelectedTab(tab);
         const filter = period ? "?period_id=" + encodeURIComponent(period) : "";
         const [invRes, allRes] = await Promise.all([
           fetch("/api/farm/inventory" + filter),
@@ -184,7 +185,7 @@ export default function FarmInventoryPage() {
           </TabsContent>
 
           {/* ── All Transactions Tab ── */}
-          <TabsContent value="transactions" className="mt-4">
+          <TabsContent value="transactions" id="stock-movements" tabIndex={-1} className="mt-4 scroll-mt-24">
             <Card>
               <CardHeader className="flex flex-row items-center gap-2">
                 <ClipboardList className="h-4 w-4 text-gray-500" />
@@ -319,7 +320,7 @@ export default function FarmInventoryPage() {
                             <span className="font-semibold text-gray-700">
                               {s.current_stock ?? 'Count unavailable'}
                             </span>{" "}
-                            {s.current_stock!==null?'remaining':''}
+                            {s.current_stock!==null?'on hand now':''}
                           </span>
                         </div>
                       </CardContent>

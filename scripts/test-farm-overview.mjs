@@ -59,11 +59,15 @@ try {
     {id:'rams',date:today,area:'ram',observations:{animal_count:2}},
     {id:'older',date:earlier,area:'piggery_1',observations:{animal_count:3}},
     {id:'chickens',date:today,area:'poultry_a',observations:{animal_count:30}},
+    {id:'old-fish',date:earlier,area:'farm1_pond2',observations:{animal_count:60}},
     {id:'fish',date:today,area:'farm1_pond2',observations:{animal_count:55}},
+    {id:'empty-pond',date:earlier,area:'farm1_pond3',observations:{animal_count:0}},
+    {id:'future-fish',date:'2999-01-01',area:'farm1_pond2',observations:{animal_count:100}},
   ];
   const result=farmOverview({...stock,report,today,owed:'50.20',newerFeed:[{feed_type:'pig',feed_source:'local',date:today}],dailyReports:[{id:'log',report_date:today,status:'submitted',sections:{template_version:3,area:'farm1_pond2'}},{id:'draft',report_date:today,status:'draft'}]});
   assert.equal(result.produce.find(p=>p.label==='Catfish').amount,150,'Category stock already contains its batch');
   assert.deepEqual(result.produce.find(p=>p.label==='Catfish').lastCount,{quantity:0,date:today,status:'Awaiting review'});
+  assert.deepEqual(result.pondCounts.map(({id,date,quantity})=>[id,date,quantity]),[['fish',today,55],['empty-pond',earlier,0]]);
   assert.equal(result.deathsOnEndDate,2);
   assert.equal(result.livestockCount.quantity,11);
   assert.deepEqual(result.livestockCount.readings.map(({id,quantity})=>[id,quantity]),[['goats',9],['rams',2]]);
