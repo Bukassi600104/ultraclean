@@ -2,12 +2,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {FarmControl} from './farm/FarmControl';
+import { CeoFarmLedger, dashboardDate } from "./farm/CeoFarmLedger";
+import { useFarmRecordRefresh } from "@/hooks/useFarmRecordRefresh";
+import { areaTitle, isAreaSections, reportArea } from "@/lib/farm-report-areas";
 import {useOperationsFeature} from "@/contexts/ManagerPeriodContext";
 import { BusinessFinancialCharts, businessMoney } from "./BusinessFinancialCharts";
 import { LivestockInventoryBreakdown } from "@/components/manager/LivestockInventoryBreakdown";
 import { ArrowUpRight, RefreshCw, Tractor, Building2, Sparkles, Radio, ChevronRight, ClipboardList, CircleCheck, Plus, CalendarDays } from "lucide-react";
 import type { getCeoOverview } from "@/lib/ceo-overview";
-import { farmDateToday, farmProductLabel } from "@/lib/farm-products";
+import { farmDateToday, farmProductLabel, farmTimestamp } from "@/lib/farm-products";
 
 type Overview = Awaited<ReturnType<typeof getCeoOverview>>;
 const number = (value: unknown) => Number(value).toLocaleString();
@@ -21,7 +24,7 @@ function Zone({ name, subtitle, href, icon, children }: { name: string; subtitle
 function Metric({ title, value, note }: { title: string; value: ReactNode; note?: string }) {
   return <div className="min-w-0"><p className="text-sm text-slate-500">{title}</p><p className="font-heading text-[28px] sm:text-4xl font-bold tracking-tight mt-2 text-slate-900 break-words">{value}</p>{note && <p className="text-base text-slate-600 mt-1 leading-relaxed">{note}</p>}</div>;
 }
-function Unavailable({ error }: { error: string }) { return <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 leading-relaxed">{error}</p>; }
+function Unavailable({ error }: { error: string }) { return <p role="alert" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 leading-relaxed">{error.replace(/\s*Reference:\s*[A-Z0-9_]+$/i, "")}</p>; }
 function Empty({ children }: { children: ReactNode }) { return <p className="text-base text-slate-600 py-3 leading-relaxed">{children}</p>; }
 function Distribution({ title, rows }: { title: string; rows: { name: string; count: number }[] }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
@@ -36,20 +39,52 @@ export function CeoDashboard() {
   const [from, setFrom] = useState(today.slice(0, 8) + "01"), [to, setTo] = useState(today);
   const [data, setData] = useState<Overview | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
-  async function load(start = from, end = to) {
-    controller.current?.abort(); const active = new AbortController(); controller.current = active;
-    const timeout=setTimeout(()=>active.abort('timeout'),25000);
-    setLoading(true); setError("");
+  const applied = useRef({ from, to });
+  const refreshRevision = useFarmRecordRefresh();
+  async function load(start = from, end = to, background = false) {
+    if (background && controller.current) return;
+    controller.current?.abort();
+    const active = new AbortController();
+    controller.current = active;
+    const timeout = setTimeout(() => active.abort("timeout"), 25000);
+    if (!background) setLoading(true);
+    setError("");
     try {
       if (!start || !end || start > end) throw new Error("Choose a valid date range.");
-      const response = await fetch(`/api/ceo/overview?from=${start}&to=${end}`, { cache: "no-store", signal: active.signal });
+      const range = new URLSearchParams({ from: start, to: end });
+      const response = await fetch("/api/ceo/overview?" + range, { cache: "no-store", signal: active.signal });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Dashboard data could not be loaded.");
-      if (!active.signal.aborted) setData(result);
-    } catch (fault) { if (controller.current===active) { setData(null); setError(active.signal.reason==='timeout'?'The dashboard took too long to respond. Please retry. Reference: CEO_TIMEOUT':fault instanceof Error ? fault.message : "Dashboard data could not be loaded. Reference: CEO_UNAVAILABLE"); } }
-    finally { clearTimeout(timeout);if(controller.current===active)setLoading(false); }
+      if (controller.current === active && !active.signal.aborted) {
+        applied.current = { from: start, to: end };
+        setData(result);
+      }
+    } catch (fault) {
+      if (controller.current === active) {
+        if (!background) setData(null);
+        setError(background ? "The dashboard could not refresh. The last loaded figures are shown."
+          : active.signal.reason === "timeout" ? "The dashboard took too long to respond. Please retry."
+          : fault instanceof Error ? fault.message : "Dashboard data could not be loaded.");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (controller.current === active) {
+        controller.current = null;
+        if (!background) setLoading(false);
+      }
+    }
   }
-  useEffect(() => { void load(); return () => controller.current?.abort(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void load();
+    return () => {
+      const active = controller.current;
+      controller.current = null;
+      active?.abort();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (refreshRevision) void load(applied.current.from, applied.current.to, true);
+  }, [refreshRevision]); // eslint-disable-line react-hooks/exhaustive-deps
   const farm = data?.farm.data, content = data?.content.data, property = data?.properties.data, crm = data?.crm.data;
   const pending = data?.operations.data?.pending ?? [];
   return <div className="min-h-full bg-[#f7f8f5] text-slate-900 pb-8">
@@ -57,22 +92,17 @@ export function CeoDashboard() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1680px] mx-auto"><div className="flex flex-wrap items-end justify-between gap-4 mb-6"><div><h2 className="font-heading text-xl font-bold">Your businesses, at a glance.</h2>{enabled===true&&<Link className={linkStyle} href="/dashboard/funds">Funds, manager records and current approvals <ArrowUpRight className="h-3.5 w-3.5"/></Link>}<p className="text-base text-slate-600 mt-1">Performance, operations and decisions in one place.</p></div><form className="flex items-end flex-wrap gap-2" onSubmit={event => { event.preventDefault(); void load(); }}><label className="text-sm text-slate-500">Period<select aria-label="Reporting preset" value={preset} onChange={e=>choosePreset(e.target.value)} className="block border rounded-lg p-2 min-h-11 mt-1"><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="custom">Custom</option></select></label><label className="text-sm text-slate-500">From<input aria-label="Period start" type="date" required value={from} onChange={event => {setPreset("custom");setFrom(event.target.value);}} className="block mt-1 rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700 max-w-[145px] min-h-11" /></label><label className="text-sm text-slate-500">To<input aria-label="Period end" type="date" required value={to} onChange={event => {setPreset("custom");setTo(event.target.value);}} className="block mt-1 rounded-lg border border-slate-200 bg-white p-2 text-sm text-slate-700 max-w-[145px] min-h-11" /></label><button className="rounded-lg bg-teal-700 text-white px-3 py-2 text-sm font-semibold hover:bg-teal-800 disabled:opacity-50 min-h-11" disabled={loading}>Apply</button></form></div>
       {error && <Unavailable error={error} />}
       {loading ? <div role="status" aria-label="Loading dashboard" className="grid lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] gap-6"><div className={`${panel} h-96 animate-pulse`} /><div className={`${panel} h-64 animate-pulse`} /><span className="sr-only">Loading dashboard…</span></div> : data && <>
-      <p className="text-sm text-slate-500 mb-4">Financial reporting period: {data.scope.from} — {data.scope.to} · Updated {new Date(data.generatedAt).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })}</p>
+      <p className="text-sm text-slate-500 mb-4">Reporting dates {dashboardDate(data.scope.from)} to {dashboardDate(data.scope.to)} · Updated {farmTimestamp(data.generatedAt)}</p>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_300px]"><div className="space-y-6 min-w-0">
         <Zone name="PRIMEFIELD" subtitle="Farm performance & current stock" href={`/dashboard/farm/control?from=${data.scope.from}&to=${data.scope.to}`} icon={<Tractor className="h-5 w-5" />}>
           {enabled===true&&<FarmControl compact range={data.scope}/>}
-          <section className="mt-6 border-t border-slate-200 pt-6" aria-label="Financial reconciliation"><h3 className="mb-4 text-xl font-bold">Financial reconciliation</h3>
+          <section className="mt-6 border-t border-slate-200 pt-4" aria-label="Primefield farm figures">
           {data.farm.error ? <Unavailable error={data.farm.error} /> : farm && <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-y-6 gap-x-4 pb-6 border-b border-slate-100"><Metric title="Revenue" value={money(farm.finance.revenue)} /><Metric title="Expenses" value={money(farm.finance.total_expenses)} note="General expenses + feed, counted once" /><Metric title="Recorded operating result" value={money(farm.finance.operational_net)} /></div>
-            <div className="grid sm:grid-cols-2 gap-3 my-5"><div className="rounded-xl bg-teal-50 p-4"><Metric title="Owner funds balance" value={money(farm.finance.closing_balance)} note={`As at ${data.scope.to}`} /></div><div className="rounded-xl bg-slate-50 p-4"><Metric title="Sales cash balance" value={money(farm.finance.sales_cash_balance)} note={`As at ${data.scope.to}`} /></div></div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5"><Metric title="Fish stock" value={number(farm.fish.reduce((sum, row) => sum + Number(row.current_stock), 0))} note="Current inventory · fish" /><Metric title="Livestock count" value={number(farm.livestock.reduce((sum, row) => sum + Number(row.current_stock), 0))} note="Current inventory · animals" /><Metric title="Sales recorded" value={number(farm.salesCount)} note="Active sales in period" /><Metric title="Mortality" value={number(farm.mortality.reduce((sum,row)=>sum+Number(row.quantity),0))} note="Active mortality in period" /></div>
-            {farm.finance.period_reconciliation&&<section className="my-5 rounded-xl border p-4"><h3 className="font-semibold text-sm mb-3">Funding reconciliation · selected period</h3><div className="grid md:grid-cols-2 gap-5 text-sm">{[
-              ["Owner funds",[["Opening owner balance",farm.finance.period_reconciliation.opening_owner_balance],["Received from the owner",farm.finance.period_reconciliation.owner_transfers],["Owner-funded general expenses",farm.finance.period_reconciliation.owner_general_expenses],["Feed purchases",farm.finance.period_reconciliation.feed_expenses],...(farm.finance.period_reconciliation.owner_rounding_adjustment?[["Rounding adjustment",farm.finance.period_reconciliation.owner_rounding_adjustment]]:[]),["Closing owner balance",farm.finance.period_reconciliation.closing_owner_balance]]],
-              ["Sales cash",[["Opening sales cash",farm.finance.period_reconciliation.opening_sales_cash_balance],["Actual collections and legacy cash sales",farm.finance.period_reconciliation.sales],["Sales-funded expenses",farm.finance.period_reconciliation.sales_funded_expenses],...(farm.finance.period_reconciliation.sales_rounding_adjustment?[["Rounding adjustment",farm.finance.period_reconciliation.sales_rounding_adjustment]]:[]),["Closing sales cash",farm.finance.period_reconciliation.closing_sales_cash_balance]]]
-            ].map(([name,items])=><div key={String(name)}><h4 className="font-semibold mb-2">{String(name)}</h4><dl>{(items as [string,number][]).map(([label,value])=><div key={label} className="flex flex-wrap justify-between gap-2 border-b py-2"><dt>{label}</dt><dd>{money(value)}</dd></div>)}</dl></div>)}</div><p className="mt-3 text-sm text-slate-500">Owner transfers fund operations; they are not sales revenue or profit.</p></section>}
-            {farm.finance.last_entries&&<p className="text-sm text-slate-600">Last recorded general expense: {farm.finance.last_entries.general_expenses??"None"}. Last feed purchase: {farm.finance.last_entries.feed??"None"}. Last sale: {farm.finance.last_entries.sales??"None"}. {(!farm.finance.last_entries.general_expenses||farm.finance.last_entries.general_expenses<data.scope.from)&&"No general expenses are recorded in this period; this does not confirm there was no spending."}</p>}
+            <CeoFarmLedger farm={farm} funding={data.funding} scope={data.scope} />
+            <details className="mt-4 min-w-0 rounded-xl border border-slate-200 p-3">
+              <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Farm trends and feed stock</summary>
             <BusinessFinancialCharts title="Farm financial trends" data={{currency:"NGN",daily:farm.finance.daily??[],income_breakdown:farm.finance.sales_by_product??[],expense_breakdown:farm.finance.expenses_by_category??[]}}/>
-            <LivestockInventoryBreakdown /><section aria-label="Feed inventory" className="mb-5 rounded-xl bg-teal-50/50 p-4"><h3 className="text-sm font-semibold mb-2">Feed Inventory</h3>{farm.feedError?<Unavailable error={farm.feedError}/>:farm.feed?.length?<div className="grid gap-2 sm:grid-cols-2">{farm.feed.map(row=><p className="flex flex-wrap justify-between gap-2 text-sm py-2 border-b border-teal-100" key={String(row.id)}><span className="capitalize">{row.feed_type==="fish"?"Fish":farmProductLabel(String(row.feed_type))} · {String(row.feed_source)}</span><strong>{row.initialized_at&&row.current_bags!=null?`${number(row.current_bags)} bags`:"Opening count required"}</strong></p>)}</div>:<Empty>No feed types recorded. A real opening count is required before bags can be reported.</Empty>}<Link className={linkStyle} href="/dashboard/farm/feed-stock">View feed stock & history <ArrowUpRight className="h-3.5 w-3.5"/></Link></section><details className="border-t border-slate-100 pt-4"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Stock & mortality detail</summary><div className="grid sm:grid-cols-2 gap-5 mt-4 text-sm"><div><h3 className="font-semibold mb-2">Current stock by type</h3>{farm.inventory.length ? farm.inventory.map(row => <p className="flex justify-between gap-3 py-1.5 border-b border-slate-100" key={String(row.id)}><span>{farmProductLabel(String(row.product))}</span><strong>{number(row.current_stock)}</strong></p>) : <Empty>No inventory recorded.</Empty>}</div><div><h3 className="font-semibold mt-4 mb-2">Mortality in period</h3>{farm.mortality.length ? farm.mortality.map(row => <p key={row.product} className="flex justify-between py-1.5"><span>{farmProductLabel(row.product)}</span><strong>{number(row.quantity)}</strong></p>) : <Empty>No active mortality records in this period.</Empty>}</div></div></details>
+            <LivestockInventoryBreakdown /><section aria-label="Feed inventory" className="mb-5 rounded-xl bg-teal-50/50 p-4"><h3 className="text-sm font-semibold mb-2">Feed Inventory</h3>{farm.feedError?<Unavailable error={farm.feedError}/>:farm.feed?.length?<div className="grid gap-2 sm:grid-cols-2">{farm.feed.map(row=><p className="flex flex-wrap justify-between gap-2 text-sm py-2 border-b border-teal-100" key={String(row.id)}><span className="capitalize">{row.feed_type==="fish"?"Fish":farmProductLabel(String(row.feed_type))} · {String(row.feed_source)}</span><strong>{row.initialized_at&&row.current_bags!=null?`${number(row.current_bags)} bags`:"Opening count required"}</strong></p>)}</div>:<Empty>No feed types recorded. A real opening count is required before bags can be reported.</Empty>}<Link className={linkStyle} href="/dashboard/farm/feed-stock">View feed stock & history <ArrowUpRight className="h-3.5 w-3.5"/></Link></section></details>
 
           </>}
           </section>
@@ -102,8 +132,29 @@ export function CeoDashboard() {
         <section className={`${panel} p-5 sm:p-6`} aria-label="CRM activity"><div className="flex justify-between gap-3 mb-4"><h2 className="font-heading font-bold text-xl">Recent leads</h2><Link href="/dashboard/leads" className={linkStyle}>View CRM <ArrowUpRight className="h-3.5 w-3.5" /></Link></div>{data.crm.error ? <Unavailable error={data.crm.error} /> : crm && <><div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500 mb-4"><p><strong className="text-slate-800">{number(crm.leads)}</strong> leads in period</p><p><strong className="text-slate-800">{number(crm.publishedPosts)}</strong> published posts</p><p><strong className="text-slate-800">{number(crm.dbaSalesCount)}</strong> DBA sales in period</p></div><div className="grid sm:grid-cols-2 gap-6 mb-5 pb-5 border-b border-slate-100"><Distribution title="Leads by status" rows={crm.leadsByStatus} /><Distribution title="Leads by business" rows={crm.leadsByBusiness} /></div>{crm.recentLeads.length ? <div className="divide-y divide-slate-100">{crm.recentLeads.map(row => <Link key={String(row.id)} href={`/dashboard/leads/${row.id}`} className="flex justify-between items-center gap-3 py-3 hover:text-teal-700"><div className="min-w-0"><p className="text-sm font-medium break-words">{String(row.name)}</p><p className="text-base text-slate-600 mt-1 break-words">{label(row.business)} · {label(row.service)}</p></div><span className="text-sm rounded-full bg-slate-100 px-2.5 py-1 text-slate-600 shrink-0">{label(row.status)}</span></Link>)}</div> : <Empty>No leads yet. Customer inquiries will appear here.</Empty>}</>}</section>
       </div>
       <aside className="space-y-6 min-w-0" aria-label="Decisions and activity">
-        <section className={`${panel} overflow-hidden`}><div className="bg-[#211f30] text-white p-5"><p className="text-sm uppercase tracking-[0.16em] text-white/70">Primefield operations</p><div className="flex justify-between items-center gap-3 mt-2"><h2 className="font-heading text-xl font-bold">Decision desk</h2><ClipboardList className="h-5 w-5 text-primary" /></div><p className="text-sm mt-2 text-white/70 leading-relaxed">Review requests, record your decision and follow through.</p></div><div className="p-5">{data.operations.error ? <Unavailable error={data.operations.error} /> : <>{pending.length ? <div className="space-y-4">{pending.slice(0, 5).map(row => <Link key={String(row.id)} href={`/dashboard/farm/operational-requests?request_id=${String(row.id)}`} className="block group"><div className="flex justify-between gap-2 text-sm text-slate-500"><span className="uppercase tracking-wider">{label(row.category)}</span><span className={row.status === "pending" ? "text-amber-700" : "text-teal-700"}>{row.status === "pending" ? "Decision needed" : "Follow-up"}</span></div><p className="text-sm font-medium mt-1 leading-relaxed line-clamp-3 break-words group-hover:text-teal-700">{String(row.description)}</p><p className="text-sm mt-2 break-words text-slate-600">Action taken: {row.action_taken?String(row.action_taken):"Not recorded"}</p><p className="text-base text-slate-600 mt-1 break-all">Submitted by {String(row.requester_name??"Unknown legacy requester")} · {String(row.created_at??row.request_date)}</p>{row.report_id&&<span className="text-sm mt-1 text-teal-700">Linked daily report</span>}</Link>)}</div> : <div className="py-3"><CircleCheck className="h-6 w-6 text-teal-600 mb-3" /><p className="text-sm font-medium">No outstanding requests</p><p className="text-base text-slate-600 mt-1 leading-relaxed">New requests will appear here when the farm manager submits them.</p></div>}<Link className={`${linkStyle} mt-5`} href="/dashboard/farm/operational-requests">View all requests <ArrowUpRight className="h-3.5 w-3.5" /></Link></>}</div></section>
-        <section className={`${panel} p-5`}><h2 className="font-heading text-xl font-bold mb-4">Latest farm reports</h2>{data.operations.error ? <Unavailable error={data.operations.error} /> : data.operations.data?.recentReports.length ? <div className="space-y-4">{data.operations.data.recentReports.map(row => <Link key={String(row.id)} href={`/dashboard/farm/daily-reports?report_id=${String(row.id)}`} className="flex items-center justify-between gap-3 group"><div><p className="text-sm font-medium group-hover:text-teal-700">{String(row.report_date)}</p><p className="text-base text-slate-600 mt-1">{row.reviewed_at ? "Reviewed" : "Awaiting review"}</p></div><ChevronRight className="h-4 w-4 text-slate-400" /></Link>)}</div> : <Empty>No submitted reports yet.</Empty>}<Link className={`${linkStyle} mt-4`} href="/dashboard/farm/daily-reports">Report history <ArrowUpRight className="h-3.5 w-3.5" /></Link></section>
+        <section className={`${panel} overflow-hidden`}><div className="bg-[#211f30] text-white p-5"><p className="text-sm uppercase tracking-[0.16em] text-white/70">Primefield operations</p><div className="flex justify-between items-center gap-3 mt-2"><h2 className="font-heading text-xl font-bold">Decision desk</h2><ClipboardList className="h-5 w-5 text-primary" /></div><p className="text-sm mt-2 text-white/70 leading-relaxed">Review requests, record your decision and follow through.</p></div><div className="p-5">{data.operations.error ? <Unavailable error={data.operations.error} /> : <>{pending.length ? <div className="space-y-4">{pending.slice(0, 5).map(row => <Link key={String(row.id)} href={`/dashboard/farm/operational-requests?request_id=${String(row.id)}`} className="block group"><div className="flex justify-between gap-2 text-sm text-slate-500"><span className="uppercase tracking-wider">{label(row.category)}</span><span className={row.status === "pending" ? "text-amber-700" : "text-teal-700"}>{row.status === "pending" ? "Decision needed" : "Follow-up"}</span></div><p className="text-sm font-medium mt-1 leading-relaxed line-clamp-3 break-words group-hover:text-teal-700">{String(row.description)}</p>{row.action_taken&&<p className="mt-2 break-words text-sm text-slate-600">{String(row.action_taken)}</p>}<p className="text-base text-slate-600 mt-1 break-all">Submitted by {String(row.requester_name??"Name not recorded")} · {typeof row.created_at==="string"?farmTimestamp(row.created_at):dashboardDate(row.request_date)}</p>{row.report_id&&<span className="text-sm mt-1 text-teal-700">Linked daily report</span>}</Link>)}</div> : <div className="py-3"><CircleCheck className="h-6 w-6 text-teal-600 mb-3" /><p className="text-sm font-medium">No outstanding requests</p><p className="text-base text-slate-600 mt-1 leading-relaxed">New requests will appear here when the farm manager submits them.</p></div>}<Link className={`${linkStyle} mt-5`} href="/dashboard/farm/operational-requests">View all requests <ArrowUpRight className="h-3.5 w-3.5" /></Link></>}</div></section>
+        <section className={panel + " p-5"}>
+          <h2 className="mb-4 font-heading text-xl font-bold">Latest farm reports</h2>
+          {data.operations.error ? <Unavailable error={data.operations.error} /> : data.operations.data?.recentReports.length ?
+            <ul className="divide-y divide-slate-100">{data.operations.data.recentReports.map(row => {
+              const area = isAreaSections(row.sections) ? reportArea(row.sections.area) : undefined;
+              const reviewed = Boolean(row.reviewed_at);
+              const title = area ? areaTitle(area) : "Farm report";
+              return <li key={String(row.id)}>
+                <Link href={"/dashboard/farm/daily-reports?report_id=" + encodeURIComponent(String(row.id))}
+                  className="flex min-h-11 items-center justify-between gap-3 py-3 hover:text-teal-800">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold">{title}</p>
+                    <p className="text-sm text-slate-600">{dashboardDate(row.report_date)}</p>
+                    {!area && typeof row.submitted_at === "string" && <p className="text-xs text-slate-600">Submitted {farmTimestamp(row.submitted_at)}</p>}
+                    <p className={"mt-1 text-sm font-medium " + (reviewed ? "text-emerald-800" : "text-amber-800")}>{reviewed ? "Reviewed" : "Awaiting review"}</p>
+                  </div>
+                  <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
+                </Link>
+              </li>;
+            })}</ul> : <Empty>No submitted reports yet.</Empty>}
+          <Link className={linkStyle + " mt-2"} href="/dashboard/farm/daily-reports">Report history <ArrowUpRight className="h-3.5 w-3.5" /></Link>
+        </section>
         <section className={`${panel} p-5`}><h2 className="font-heading text-xl font-bold mb-3">Quick actions</h2><div className="space-y-1">{[{href:"/dashboard/leads?new=true",title:"Add Lead",icon:Plus},{href:"/dashboard/blog/new",title:"New Blog Post",icon:Plus},{href:"/dashboard/appointments",title:"View Appointments",icon:CalendarDays},{href:"/dashboard/dba/products/new",title:"Add DBA Product",icon:Plus}].map(action => <Link key={action.href} href={action.href} className="flex min-h-11 gap-3 items-center py-3 text-sm font-medium hover:text-teal-700"><action.icon className="h-4 w-4 text-slate-400" />{action.title}<ChevronRight className="h-3.5 w-3.5 ml-auto text-slate-400" /></Link>)}</div>{crm && <p className="text-sm mt-3 pt-3 border-t border-slate-100 text-slate-500">{number(crm.pendingAppointments)} pending appointments</p>}</section>
       </aside></div></>}
     </div>

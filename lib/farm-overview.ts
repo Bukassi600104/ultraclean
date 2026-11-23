@@ -7,7 +7,7 @@ import type { PurchaseData } from './farm-purchases';
 import type { ManagerReportData, ReportRow } from './manager-reports';
 import { sumMoney } from './money';
 import { displayRecordValue } from './record-display';
-import { reportArea } from './farm-report-areas';
+import { areaTitle, reportArea } from './farm-report-areas';
 
 type Quantity = { label: string; amount: number | null; unit: string; stockId?: string;
   lastCount?: { quantity: number; date: string; status: string } };
@@ -53,12 +53,20 @@ export function farmOverview({ report, stores, purchases, currentPerformance, to
     const known = eggStores.every(a => a.opening_verified && a.quantity != null);
     produce.push({label: 'Eggs in store', amount: known ? eggStores.reduce((n, a) => n + Number(a.quantity), 0) : null, unit: 'eggs'});
   }
-  const landAnimals = (stores.area_observations || []).flatMap(row => {
+  const areaCounts = (stores.area_observations || []).flatMap(row => {
     const area = reportArea(row.area), quantity = row.observations.animal_count;
-    if (!area || !['goats', 'ram', 'cattle'].includes(area.key) && area.group !== 'Piggery') return [];
-    if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 0 || row.date > today) return [];
-    return [{id:row.id, date:row.date, area:area.key, label:area.key === 'ram' ? 'Rams' : area.name, quantity}];
+    if (!area || typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 0 || row.date > today) return [];
+    return [{id: row.id, date: row.date, area, quantity}];
   });
+  const landAnimals = areaCounts.filter(({area}) => ['goats', 'ram', 'cattle'].includes(area.key) || area.group === 'Piggery')
+    .map(({area, ...reading}) => ({...reading, area: area.key, label: area.key === 'ram' ? 'Rams' : area.name}));
+  const latestPondCounts = new Map<string, { id: string; date: string; label: string; quantity: number }>();
+  for (const {area, ...reading} of areaCounts) {
+    if (area.group !== 'Catfish') continue;
+    const previous = latestPondCounts.get(area.key);
+    if (!previous || reading.date > previous.date) latestPondCounts.set(area.key, {...reading, label: areaTitle(area)});
+  }
+  const pondCounts = Array.from(latestPondCounts.values()).sort((a, b) => a.label.localeCompare(b.label));
   const countDate = landAnimals.reduce((latest, row) => row.date > latest ? row.date : latest, '');
   const countedAreas = new Set<string>();
   const readings = landAnimals.filter(row => {
@@ -99,7 +107,7 @@ export function farmOverview({ report, stores, purchases, currentPerformance, to
     }
   }
   return {
-    from: report.from, to: report.to, today, produce, livestockCount, feed, feedTypesComplete:newerFeed!==null, mortality, deathsOnEndDate, sales: report.farm.revenue, collected: report.farm.collections,
+    from: report.from, to: report.to, today, produce, livestockCount, pondCounts, feed, feedTypesComplete:newerFeed!==null, mortality, deathsOnEndDate, sales: report.farm.revenue, collected: report.farm.collections,
     expenses: report.farm.total_expenses, funds: report.farm.closing_balance, debt: owed,
     requestCount: requests.length, purchaseCount: pending.length, purchaseAmount: sumMoney(pending.map(p => p.total_exact)),
     todayReportsAvailable: dailyReports !== null, dailyReports: (dailyReports || []).filter(r => r.status === 'submitted' && r.report_date === today)

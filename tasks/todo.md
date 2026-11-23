@@ -472,3 +472,13 @@ The separate preview branch contains no data migrations. After a later approved 
 - [x] Verify scoped saves and review access, retries and concurrent edits, previous health workflows, mobile and desktop.
 
 The care register uses new append-only storage. Isolated SQL tests preserved the existing health records and audit counts. API tests covered authorization and invalid entries, and browser tests covered both roles at four widths, including a stale edit and the retry of a lost save confirmation.
+
+## 2026-11-23 Primefield operations clarity
+
+- [x] Trace the live screenshots to recorded stock, mortality movements, posted funding and saved report reviews.
+- [x] Show ledger sources and distinct physical observations. Link an actual fish restock to the stock movement form with blank quantity and date.
+- [x] Make the initial report review actionable in one step and verify exact report identity, refresh and safe retries.
+- [x] Add dated recipient statements backed by the existing cash ledger, with separate receipt statuses and audited corrections.
+- [ ] Complete isolated build and cross-role regression checks, then verify the deployed release with GET-only probes.
+
+The baseline is `63da08cab4d90468b4d8297c5202863f5d18a3a9`. The release uses a new read-only database function. Existing records receive no backfill, deletion or correction. If rollback is needed, promote the previous Vercel deployment and revert the release commit on main. The additive function can remain unused.

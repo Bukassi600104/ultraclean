@@ -35,4 +35,16 @@ db.from=table=>{
 let transferRead=await existing.GET(req(null,'/api/farm/fund-transfers'));eq(transferRead.status,200);let transferRows=(await transferRead.json()).data;eq(transferRows[0].recipient_name,'Emmanuel Adeolu');eq(transferRows[1].recipient_name,null);
 recipientFailure=true;eq((await existing.GET(req(null,'/api/farm/fund-transfers'))).status,503);
 role=null;eq((await api.POST(req(input))).status,401);eq((await api.GET(req(null,'/api/operations/funds?business=farm'))).status,401);
+const statement=load('app/api/operations/funds/statement/route.ts');
+const statementURL='/api/operations/funds/statement?business=farm';
+role='manager';outcome={accounts:[],balances:[],movements:[],dispatches:[],total:0,dispatch_total:0};
+const statementResponse=await statement.GET(req(null,statementURL+'&from=2026-10-26&to=2026-10-28&page=1&limit=15&account_id='+actorId));
+eq(statementResponse.status,200);eq(statementResponse.headers.get('Cache-Control'),'private, no-store');eq(await statementResponse.json(),outcome);
+eq(calls.at(-1),['operations_cash_statement',{p_actor:actorId,p_business:'farm',p_period_id:periodId,p_from:'2026-10-26',p_to:'2026-10-28',p_page:1,p_limit:15,p_account_id:actorId}]);
+for(const invalid of ['&from=2026-02-30','&from=2026-10-28&to=2026-10-27','&page=-1','&limit=101','&account_id=bad']){
+ const count=calls.length;eq((await statement.GET(req(null,statementURL+invalid))).status,400);eq(calls.length,count);
+}
+error={code:'42501',message:'This holder is outside the selected funds statement.'};eq((await statement.GET(req(null,statementURL))).status,403);
+error={code:'XX000',message:'private details'};const failure=await statement.GET(req(null,statementURL));eq(failure.status,503);eq((await failure.json()).error,'Funds information is unavailable. Please retry.');
+error=null;role=null;eq((await statement.GET(req(null,statementURL))).status,401);
 console.log('PASS '+checks+' actual funds API checks: trusted identity/period, exact amounts, role boundaries, receipts, retained awaiting status, conflict and query failure handling');
