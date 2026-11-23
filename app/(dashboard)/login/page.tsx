@@ -61,6 +61,14 @@ export default function LoginPage() {
     if(identity.error||!identity.user||!identity.profile)throw Error('Your sign-in could not be verified. Please retry.');
     const {profile}=identity;
     if(profile.suspended)throw Error('This account is unavailable. Contact the MD/Owner.');
+    if (window.location.hostname.toLowerCase().startsWith("leads.")) {
+      if (profile.role !== "admin") {
+        setError("Sign in with your CEO account to open this dashboard.");
+        return;
+      }
+      window.location.replace("/dashboard");
+      return;
+    }
     {
       if(profile&&['farm_vet','farm_accountant'].includes(profile.role)){
         router.push('/farm-support');
@@ -85,10 +93,10 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6 rounded-xl border bg-white p-8 shadow-lg">
         <div className="text-center">
           <h1 className="font-heading text-2xl font-bold text-gray-900">
-            Control Center
+            Ultra<span className="text-primary">Tidy</span>
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Sign in to your account
+            Sign in to your dashboard
           </p>
         </div>
 
@@ -142,7 +150,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-destructive text-center">{error}</p>
+            <p role="alert" className="text-sm text-destructive text-center">{error}</p>
           )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>

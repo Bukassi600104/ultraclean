@@ -76,7 +76,10 @@ const page=await context.newPage();
 page.setDefaultTimeout(15000);
 const update=page.getByRole('complementary',{name:'App update'});
 try{
-  for(const [host,route] of [[mdHost,'/login'],[farmHost,'/']]){
+  await Promise.all([page.waitForResponse('**/api/app-version'),page.goto(origin(mdHost)+'/login')]);
+  await page.getByRole('heading',{name:'App home'}).waitFor();
+  assert.equal(await update.count(),0,'The CEO sign-in form stays clear of update notices');
+  for(const [host,route] of [[mdHost,'/dashboard'],[farmHost,'/']]){
     const readsBeforeLaunch=releaseChecks.length;
     await page.goto(origin(host)+route);
     await update.getByText('Pellet sizes in Daily Log',{exact:true}).waitFor();
